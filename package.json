@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，状态栏显示股票信息",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -66,6 +66,11 @@
           "type": "number",
           "default": 5,
           "description": "最大显示股票数量"
+        },
+        "watch-stock.showTwoLetterCode": {
+          "type": "boolean",
+          "default": false,
+          "description": "状态栏是否显示2位简称"
         }
       }
     }

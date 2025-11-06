@@ -230,10 +230,8 @@ function activate(context) {
     () => {
       isVisible = !isVisible;
       if (isVisible) {
-        vscode.window.showInformationMessage("状态栏股票信息已显示");
         updateStockInfo();
       } else {
-        vscode.window.showInformationMessage("状态栏股票信息已隐藏");
         statusBarItem.text = "$(eye-closed)";
         statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择‘显示状态栏’";
       }
@@ -451,7 +449,9 @@ async function getStockInfo(input) {
     const changePercent = ((change / close) * 100).toFixed(2);
 
     // 判断是否为ETF - ETF通常价格较低且名称包含ETF字样
-    const isETF = name.includes('ETF') || (current < 5 && (name.includes('基金') || name.includes('指数')));
+    const isETF =
+      name.includes("ETF") ||
+      (current < 5 && (name.includes("基金") || name.includes("指数")));
     const priceDecimalPlaces = isETF ? 3 : 2;
 
     return {
@@ -462,7 +462,7 @@ async function getStockInfo(input) {
       changePercent,
       isUp: change >= 0,
       market: market,
-      isETF: isETF
+      isETF: isETF,
     };
   } catch (error) {
     console.error("获取股票数据失败:", error.message);
@@ -482,6 +482,7 @@ async function updateStockInfo() {
 
   const config = vscode.workspace.getConfiguration("watch-stock");
   const maxDisplayCount = config.get("maxDisplayCount", 5);
+  const showTwoLetterCode = config.get("showTwoLetterCode", false);
 
   // 无股票时的提示
   if (stocks.length === 0) {
@@ -511,7 +512,11 @@ async function updateStockInfo() {
   // 构建状态栏文本
   const stockTexts = displayStocks.map((stock) => {
     const symbol = stock.isUp ? "↗" : "↘";
-    return `${stock.name} ${stock.current} ${symbol}${stock.changePercent}%`;
+    const displayName =
+      showTwoLetterCode && stock.name.length > 2
+        ? stock.name.substring(0, 2)
+        : stock.name;
+    return `${displayName} ${stock.current} ${symbol}${stock.changePercent}%`;
   });
 
   // 处理超出显示限制的情况
@@ -527,7 +532,8 @@ async function updateStockInfo() {
   let tooltip = validStocks
     .map(
       (stock) =>
-        `${stock.name}(${stock.code}): ${stock.current} ${stock.change >= 0 ? "+" : ""
+        `${stock.name}(${stock.code}): ${stock.current} ${
+          stock.change >= 0 ? "+" : ""
         }${stock.change}(${stock.changePercent}%)`
     )
     .join("\n");
