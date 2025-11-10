@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，状态栏显示股票信息",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -15,7 +15,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./extension.js",
+  "main": "./src/extension.js",
   "contributes": {
     "commands": [
       {
@@ -49,7 +49,7 @@
         "watch-stock.stocks": {
           "type": "array",
           "default": [
-            "000001"
+            "sh000001"
           ],
           "description": "股票代码列表",
           "items": {
