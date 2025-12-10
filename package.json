@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，状态栏显示股票信息",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -17,6 +17,24 @@
   ],
   "main": "./src/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "watchStock",
+          "title": "摸鱼看盘",
+          "icon": "$(graph)"
+        }
+      ]
+    },
+    "views": {
+      "watchStock": [
+        {
+          "id": "watchStockIndex",
+          "name": "股票看板",
+          "icon": "$(graph)"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "watch-stock.addStock",

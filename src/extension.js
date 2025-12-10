@@ -13,6 +13,7 @@
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
+const IndexViewProvider = require("./pages/indexViewProvider");
 const { getStocks, getRefreshInterval } = require("./config");
 const { isTradingTime } = require("./utils/tradingTime");
 
@@ -20,6 +21,7 @@ const { isTradingTime } = require("./utils/tradingTime");
 let statusBarManager;
 let stockManager;
 let refreshInterval;
+let indexViewProvider;
 
 /**
  * 插件激活函数
@@ -30,6 +32,12 @@ function activate(context) {
   // 初始化管理器
   statusBarManager = new StatusBarManager();
   stockManager = new StockManager();
+
+  // 注册侧边栏视图
+  indexViewProvider = new IndexViewProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("watchStockIndex", indexViewProvider)
+  );
 
   // 初始化状态栏
   statusBarManager.initialize();
@@ -219,6 +227,9 @@ function deactivate() {
   }
   if (statusBarManager) {
     statusBarManager.dispose();
+  }
+  if (indexViewProvider) {
+    indexViewProvider.dispose();
   }
 }
 
