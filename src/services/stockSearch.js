@@ -3,8 +3,8 @@
  * 根据股票名称搜索股票代码
  */
 
-const axios = require("axios");
-const iconv = require("iconv-lite");
+const { httpGet } = require("../utils/httpClient");
+const { simpleDecode } = require("../utils/encoding");
 
 /**
  * 根据股票名称搜索股票代码
@@ -40,7 +40,7 @@ async function searchStockCode(keyword) {
  */
 async function searchBySina(keyword) {
   try {
-    const searchResponse = await axios.get(
+    const searchResponse = await httpGet(
       `https://suggest3.sinajs.cn/suggest/type=11,12,13,14,15,21,22,23,24,25,31,32,33,34,35&key=${encodeURIComponent(
         keyword
       )}`,
@@ -55,7 +55,7 @@ async function searchBySina(keyword) {
       }
     );
 
-    const searchData = iconv.decode(Buffer.from(searchResponse.data), "gbk");
+    const searchData = simpleDecode(searchResponse.data);
 
     // 解析搜索结果
     const match = searchData.match(/var suggestvalue="([^"]+)"/);

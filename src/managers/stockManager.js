@@ -6,7 +6,7 @@
 const vscode = require("vscode");
 const { isValidStockCode } = require("../utils/stockCode");
 const { searchStockCode } = require("../services/stockSearch");
-const { getStockInfo, getStockList } = require("../services/stockService");
+const { getStockList } = require("../services/stockService");
 const { getStocks, saveStocks } = require("../config");
 
 class StockManager {
@@ -58,17 +58,17 @@ class StockManager {
       return;
     }
 
-    // 验证股票是否存在
-    const stockInfo = await getStockInfo(stockCode);
-    if (!stockInfo || !stockInfo.name) {
-      vscode.window.showErrorMessage("股票获取失败，请检查股票代码或名称");
-      return;
-    }
-
     // 检查是否已存在
     const stocks = getStocks();
     if (stocks.includes(stockCode.toLowerCase())) {
       vscode.window.showWarningMessage("该股票已存在");
+      return;
+    }
+
+    // 验证股票是否存在
+    const stockInfo = await getStockList([stockCode]);
+    if (!stockInfo || !stockInfo[0].name) {
+      vscode.window.showErrorMessage("股票获取失败，请检查股票代码或名称");
       return;
     }
 

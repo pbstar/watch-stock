@@ -3,8 +3,8 @@
  * 获取股票实时数据，支持批量查询
  */
 
-const axios = require("axios");
-const iconv = require("iconv-lite");
+const { httpGet } = require("../utils/httpClient");
+const { simpleDecode } = require("../utils/encoding");
 const vscode = require("vscode");
 
 /**
@@ -21,7 +21,7 @@ async function getStockList(codes) {
     // 新浪API支持逗号分隔多个股票代码
     // 格式：https://hq.sinajs.cn/list=sh600519,sz000001
     const codeList = codes.join(",");
-    const response = await axios.get(`https://hq.sinajs.cn/list=${codeList}`, {
+    const response = await httpGet(`https://hq.sinajs.cn/list=${codeList}`, {
       timeout: 5000,
       responseType: "arraybuffer",
       headers: {
@@ -32,7 +32,7 @@ async function getStockList(codes) {
     });
 
     // 解析返回数据
-    const data = iconv.decode(Buffer.from(response.data), "gbk");
+    const data = simpleDecode(response.data);
     const lines = data.split("\n");
 
     // 创建代码映射，用于匹配返回的数据
@@ -57,7 +57,7 @@ async function getStockList(codes) {
         }
       }
     }
-    console.log(results);
+    console.log(`获取股票数据成功: ${results.length} 条`);
     return results;
   } catch (error) {
     const errorMsg = `获取股票数据失败: ${error.message}`;
@@ -65,16 +65,6 @@ async function getStockList(codes) {
     vscode.window.showErrorMessage(errorMsg);
     return [];
   }
-}
-
-/**
- * 获取单个股票信息
- * @param {string} code - 股票代码，如 sh600519
- * @returns {Promise<Object|null>} 股票信息对象或null
- */
-async function getStockInfo(code) {
-  const results = await getStockList([code]);
-  return results.length > 0 ? results[0] : null;
 }
 
 /**
@@ -123,6 +113,5 @@ function parseStockData(code, data) {
 }
 
 module.exports = {
-  getStockInfo,
   getStockList,
 };
