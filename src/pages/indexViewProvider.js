@@ -63,7 +63,7 @@ class IndexViewProvider {
         parseFloat(b.changePercent) - parseFloat(a.changePercent);
 
       this._stockData = {
-        indices: indexData.sort(sortByChange),
+        indices: indexData,
         sectors: sectorData.sort(sortByChange),
         stocks: userData.sort(sortByChange),
       };

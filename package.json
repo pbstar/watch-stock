@@ -113,7 +113,7 @@
         "watch-stock.maxDisplayCount": {
           "type": "number",
           "default": 5,
-          "description": "最大显示股票数量"
+          "description": "状态栏最大显示股票数量"
         },
         "watch-stock.showTwoLetterCode": {
           "type": "boolean",
