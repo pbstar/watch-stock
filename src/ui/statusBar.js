@@ -8,7 +8,7 @@ const {
   getMaxDisplayCount,
   getShowTwoLetterCode,
 } = require("../config");
-const { getStocksInfo } = require("../services/stockService");
+const { getStockList } = require("../services/stockService");
 
 class StatusBarManager {
   constructor() {
@@ -46,7 +46,7 @@ class StatusBarManager {
     }
 
     // 批量获取股票信息
-    const stockInfos = await getStocksInfo(stocks);
+    const stockInfos = await getStockList(stocks);
 
     // 无有效数据时的处理
     if (stockInfos.length === 0) {

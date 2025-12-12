@@ -4,9 +4,9 @@
  */
 
 const vscode = require("vscode");
-const { normalizeStockCode } = require("../utils/stockCode");
+const { isValidStockCode } = require("../utils/stockCode");
 const { searchStockCode } = require("../services/stockSearch");
-const { getStockInfo, getStocksInfo } = require("../services/stockService");
+const { getStockInfo, getStockList } = require("../services/stockService");
 const { getStocks, saveStocks } = require("../config");
 
 class StockManager {
@@ -34,13 +34,12 @@ class StockManager {
     }
 
     const stockInput = input.trim();
-    let stockCode = null;
+    let stockCode = stockInput;
 
-    // 先尝试标准化代码
-    stockCode = normalizeStockCode(stockInput);
+    const isCode = isValidStockCode(stockInput);
 
     // 如果不是标准代码格式，则尝试搜索
-    if (!stockCode) {
+    if (!isCode) {
       stockCode = await searchStockCode(stockInput);
     }
 
@@ -98,7 +97,7 @@ class StockManager {
     }
 
     // 获取股票名称用于显示
-    const stockInfos = await getStocksInfo(stocks);
+    const stockInfos = await getStockList(stocks);
 
     // 创建代码到信息的映射
     const infoMap = new Map();

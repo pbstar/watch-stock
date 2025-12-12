@@ -13,7 +13,7 @@
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
-const IndexViewProvider = require("./pages/indexViewProvider");
+const IndexProvider = require("./pages/indexProvider");
 const { getStocks, getRefreshInterval } = require("./config");
 const { isTradingTime } = require("./utils/tradingTime");
 
@@ -21,7 +21,7 @@ const { isTradingTime } = require("./utils/tradingTime");
 let statusBarManager;
 let stockManager;
 let refreshInterval;
-let indexViewProvider;
+let indexProvider;
 
 /**
  * 插件激活函数
@@ -34,21 +34,21 @@ function activate(context) {
   stockManager = new StockManager();
 
   // 注册侧边栏视图
-  indexViewProvider = new IndexViewProvider();
+  indexProvider = new IndexProvider();
   const treeView = vscode.window.createTreeView("watchStockIndex", {
-    treeDataProvider: indexViewProvider,
+    treeDataProvider: indexProvider,
   });
 
   // 监听股票看板可见性变化
   treeView.onDidChangeVisibility((event) => {
-    indexViewProvider.setShowPage(event.visible);
+    indexProvider.setShowPage(event.visible);
     console.log(`股票看板可见性: ${event.visible ? "显示" : "隐藏"}`);
   });
 
   context.subscriptions.push(treeView);
 
-  // 添加 IndexViewProvider 到订阅中，确保正确清理
-  context.subscriptions.push(indexViewProvider);
+  // 添加 IndexProvider 到订阅中，确保正确清理
+  context.subscriptions.push(indexProvider);
 
   // 初始化状态栏
   statusBarManager.initialize();
@@ -59,6 +59,9 @@ function activate(context) {
   // 监听配置变化，自动更新定时器
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
     (e) => {
+      // 刷新股票数据
+      statusBarManager.updateStockInfo();
+      indexProvider.updateData();
       if (e.affectsConfiguration("watch-stock.refreshInterval")) {
         startRefreshTimer();
       }
@@ -68,26 +71,32 @@ function activate(context) {
 
   // 开始定时更新
   startRefreshTimer();
+  // 初始化时先刷新一次数据
   statusBarManager.updateStockInfo();
+  indexProvider.updateData();
 }
 
 /**
  * 注册所有命令
  */
 function registerCommands(context) {
-  // 添加股票
+  // 添加自选股票
   const addStockCommand = vscode.commands.registerCommand(
     "watch-stock.addStock",
-    () => stockManager.addStock(() => statusBarManager.updateStockInfo())
+    () =>
+      stockManager.addStock(() => {
+        statusBarManager.updateStockInfo();
+        indexProvider.updateData();
+      })
   );
 
-  // 移除股票
+  // 移除自选股票
   const removeStockCommand = vscode.commands.registerCommand(
     "watch-stock.removeStock",
     () => stockManager.removeStock(() => statusBarManager.updateStockInfo())
   );
 
-  // 清空股票
+  // 清空自选股票
   const clearStocksCommand = vscode.commands.registerCommand(
     "watch-stock.clearStocks",
     () => stockManager.clearStocks(() => statusBarManager.updateStockInfo())
@@ -106,15 +115,15 @@ function registerCommands(context) {
           description: "输入股票代码或名称添加新的自选股票",
           action: "add",
         },
-        {
-          label: "$(remove) 移除自选股票",
-          description: "从已添加的自选股票中选择移除",
-          action: "remove",
-        },
       ];
 
       // 如果已有股票，添加更多选项
       if (stocks.length > 0) {
+        options.push({
+          label: "$(remove) 移除自选股票",
+          description: "从已添加的自选股票中选择移除",
+          action: "remove",
+        });
         options.push({
           label: "$(trash) 清空自选股票",
           description: "清空所有已添加的自选股票",
@@ -173,12 +182,12 @@ function registerCommands(context) {
     }
   );
 
-  // 刷新数据
+  // 刷新行情数据
   const refreshDataCommand = vscode.commands.registerCommand(
     "watch-stock.refreshData",
     async () => {
       await statusBarManager.updateStockInfo();
-      await indexViewProvider.updateData();
+      await indexProvider.updateData();
       vscode.window.showInformationMessage("股票行情数据刷新完成");
     }
   );
@@ -220,7 +229,7 @@ function startRefreshTimer() {
     if (isTradingTime()) {
       // 同时更新状态栏和指数视图
       statusBarManager.updateStockInfo();
-      indexViewProvider.updateData();
+      indexProvider.updateData();
     } else {
       console.log("当前非交易时间，跳过刷新");
     }

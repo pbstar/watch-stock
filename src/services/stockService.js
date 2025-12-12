@@ -12,11 +12,11 @@ const vscode = require("vscode");
  * @param {string[]} codes - 股票代码数组，如 ['sh600519', 'sz000001']
  * @returns {Promise<Array>} 股票信息数组
  */
-async function getStocksInfo(codes) {
+async function getStockList(codes) {
   if (!codes || codes.length === 0) {
     return [];
   }
-
+  console.log(`获取股票数据: ${codes}`);
   try {
     // 新浪API支持逗号分隔多个股票代码
     // 格式：https://hq.sinajs.cn/list=sh600519,sz000001
@@ -73,7 +73,7 @@ async function getStocksInfo(codes) {
  * @returns {Promise<Object|null>} 股票信息对象或null
  */
 async function getStockInfo(code) {
-  const results = await getStocksInfo([code]);
+  const results = await getStockList([code]);
   return results.length > 0 ? results[0] : null;
 }
 
@@ -124,5 +124,5 @@ function parseStockData(code, data) {
 
 module.exports = {
   getStockInfo,
-  getStocksInfo,
+  getStockList,
 };

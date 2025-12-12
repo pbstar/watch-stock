@@ -5,9 +5,9 @@
 
 const vscode = require("vscode");
 const { getStocks, getIndices, getSectors } = require("../config");
-const { getStocksInfo } = require("../services/stockService");
+const { getStockList } = require("../services/stockService");
 
-class IndexViewProvider {
+class IndexProvider {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -54,9 +54,9 @@ class IndexViewProvider {
       const userStocks = getStocks();
 
       const [indexData, sectorData, userData] = await Promise.all([
-        getStocksInfo(indexCodes),
-        getStocksInfo(sectorCodes),
-        getStocksInfo(userStocks),
+        getStockList(indexCodes),
+        getStockList(sectorCodes),
+        getStockList(userStocks),
       ]);
 
       const sortByChange = (a, b) =>
@@ -104,4 +104,4 @@ class StockItem {
   }
 }
 
-module.exports = IndexViewProvider;
+module.exports = IndexProvider;
