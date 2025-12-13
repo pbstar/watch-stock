@@ -83,7 +83,6 @@ class IndexProvider {
 
   dispose() {
     this._onDidChangeTreeData.dispose();
-    this._disposables.forEach((d) => d.dispose());
   }
 }
 
