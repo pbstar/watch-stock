@@ -192,14 +192,6 @@ function registerCommands(context) {
     }
   );
 
-  // 指数视图操作按钮
-  const indexViewActionCommand = vscode.commands.registerCommand(
-    "watch-stock.indexViewAction",
-    async () => {
-      await vscode.commands.executeCommand("watch-stock.manageStock");
-    }
-  );
-
   // 注册所有命令到订阅
   context.subscriptions.push(
     statusBarManager.getStatusBarItem(),
@@ -208,8 +200,7 @@ function registerCommands(context) {
     clearStocksCommand,
     manageStockCommand,
     toggleVisibilityCommand,
-    refreshDataCommand,
-    indexViewActionCommand
+    refreshDataCommand
   );
 }
 

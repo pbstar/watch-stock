@@ -1,6 +1,6 @@
 # 🚀 摸鱼看盘 VS Code 插件
 
-一个优雅、极简的 VS Code 股票实时查看插件，让您在编码的同时轻松掌握股市动态。
+一个轻量极简的 VS Code 股票实时查看插件，让您在编码的同时轻松掌握股市动态。
 
 ## ✨ 核心功能
 
@@ -100,9 +100,6 @@
 git clone https://github.com/pbstar/watch-stock.git
 cd watch-stock
 
-# 安装依赖
-npm install
-
 # 使用 VS Code 打开项目
 # 按 F5 启动调试模式
 ```
@@ -162,6 +159,7 @@ watch-stock/
 
 <div align="center">
   <p><strong>享受编码，轻松看盘！ 📈💻</strong></p>
+  <p>投资有风险，入市需谨慎。本插件仅供学习交流，不构成任何投资建议。</p>
   <p>
     <a href="https://github.com/pbstar/watch-stock">⭐ Star on GitHub</a> |
     <a href="https://github.com/pbstar/watch-stock/issues">🐛 报告问题</a> |

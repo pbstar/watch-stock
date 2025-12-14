@@ -1,6 +1,5 @@
 /**
- * 轻量级HTTP请求工具
- * 替代axios，减少打包体积
+ * 简单的HTTP GET请求工具
  */
 
 const https = require("https");

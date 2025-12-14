@@ -1,13 +1,8 @@
 /**
- * 轻量级字符编码转换工具
- * 替代iconv-lite，减少打包体积
- * 使用Node.js内置的TextDecoder
- */
-
-/**
  * GBK解码器
  * 使用Node.js内置的TextDecoder，支持GBK编码
  */
+
 class GBKDecoder {
   constructor() {
     try {

@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -50,7 +50,8 @@
       },
       {
         "command": "watch-stock.manageStock",
-        "title": "管理股票"
+        "title": "管理股票",
+        "icon": "$(gear)"
       },
       {
         "command": "watch-stock.toggleVisibility",
@@ -59,11 +60,6 @@
       {
         "command": "watch-stock.refreshData",
         "title": "刷新行情数据"
-      },
-      {
-        "command": "watch-stock.indexViewAction",
-        "title": "管理股票",
-        "icon": "$(gear)"
       }
     ],
     "configuration": {
@@ -153,7 +149,7 @@
     "menus": {
       "view/title": [
         {
-          "command": "watch-stock.indexViewAction",
+          "command": "watch-stock.manageStock",
           "when": "view == watchStockIndex",
           "group": "navigation"
         }
