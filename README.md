@@ -47,7 +47,7 @@
 | `watch-stock.stocks`            | array   | `["sh000001"]` | 自选股票代码表                 |
 | `watch-stock.indices`           | array   | `[...]`        | 指数代码列表(在股票看板中显示) |
 | `watch-stock.sectors`           | array   | `[...]`        | 板块代码列表(在股票看板中显示) |
-| `watch-stock.refreshInterval`   | number  | `5000`         | 刷新间隔（毫秒），最小 1000    |
+| `watch-stock.refreshInterval`   | number  | `5000`         | 刷新间隔（毫秒），最小 3000    |
 | `watch-stock.maxDisplayCount`   | number  | `5`            | 状态栏最大显示股票数量         |
 | `watch-stock.showTwoLetterCode` | boolean | `false`        | 状态栏是否显示 2 位简称        |
 

@@ -124,7 +124,7 @@
           "type": "number",
           "default": 5000,
           "description": "刷新间隔(毫秒)",
-          "minimum": 1000
+          "minimum": 3000
         },
         "watch-stock.maxDisplayCount": {
           "type": "number",
