@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
