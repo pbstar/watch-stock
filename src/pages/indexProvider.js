@@ -104,6 +104,12 @@ class StockItem {
     this.label = `${stock.name} ${stock.current}`;
     this.description = `${isUp ? "+" : ""}${stock.changePercent}%`;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
+    // 添加点击命令
+    this.command = {
+      command: "watch-stock.showStockDetail",
+      title: "查看股票详情",
+      arguments: [stock],
+    };
   }
 }
 

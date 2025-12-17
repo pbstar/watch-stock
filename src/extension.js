@@ -6,6 +6,7 @@ const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
 const IndexProvider = require("./pages/indexProvider");
+const { getDetailPageHtml } = require("./pages/detailPage");
 const { getStocks, getRefreshInterval } = require("./config");
 const { isTradingTime } = require("./utils/tradingTime");
 
@@ -192,6 +193,25 @@ function registerCommands(context) {
     }
   );
 
+  // 显示股票详情
+  const showStockDetailCommand = vscode.commands.registerCommand(
+    "watch-stock.showStockDetail",
+    async (stock) => {
+      // 创建 Webview Panel
+      const panel = vscode.window.createWebviewPanel(
+        "stockDetail",
+        `股票详情 - ${stock.name}`,
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+        }
+      );
+
+      // 设置详情页 HTML 内容
+      panel.webview.html = getDetailPageHtml(stock);
+    }
+  );
+
   // 注册所有命令到订阅
   context.subscriptions.push(
     statusBarManager.getStatusBarItem(),
@@ -200,7 +220,8 @@ function registerCommands(context) {
     clearStocksCommand,
     manageStockCommand,
     toggleVisibilityCommand,
-    refreshDataCommand
+    refreshDataCommand,
+    showStockDetailCommand
   );
 }
 

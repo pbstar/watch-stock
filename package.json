@@ -60,6 +60,10 @@
       {
         "command": "watch-stock.refreshData",
         "title": "刷新行情数据"
+      },
+      {
+        "command": "watch-stock.showStockDetail",
+        "title": "查看股票详情"
       }
     ],
     "configuration": {
