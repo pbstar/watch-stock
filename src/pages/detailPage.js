@@ -1,8 +1,5 @@
 const { generateKLineChart } = require("../utils/kLinePic");
-const {
-  getStockMinuteData,
-  getStockKLineData,
-} = require("../services/stockService");
+const { getStockMinuteData } = require("../services/stockService");
 
 /**
  * 生成股票详情页 HTML 内容
@@ -10,25 +7,11 @@ const {
  * @returns {Promise<string>} HTML 字符串
  */
 async function getDetailPageHtml(stock) {
-  let klineChart = { mainChart: "", yLabels: "" };
   let timelineChart = { mainChart: "", yLabels: "" };
 
   try {
-    // 获取真实K线数据(日K,30条),参数: scale=240(日线), datalen=30
-    const rawKlineData = await getStockKLineData(stock.code, 240, 30);
     // 获取真实分时数据(240条)
     const rawMinuteData = await getStockMinuteData(stock.code, 240);
-
-    // 转换K线数据格式
-    const klineData = Array.isArray(rawKlineData)
-      ? rawKlineData.map((item) => ({
-          open: parseFloat(item.open),
-          close: parseFloat(item.close),
-          high: parseFloat(item.high),
-          low: parseFloat(item.low),
-          volume: parseFloat(item.volume || 0),
-        }))
-      : [];
 
     // 转换分时数据格式
     const minuteData = Array.isArray(rawMinuteData)
@@ -38,15 +21,7 @@ async function getDetailPageHtml(stock) {
         }))
       : [];
 
-    // 生成 K 线图和分时图 SVG
-    if (klineData.length > 0) {
-      klineChart = generateKLineChart(klineData, {
-        height: 500,
-        type: "kline",
-        showVolume: true,
-      });
-    }
-
+    // 生成分时图 SVG
     if (minuteData.length > 0) {
       timelineChart = generateKLineChart(minuteData, {
         height: 500,
@@ -122,37 +97,7 @@ async function getDetailPageHtml(stock) {
       color: var(--vscode-charts-green);
     }
 
-    .chart-tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid var(--vscode-editorGroup-border);
-      padding-bottom: 4px;
-    }
 
-    .tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--vscode-tab-inactiveForeground);
-      padding: 4px 12px;
-      cursor: pointer;
-      font-size: 11px;
-      border-radius: 0;
-      transition: all 0.15s;
-      font-family: var(--vscode-font-family);
-      border-bottom: 2px solid transparent;
-    }
-
-    .tab-btn:hover {
-      color: var(--vscode-tab-activeForeground);
-      background-color: transparent;
-    }
-
-    .tab-btn.active {
-      background-color: transparent;
-      color: var(--vscode-tab-activeForeground);
-      border-bottom-color: var(--vscode-tab-activeBorderTop);
-    }
 
     .chart-container {
       margin-bottom: 16px;
@@ -185,14 +130,6 @@ async function getDetailPageHtml(stock) {
       background-color: var(--vscode-editor-background);
       flex-shrink: 0;
       z-index: 10;
-    }
-
-    #kline-chart .chart-scroll {
-      overflow-x: auto;
-    }
-
-    #kline-chart .chart-scroll svg {
-      max-width: none;
     }
 
     #timeline-chart .chart-scroll {
@@ -263,26 +200,8 @@ async function getDetailPageHtml(stock) {
       </div>
     </div>
 
-    <!-- 图表切换标签 -->
-    <div class="chart-tabs">
-      <button class="tab-btn active" data-chart="kline">K线图</button>
-      <button class="tab-btn" data-chart="timeline">分时图</button>
-    </div>
-
-    <!-- K线图容器 -->
-    <div class="chart-container" id="kline-chart">
-      <div class="chart-wrapper">
-        <div class="chart-scroll">
-          ${klineChart.mainChart}
-        </div>
-        <div class="ylabel-fixed">
-          ${klineChart.yLabels}
-        </div>
-      </div>
-    </div>
-
-    <!-- 分时图容器(默认隐藏) -->
-    <div class="chart-container" id="timeline-chart" style="display: none;">
+    <!-- 分时图容器 -->
+    <div class="chart-container" id="timeline-chart">
       <div class="chart-wrapper">
         <div class="chart-scroll">
           ${timelineChart.mainChart}
@@ -325,31 +244,7 @@ async function getDetailPageHtml(stock) {
     </div>
   </div>
 
-  <script>
-    // 图表切换逻辑
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const klineChart = document.getElementById('kline-chart');
-    const timelineChart = document.getElementById('timeline-chart');
 
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const chartType = btn.getAttribute('data-chart');
-        
-        // 更新按钮状态
-        tabBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        // 切换图表显示
-        if (chartType === 'kline') {
-          klineChart.style.display = 'block';
-          timelineChart.style.display = 'none';
-        } else {
-          klineChart.style.display = 'none';
-          timelineChart.style.display = 'block';
-        }
-      });
-    });
-  </script>
 </body>
 </html>`;
 }

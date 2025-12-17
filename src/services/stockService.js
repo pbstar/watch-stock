@@ -145,47 +145,7 @@ async function getStockMinuteData(code, datalen = 240) {
   }
 }
 
-/**
- * 获取股票K线数据(历史数据)
- * @param {string} code - 股票代码,如 'sz000001'
- * @param {number} scale - K线周期: 5(5分钟)、30(30分钟)、60(60分钟)、240(日线)、1200(周线)、3600(月线)
- * @param {number} datalen - 数据条数,默认30,最大1023
- * @returns {Promise<Array>} K线数据数组
- */
-async function getStockKLineData(code, scale = 240, datalen = 30) {
-  if (!code) {
-    return [];
-  }
-  console.log(`获取K线数据: ${code}, 周期: ${scale}`);
-  try {
-    const response = await httpGet(
-      `http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${code}&scale=${scale}&ma=no&datalen=${datalen}`,
-      {
-        timeout: 5000,
-        responseType: "arraybuffer",
-        headers: {
-          Referer: "https://finance.sina.com.cn",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-      }
-    );
-
-    const data = simpleDecode(response.data);
-    const jsonData = JSON.parse(data);
-    const result = Array.isArray(jsonData) ? jsonData : [];
-    console.log(`获取K线数据成功: ${result.length} 条`);
-    return result;
-  } catch (error) {
-    const errorMsg = `获取K线数据失败: ${error.message}`;
-    console.error(errorMsg);
-    vscode.window.showErrorMessage(errorMsg);
-    return [];
-  }
-}
-
 module.exports = {
   getStockList,
   getStockMinuteData,
-  getStockKLineData,
 };

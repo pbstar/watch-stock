@@ -1,21 +1,21 @@
 /**
- * K线图生成工具
- * 支持K线图、分时图和成交量图的绘制
+ * 分时图生成工具
+ * 支持分时图和成交量图的绘制
  */
 
 /**
- * 生成K线图SVG
- * @param {Array} data - K线数据数组
+ * 生成分时图SVG
+ * @param {Array} data - 分时数据数组
  * @param {Object} options - 配置选项
  * @returns {Object} 包含主图和Y轴标签的对象 {mainChart: string, yLabels: string}
  */
 function generateKLineChart(data, options = {}) {
   const {
     height = 500,
-    type = "kline", // 'kline' 或 'timeline'
+    type = "timeline",
     showVolume = true,
-    barWidth = 20, // 每条数据的宽度
-    fixedWidth = null, // 固定宽度(用于分时图)
+    barWidth = 20,
+    fixedWidth = null,
   } = options;
 
   // 如果指定了固定宽度则使用固定宽度,否则根据数据量自动计算
@@ -26,9 +26,7 @@ function generateKLineChart(data, options = {}) {
   const padding = { top: 20, right: 50, bottom: 20, left: 10 };
 
   // 计算价格范围
-  const prices = data.flatMap((d) =>
-    type === "kline" ? [d.high, d.low] : [d.price]
-  );
+  const prices = data.map((d) => d.price);
   const maxPrice = Math.max(...prices);
   const minPrice = Math.min(...prices);
   const priceRange = maxPrice - minPrice;
@@ -82,48 +80,14 @@ function generateKLineChart(data, options = {}) {
     )}</text>`;
   }
 
-  if (type === "kline") {
-    // 绘制K线图
-    data.forEach((item, index) => {
-      const x = padding.left + index * xStep;
-      const isRise = item.close >= item.open;
-      const color = "#707070";
-
-      const highY = priceToY(item.high);
-      const lowY = priceToY(item.low);
-      const openY = priceToY(item.open);
-      const closeY = priceToY(item.close);
-
-      const bodyTop = Math.min(openY, closeY);
-      const bodyHeight = Math.abs(closeY - openY) || 1;
-      const bodyWidth = Math.max(xStep * 0.6, 2);
-
-      // 上下影线
-      mainSvg += `<line x1="${x}" y1="${highY}" x2="${x}" y2="${lowY}" stroke="${color}" stroke-width="0.5"/>`;
-
-      // K线实体
-      if (isRise) {
-        // 阳线-实心
-        mainSvg += `<rect x="${
-          x - bodyWidth / 2
-        }" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="${color}" opacity="0.8"/>`;
-      } else {
-        // 阴线-空心
-        mainSvg += `<rect x="${
-          x - bodyWidth / 2
-        }" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="#1e1e1e" stroke="${color}" stroke-width="0.8" opacity="0.8"/>`;
-      }
-    });
-  } else {
-    // 绘制分时图
-    let pathData = "";
-    data.forEach((item, index) => {
-      const x = padding.left + index * xStep;
-      const y = priceToY(item.price);
-      pathData += index === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`;
-    });
-    mainSvg += `<path d="${pathData}" stroke="#707070" stroke-width="1.5" fill="none" opacity="0.9"/>`;
-  }
+  // 绘制分时图
+  let pathData = "";
+  data.forEach((item, index) => {
+    const x = padding.left + index * xStep;
+    const y = priceToY(item.price);
+    pathData += index === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`;
+  });
+  mainSvg += `<path d="${pathData}" stroke="#707070" stroke-width="1.5" fill="none" opacity="0.9"/>`;
 
   // 绘制成交量
   if (showVolume) {
