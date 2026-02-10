@@ -5,7 +5,6 @@
 
 const { httpGet } = require("../utils/httpClient");
 const { simpleDecode } = require("../utils/encoding");
-const vscode = require("vscode");
 
 /**
  * 批量获取股票信息
