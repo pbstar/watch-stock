@@ -54,7 +54,7 @@ function activate(context) {
       // 刷新股票数据
       statusBarManager.updateData();
       indexProvider.updateData();
-    }
+    },
   );
   context.subscriptions.push(configChangeListener);
 
@@ -76,7 +76,7 @@ function registerCommands(context) {
       stockManager.addStock(() => {
         statusBarManager.updateData();
         indexProvider.updateData();
-      })
+      }),
   );
 
   // 移除自选股票
@@ -86,7 +86,7 @@ function registerCommands(context) {
       stockManager.removeStock(() => {
         statusBarManager.updateData();
         indexProvider.updateData();
-      })
+      }),
   );
 
   // 清空自选股票
@@ -96,7 +96,17 @@ function registerCommands(context) {
       stockManager.clearStocks(() => {
         statusBarManager.updateData();
         indexProvider.updateData();
-      })
+      }),
+  );
+
+  // 排序自选股票
+  const sortStocksCommand = vscode.commands.registerCommand(
+    "watch-stock.sortStocks",
+    () =>
+      stockManager.sortStocks(() => {
+        statusBarManager.updateData();
+        indexProvider.updateData();
+      }),
   );
 
   // 管理股票（主菜单）
@@ -122,6 +132,11 @@ function registerCommands(context) {
           action: "remove",
         });
         options.push({
+          label: "$(arrow-swap) 排序自选股票",
+          description: "调整自选股票的显示顺序",
+          action: "sort",
+        });
+        options.push({
           label: "$(trash) 清空自选股票",
           description: "清空所有已添加的自选股票",
           action: "clear",
@@ -141,7 +156,7 @@ function registerCommands(context) {
           label: "$(refresh) 刷新行情数据",
           description: "手动刷新股票行情数据",
           action: "refresh",
-        }
+        },
       );
 
       const selected = await vscode.window.showQuickPick(options, {
@@ -158,6 +173,9 @@ function registerCommands(context) {
         case "remove":
           await vscode.commands.executeCommand("watch-stock.removeStock");
           break;
+        case "sort":
+          await vscode.commands.executeCommand("watch-stock.sortStocks");
+          break;
         case "clear":
           await vscode.commands.executeCommand("watch-stock.clearStocks");
           break;
@@ -168,7 +186,7 @@ function registerCommands(context) {
           await vscode.commands.executeCommand("watch-stock.refreshData");
           break;
       }
-    }
+    },
   );
 
   // 切换显示/隐藏
@@ -176,7 +194,7 @@ function registerCommands(context) {
     "watch-stock.toggleVisibility",
     () => {
       statusBarManager.toggleVisibility();
-    }
+    },
   );
 
   // 刷新行情数据
@@ -186,7 +204,7 @@ function registerCommands(context) {
       await statusBarManager.updateData();
       await indexProvider.updateData();
       vscode.window.showInformationMessage("股票行情数据刷新完成");
-    }
+    },
   );
 
   // 注册所有命令到订阅
@@ -195,9 +213,10 @@ function registerCommands(context) {
     addStockCommand,
     removeStockCommand,
     clearStocksCommand,
+    sortStocksCommand,
     manageStockCommand,
     toggleVisibilityCommand,
-    refreshDataCommand
+    refreshDataCommand,
   );
 }
 

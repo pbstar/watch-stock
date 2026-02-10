@@ -7,7 +7,7 @@ const vscode = require("vscode");
 const { isValidStockCode } = require("../utils/stockCode");
 const { searchStockCode } = require("../services/stockSearch");
 const { getStockList } = require("../services/stockService");
-const { getStocks, saveStocks } = require("../config");
+const { getStocks, saveStocks, moveStock } = require("../config");
 
 class StockManager {
   /**
@@ -53,7 +53,7 @@ class StockManager {
           "请尝试：\n" +
           "• 使用股票代码（如：sh601318）\n" +
           "• 检查股票名称拼写\n" +
-          "• 稍后重试"
+          "• 稍后重试",
       );
       return;
     }
@@ -76,7 +76,7 @@ class StockManager {
     stocks.push(stockCode.toLowerCase());
     await saveStocks(stocks);
     vscode.window.showInformationMessage(
-      `已添加: ${stockInfo[0].name}(${stockInfo[0].code})`
+      `已添加: ${stockInfo[0].name}(${stockInfo[0].code})`,
     );
 
     // 触发更新
@@ -137,7 +137,7 @@ class StockManager {
     const confirm = await vscode.window.showWarningMessage(
       "确定要清空所有自选股票吗？",
       "确定",
-      "取消"
+      "取消",
     );
 
     if (confirm === "确定") {
@@ -148,6 +148,92 @@ class StockManager {
       if (onUpdate) {
         onUpdate();
       }
+    }
+  }
+
+  /**
+   * 排序股票
+   * @param {Function} onUpdate - 更新回调函数
+   */
+  async sortStocks(onUpdate) {
+    const stocks = getStocks();
+    if (stocks.length === 0) {
+      vscode.window.showInformationMessage("当前没有添加任何股票");
+      return;
+    }
+
+    if (stocks.length === 1) {
+      vscode.window.showInformationMessage("只有一只股票，无需排序");
+      return;
+    }
+
+    // 获取股票信息用于显示
+    const stockInfos = await getStockList(stocks);
+
+    // 创建当前顺序的选项列表
+    let currentOrder = stocks.map((code, index) => {
+      const info = stockInfos.find((s) => s && s.code === code);
+      return {
+        label: `${index + 1}. ${info ? `${info.name}(${info.code})` : code}`,
+        description: "点击选择要移动的股票",
+        code: code,
+        index: index,
+      };
+    });
+
+    // 第一步：选择要移动的股票
+    const selectedStock = await vscode.window.showQuickPick(currentOrder, {
+      placeHolder: "选择要移动位置的股票",
+    });
+
+    if (!selectedStock) {
+      return;
+    }
+
+    // 第二步：选择目标位置
+    const targetOptions = currentOrder
+      .filter((item) => item.code !== selectedStock.code)
+      .map((item) => ({
+        label: `移动到 "${item.label}" 之前`,
+        targetIndex: item.index,
+      }));
+
+    // 添加"移动到末尾"选项
+    targetOptions.push({
+      label: "移动到末尾",
+      targetIndex: stocks.length,
+    });
+
+    const targetPosition = await vscode.window.showQuickPick(targetOptions, {
+      placeHolder: `选择 "${selectedStock.label}" 的目标位置`,
+    });
+
+    if (!targetPosition) {
+      return;
+    }
+
+    // 计算实际的目标索引
+    let toIndex = targetPosition.targetIndex;
+    const fromIndex = selectedStock.index;
+
+    // 如果目标位置在源位置之后，需要调整索引
+    if (toIndex > fromIndex) {
+      toIndex--;
+    }
+
+    // 执行移动
+    const newStocks = moveStock(stocks, fromIndex, toIndex);
+    await saveStocks(newStocks);
+
+    const stockInfo = stockInfos.find(
+      (s) => s && s.code === selectedStock.code,
+    );
+    const stockName = stockInfo ? stockInfo.name : selectedStock.code;
+    vscode.window.showInformationMessage(`已调整 "${stockName}" 的显示顺序`);
+
+    // 触发更新
+    if (onUpdate) {
+      onUpdate();
     }
   }
 }

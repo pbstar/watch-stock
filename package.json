@@ -49,6 +49,10 @@
         "title": "清空自选股票"
       },
       {
+        "command": "watch-stock.sortStocks",
+        "title": "排序自选股票"
+      },
+      {
         "command": "watch-stock.manageStock",
         "title": "管理股票",
         "icon": "$(gear)"

@@ -86,6 +86,20 @@ async function saveStocks(stocks) {
   await config.update("stocks", stocks, vscode.ConfigurationTarget.Global);
 }
 
+/**
+ * 移动股票位置
+ * @param {string[]} stocks - 当前股票代码数组
+ * @param {number} fromIndex - 原位置
+ * @param {number} toIndex - 目标位置
+ * @returns {string[]} 重新排序后的数组
+ */
+function moveStock(stocks, fromIndex, toIndex) {
+  const result = [...stocks];
+  const [removed] = result.splice(fromIndex, 1);
+  result.splice(toIndex, 0, removed);
+  return result;
+}
+
 module.exports = {
   getStocks,
   saveStocks,
@@ -93,4 +107,5 @@ module.exports = {
   getShowTwoLetterCode,
   getIndices,
   getSectors,
+  moveStock,
 };
