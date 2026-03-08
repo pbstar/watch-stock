@@ -54,22 +54,6 @@ function getShowTwoLetterCode() {
 }
 
 /**
- * 获取指数代码列表
- * @returns {string[]} 指数代码数组
- */
-function getIndices() {
-  return getValidatedCodes("indices");
-}
-
-/**
- * 获取板块代码列表
- * @returns {string[]} 板块代码数组
- */
-function getSectors() {
-  return getValidatedCodes("sectors");
-}
-
-/**
  * 获取股票代码列表
  * @returns {string[]} 股票代码数组
  */
@@ -105,7 +89,5 @@ module.exports = {
   saveStocks,
   getMaxDisplayCount,
   getShowTwoLetterCode,
-  getIndices,
-  getSectors,
   moveStock,
 };

@@ -135,14 +135,14 @@ class StockManager {
     }
 
     const confirm = await vscode.window.showWarningMessage(
-      "确定要清空所有自选股票吗？",
+      "确定要清空所有股票吗？",
       "确定",
       "取消",
     );
 
     if (confirm === "确定") {
       await saveStocks([]);
-      vscode.window.showInformationMessage("已清空所有自选股票");
+      vscode.window.showInformationMessage("已清空所有股票");
 
       // 触发更新
       if (onUpdate) {

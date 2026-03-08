@@ -22,7 +22,7 @@ class StatusBarManager {
   initialize() {
     this.statusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
-      0
+      0,
     );
     this.statusBarItem.command = "watch-stock.manageStock";
     this.statusBarItem.show();
@@ -40,7 +40,7 @@ class StatusBarManager {
 
     // 无股票时的提示
     if (stocks.length === 0) {
-      this.statusBarItem.text = "$(add) 点击添加自选股票";
+      this.statusBarItem.text = "$(add) 点击添加股票";
       this.statusBarItem.tooltip = "点击管理股票，开始您的看盘之旅";
       return;
     }
@@ -85,7 +85,7 @@ class StatusBarManager {
         (stock) =>
           `${stock.name}(${stock.code}): ${stock.current} ${
             stock.change >= 0 ? "+" : ""
-          }${stock.change}(${stock.changePercent}%)`
+          }${stock.change}(${stock.changePercent}%)`,
       )
       .join("\n");
 

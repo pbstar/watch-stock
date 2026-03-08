@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -17,40 +17,22 @@
   ],
   "main": "./src/extension.js",
   "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "watchStock",
-          "title": "摸鱼看盘",
-          "icon": "$(graph)"
-        }
-      ]
-    },
-    "views": {
-      "watchStock": [
-        {
-          "id": "watchStockIndex",
-          "name": "股票看板",
-          "icon": "$(graph)"
-        }
-      ]
-    },
     "commands": [
       {
         "command": "watch-stock.addStock",
-        "title": "添加自选股票"
+        "title": "添加股票"
       },
       {
         "command": "watch-stock.removeStock",
-        "title": "移除自选股票"
+        "title": "移除股票"
       },
       {
         "command": "watch-stock.clearStocks",
-        "title": "清空自选股票"
+        "title": "清空股票"
       },
       {
         "command": "watch-stock.sortStocks",
-        "title": "排序自选股票"
+        "title": "排序股票"
       },
       {
         "command": "watch-stock.manageStock",
@@ -74,52 +56,7 @@
           "default": [
             "sh000001"
           ],
-          "description": "自选股票代码列表",
-          "items": {
-            "type": "string"
-          }
-        },
-        "watch-stock.indices": {
-          "type": "array",
-          "default": [
-            "sh000001",
-            "sz399001",
-            "sz399006",
-            "sh000688",
-            "bj899050"
-          ],
-          "description": "指数代码列表(在股票看板中显示)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "watch-stock.sectors": {
-          "type": "array",
-          "default": [
-            "sh515880",
-            "sh512690",
-            "sh562500",
-            "sz159206",
-            "sh512880",
-            "sh512480",
-            "sz159755",
-            "sh515220",
-            "sh512400",
-            "sz159227",
-            "sz159995",
-            "sz159857",
-            "sh515120",
-            "sz159869",
-            "sh512170",
-            "sh517520",
-            "sh512660",
-            "sz159852",
-            "sh512800",
-            "sz159766",
-            "sh512980",
-            "sz159825"
-          ],
-          "description": "板块代码列表(在股票看板中显示)",
+          "description": "股票代码列表",
           "items": {
             "type": "string"
           }
@@ -143,16 +80,7 @@
         "mac": "cmd+alt+s",
         "when": "editorTextFocus || !editorTextFocus"
       }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "watch-stock.manageStock",
-          "when": "view == watchStockIndex",
-          "group": "navigation"
-        }
-      ]
-    }
+    ]
   },
   "dependencies": {},
   "keywords": [
