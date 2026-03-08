@@ -88,8 +88,9 @@ class StockManager {
   /**
    * 移除股票
    * @param {Function} onUpdate - 更新回调函数
+   * @param {Object} alarmManager - 闹钟管理器
    */
-  async removeStock(onUpdate) {
+  async removeStock(onUpdate, alarmManager) {
     const stocks = getStocks();
     if (stocks.length === 0) {
       vscode.window.showInformationMessage("当前没有添加任何股票");
@@ -115,6 +116,12 @@ class StockManager {
     if (selected) {
       const newStocks = stocks.filter((s) => s !== selected.code);
       await saveStocks(newStocks);
+
+      // 删除相关闹钟
+      if (alarmManager) {
+        await alarmManager.removeAlarmsByStock(selected.code);
+      }
+
       vscode.window.showInformationMessage(`已移除: ${selected.label}`);
 
       // 触发更新
@@ -127,8 +134,9 @@ class StockManager {
   /**
    * 清空所有股票
    * @param {Function} onUpdate - 更新回调函数
+   * @param {Object} alarmManager - 闹钟管理器
    */
-  async clearStocks(onUpdate) {
+  async clearStocks(onUpdate, alarmManager) {
     const stocks = getStocks();
     if (stocks.length === 0) {
       return;
@@ -141,6 +149,12 @@ class StockManager {
     );
 
     if (confirm === "确定") {
+      // 删除所有相关闹钟
+      if (alarmManager) {
+        const { clearAllAlarms } = require("./alarmManager");
+        await clearAllAlarms();
+      }
+
       await saveStocks([]);
       vscode.window.showInformationMessage("已清空所有股票");
 

@@ -5,12 +5,14 @@
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
+const { AlarmManager } = require("./managers/alarmManager");
 const { getStocks } = require("./config");
 const { isTradingTime } = require("./utils/tradingTime");
 
 // 全局变量
 let statusBarManager;
 let stockManager;
+let alarmManager;
 let refreshInterval;
 
 /**
@@ -22,6 +24,7 @@ function activate(context) {
   // 初始化管理器
   statusBarManager = new StatusBarManager();
   stockManager = new StockManager();
+  alarmManager = new AlarmManager();
 
   // 初始化状态栏
   statusBarManager.initialize();
@@ -41,7 +44,7 @@ function activate(context) {
   // 开始定时更新
   startRefreshTimer();
   // 初始化时先刷新一次数据
-  statusBarManager.updateData();
+  updateDataAndCheckAlarms();
 }
 
 /**
@@ -53,7 +56,7 @@ function registerCommands(context) {
     "watch-stock.addStock",
     () =>
       stockManager.addStock(() => {
-        statusBarManager.updateData();
+        updateDataAndCheckAlarms();
       }),
   );
 
@@ -62,8 +65,8 @@ function registerCommands(context) {
     "watch-stock.removeStock",
     () =>
       stockManager.removeStock(() => {
-        statusBarManager.updateData();
-      }),
+        updateDataAndCheckAlarms();
+      }, alarmManager),
   );
 
   // 清空股票
@@ -71,8 +74,8 @@ function registerCommands(context) {
     "watch-stock.clearStocks",
     () =>
       stockManager.clearStocks(() => {
-        statusBarManager.updateData();
-      }),
+        updateDataAndCheckAlarms();
+      }, alarmManager),
   );
 
   // 排序股票
@@ -80,8 +83,14 @@ function registerCommands(context) {
     "watch-stock.sortStocks",
     () =>
       stockManager.sortStocks(() => {
-        statusBarManager.updateData();
+        updateDataAndCheckAlarms();
       }),
+  );
+
+  // 设置价格闹钟
+  const setAlarmCommand = vscode.commands.registerCommand(
+    "watch-stock.setAlarm",
+    () => alarmManager.manageAlarms(),
   );
 
   // 管理股票（主菜单）
@@ -115,6 +124,11 @@ function registerCommands(context) {
           label: "$(trash) 清空股票",
           description: "清空所有已添加的股票",
           action: "clear",
+        });
+        options.push({
+          label: "$(bell) 设置价格闹钟",
+          description: "设置或删除价格提醒闹钟",
+          action: "alarm",
         });
       }
 
@@ -154,6 +168,9 @@ function registerCommands(context) {
         case "clear":
           await vscode.commands.executeCommand("watch-stock.clearStocks");
           break;
+        case "alarm":
+          await vscode.commands.executeCommand("watch-stock.setAlarm");
+          break;
         case "toggle":
           await vscode.commands.executeCommand("watch-stock.toggleVisibility");
           break;
@@ -176,7 +193,7 @@ function registerCommands(context) {
   const refreshDataCommand = vscode.commands.registerCommand(
     "watch-stock.refreshData",
     async () => {
-      await statusBarManager.updateData();
+      await updateDataAndCheckAlarms();
       vscode.window.showInformationMessage("股票行情数据刷新完成");
     },
   );
@@ -188,10 +205,30 @@ function registerCommands(context) {
     removeStockCommand,
     clearStocksCommand,
     sortStocksCommand,
+    setAlarmCommand,
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
   );
+}
+
+/**
+ * 更新数据并检查闹钟
+ */
+async function updateDataAndCheckAlarms() {
+  const { getStockList } = require("./services/stockService");
+  const { getStocks } = require("./config");
+
+  await statusBarManager.updateData();
+
+  // 获取股票数据检查闹钟
+  const stocks = getStocks();
+  if (stocks.length > 0) {
+    const stockInfos = await getStockList(stocks);
+    if (alarmManager) {
+      await alarmManager.checkAlarms(stockInfos);
+    }
+  }
 }
 
 /**
@@ -206,7 +243,7 @@ function startRefreshTimer() {
   // 设置新的定时器，只在交易时间内刷新
   refreshInterval = setInterval(() => {
     if (isTradingTime()) {
-      statusBarManager.updateData();
+      updateDataAndCheckAlarms();
     } else {
       console.log("当前非交易时间，跳过刷新");
     }

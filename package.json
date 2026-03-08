@@ -44,6 +44,10 @@
         "title": "显示/隐藏状态栏"
       },
       {
+        "command": "watch-stock.setAlarm",
+        "title": "设置价格闹钟"
+      },
+      {
         "command": "watch-stock.refreshData",
         "title": "刷新行情数据"
       }
@@ -59,6 +63,14 @@
           "description": "股票代码列表",
           "items": {
             "type": "string"
+          }
+        },
+        "watch-stock.priceAlarms": {
+          "type": "array",
+          "default": [],
+          "description": "价格闹钟列表",
+          "items": {
+            "type": "object"
           }
         },
         "watch-stock.maxDisplayCount": {
