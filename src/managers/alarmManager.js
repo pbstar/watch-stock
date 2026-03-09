@@ -76,65 +76,6 @@ async function clearAllAlarms() {
   await saveAlarms([]);
 }
 
-/**
- * 检查并触发闹钟
- * @param {Array} stockInfos - 股票信息列表
- */
-async function checkAlarms(stockInfos) {
-  const alarms = getAlarms();
-  if (alarms.length === 0) return;
-
-  const triggeredAlarms = [];
-  const remainingAlarms = [];
-
-  for (const alarm of alarms) {
-    const stockInfo = stockInfos.find(
-      (s) => s.code === alarm.stockCode.toLowerCase(),
-    );
-
-    if (!stockInfo) {
-      remainingAlarms.push(alarm);
-      continue;
-    }
-
-    const currentPrice = parseFloat(stockInfo.current);
-    let isTriggered = false;
-
-    if (alarm.condition === "above" && currentPrice >= alarm.targetPrice) {
-      isTriggered = true;
-    } else if (
-      alarm.condition === "below" &&
-      currentPrice <= alarm.targetPrice
-    ) {
-      isTriggered = true;
-    }
-
-    if (isTriggered) {
-      triggeredAlarms.push({
-        ...alarm,
-        stockName: stockInfo.name,
-        currentPrice,
-      });
-    } else {
-      remainingAlarms.push(alarm);
-    }
-  }
-
-  // 保存未触发的闹钟
-  if (remainingAlarms.length !== alarms.length) {
-    await saveAlarms(remainingAlarms);
-  }
-
-  // 显示触发提醒
-  for (const alarm of triggeredAlarms) {
-    const conditionText = alarm.condition === "above" ? "高于" : "低于";
-    vscode.window.showInformationMessage(
-      `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${conditionText} ${alarm.targetPrice}`,
-      "知道了",
-    );
-  }
-}
-
 class AlarmManager {
   /**
    * 管理闹钟（设置和管理合一）
@@ -328,6 +269,63 @@ class AlarmManager {
   }
 
   /**
+   * 检查并触发闹钟
+   * @param {Array} stockInfos - 股票信息列表
+   */
+  async checkAlarms(stockInfos) {
+    const alarms = getAlarms();
+    if (alarms.length === 0) return;
+
+    const triggeredAlarms = [];
+    const remainingAlarms = [];
+
+    for (const alarm of alarms) {
+      const stockInfo = stockInfos.find(
+        (s) => s.code === alarm.stockCode.toLowerCase(),
+      );
+
+      if (!stockInfo) {
+        remainingAlarms.push(alarm);
+        continue;
+      }
+
+      const currentPrice = parseFloat(stockInfo.current);
+      let isTriggered = false;
+
+      if (alarm.condition === "above" && currentPrice > alarm.targetPrice) {
+        isTriggered = true;
+      } else if (
+        alarm.condition === "below" &&
+        currentPrice < alarm.targetPrice
+      ) {
+        isTriggered = true;
+      }
+
+      if (isTriggered) {
+        triggeredAlarms.push({
+          ...alarm,
+          stockName: stockInfo.name,
+          currentPrice,
+        });
+      } else {
+        remainingAlarms.push(alarm);
+      }
+    }
+
+    if (remainingAlarms.length !== alarms.length) {
+      await saveAlarms(remainingAlarms);
+    }
+
+    for (const alarm of triggeredAlarms) {
+      const conditionText = alarm.condition === "above" ? "高于" : "低于";
+      vscode.window.showInformationMessage(
+        `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${conditionText} ${alarm.targetPrice}`,
+        "知道了",
+      );
+    }
+  }
+
+  /**
    * 清空所有闹钟
    */
   async deleteAllAlarms() {
@@ -348,5 +346,4 @@ module.exports = {
   AlarmManager,
   removeAlarmsByStock,
   clearAllAlarms,
-  checkAlarms,
 };
