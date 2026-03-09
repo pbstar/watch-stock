@@ -105,7 +105,7 @@ function registerCommands(context) {
       const options = [
         {
           label: "$(add) 添加股票",
-          description: "输入股票代码或名称添加股票",
+          description: "输入股票代码或名称添加",
           action: "add",
         },
       ];
