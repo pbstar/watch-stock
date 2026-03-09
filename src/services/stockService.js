@@ -14,7 +14,6 @@ const { simpleDecode } = require("../utils/encoding");
 async function getStockList(codes) {
   if (!codes?.length) return [];
 
-  console.log(`获取股票数据: ${codes}`);
   try {
     const url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
     const response = await httpGet(url, {
@@ -39,7 +38,6 @@ async function getStockList(codes) {
       })
       .filter(Boolean);
 
-    console.log(`获取股票数据成功: ${results.length} 条`);
     return results;
   } catch (error) {
     const errorMsg = `获取股票数据失败: ${error.message}`;

@@ -35,8 +35,10 @@ function activate(context) {
   // 监听配置变化，自动更新定时器
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
     (e) => {
-      // 刷新股票数据
-      statusBarManager.updateData();
+      // 只响应本插件配置变化
+      if (e.affectsConfiguration("watch-stock")) {
+        statusBarManager.updateData();
+      }
     },
   );
   context.subscriptions.push(configChangeListener);
@@ -216,18 +218,9 @@ function registerCommands(context) {
  * 更新数据并检查闹钟
  */
 async function updateDataAndCheckAlarms() {
-  const { getStockList } = require("./services/stockService");
-  const { getStocks } = require("./config");
-
-  await statusBarManager.updateData();
-
-  // 获取股票数据检查闹钟
-  const stocks = getStocks();
-  if (stocks.length > 0) {
-    const stockInfos = await getStockList(stocks);
-    if (alarmManager) {
-      await alarmManager.checkAlarms(stockInfos);
-    }
+  const stockInfos = await statusBarManager.updateData();
+  if (alarmManager && stockInfos && stockInfos.length > 0) {
+    await alarmManager.checkAlarms(stockInfos);
   }
 }
 

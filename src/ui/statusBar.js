@@ -52,7 +52,7 @@ class StatusBarManager {
     if (stockInfos.length === 0) {
       this.statusBarItem.text = "$(error) 股票获取失败";
       this.statusBarItem.tooltip = "请检查网络连接或股票代码是否正确";
-      return;
+      return [];
     }
 
     // 状态栏显示前maxDisplayCount个股票
@@ -96,6 +96,8 @@ class StatusBarManager {
     }
 
     this.statusBarItem.tooltip = tooltip;
+
+    return stockInfos;
   }
 
   /**
