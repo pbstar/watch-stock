@@ -56,6 +56,15 @@
 ```json
 {
   "watch-stock.stocks": ["sh600519", "sz000001", "sh601318"],
+  "watch-stock.priceAlarms": [
+    {
+      "id": "sz002104_1773024618848",
+      "stockCode": "sz002104",
+      "targetPrice": 17.04,
+      "condition": "below",
+      "createdAt": "2026-03-09T02:50:18.848Z"
+    }
+  ],
   "watch-stock.maxDisplayCount": 3,
   "watch-stock.showTwoLetterCode": true
 }

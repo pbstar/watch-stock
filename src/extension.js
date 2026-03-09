@@ -89,9 +89,9 @@ function registerCommands(context) {
       }),
   );
 
-  // 设置价格闹钟
-  const setAlarmCommand = vscode.commands.registerCommand(
-    "watch-stock.setAlarm",
+  // 价格闹钟
+  const priceAlarmCommand = vscode.commands.registerCommand(
+    "watch-stock.priceAlarm",
     () => alarmManager.manageAlarms(),
   );
 
@@ -128,7 +128,7 @@ function registerCommands(context) {
           action: "clear",
         });
         options.push({
-          label: "$(bell) 设置价格闹钟",
+          label: "$(bell) 价格闹钟",
           description: "设置或删除价格提醒闹钟",
           action: "alarm",
         });
@@ -171,7 +171,7 @@ function registerCommands(context) {
           await vscode.commands.executeCommand("watch-stock.clearStocks");
           break;
         case "alarm":
-          await vscode.commands.executeCommand("watch-stock.setAlarm");
+          await vscode.commands.executeCommand("watch-stock.priceAlarm");
           break;
         case "toggle":
           await vscode.commands.executeCommand("watch-stock.toggleVisibility");
@@ -207,7 +207,7 @@ function registerCommands(context) {
     removeStockCommand,
     clearStocksCommand,
     sortStocksCommand,
-    setAlarmCommand,
+    priceAlarmCommand,
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,

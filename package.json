@@ -44,8 +44,8 @@
         "title": "显示/隐藏状态栏"
       },
       {
-        "command": "watch-stock.setAlarm",
-        "title": "设置价格闹钟"
+        "command": "watch-stock.priceAlarm",
+        "title": "价格闹钟"
       },
       {
         "command": "watch-stock.refreshData",
