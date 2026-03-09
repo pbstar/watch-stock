@@ -292,11 +292,11 @@ class AlarmManager {
       const currentPrice = parseFloat(stockInfo.current);
       let isTriggered = false;
 
-      if (alarm.condition === "above" && currentPrice > alarm.targetPrice) {
+      if (alarm.condition === "above" && currentPrice >= alarm.targetPrice) {
         isTriggered = true;
       } else if (
         alarm.condition === "below" &&
-        currentPrice < alarm.targetPrice
+        currentPrice <= alarm.targetPrice
       ) {
         isTriggered = true;
       }
