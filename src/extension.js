@@ -105,7 +105,7 @@ function registerCommands(context) {
       const options = [
         {
           label: "$(add) 添加股票",
-          description: "输入股票代码或名称添加新的股票",
+          description: "输入股票代码或名称添加股票",
           action: "add",
         },
       ];
@@ -129,7 +129,7 @@ function registerCommands(context) {
         });
         options.push({
           label: "$(bell) 价格闹钟",
-          description: "设置或删除价格提醒闹钟",
+          description: "股票价格达到目标时提醒",
           action: "alarm",
         });
       }
