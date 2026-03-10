@@ -3,12 +3,7 @@
  */
 
 const vscode = require("vscode");
-const {
-  getStocks,
-  getMaxDisplayCount,
-  getShowTwoLetterCode,
-} = require("../config");
-const { getStockList } = require("../services/stockService");
+const { getMaxDisplayCount, getShowTwoLetterCode } = require("../config");
 
 class StatusBarManager {
   constructor() {
@@ -29,33 +24,30 @@ class StatusBarManager {
   }
 
   /**
-   * 更新股票信息显示
+   * 渲染股票信息到状态栏（数据由外部传入）
+   * @param {string[]} stocks 股票代码列表
+   * @param {object[]} stockInfos 股票数据列表
    */
-  async updateData() {
+  render(stocks, stockInfos) {
     if (!this.isVisible || !this.statusBarItem) {
       return;
     }
 
-    const stocks = getStocks();
-
     // 无股票时的提示
-    if (stocks.length === 0) {
+    if (!stocks || stocks.length === 0) {
       this.statusBarItem.text = "$(add) 点击添加股票";
       this.statusBarItem.tooltip = "点击管理股票，开始您的看盘之旅";
       return;
     }
 
-    // 批量获取股票信息
-    const stockInfos = await getStockList(stocks);
-
     // 无有效数据时的处理
-    if (stockInfos.length === 0) {
+    if (!stockInfos || stockInfos.length === 0) {
       this.statusBarItem.text = "$(error) 股票获取失败";
       this.statusBarItem.tooltip = "请检查网络连接或股票代码是否正确";
-      return [];
+      return;
     }
 
-    // 状态栏显示前maxDisplayCount个股票
+    // 状态栏显示前 maxDisplayCount 个股票
     const maxDisplayCount = getMaxDisplayCount();
     const displayStocks = stockInfos.slice(0, maxDisplayCount);
     const showTwoLetterCode = getShowTwoLetterCode();
@@ -96,8 +88,6 @@ class StatusBarManager {
     }
 
     this.statusBarItem.tooltip = tooltip;
-
-    return stockInfos;
   }
 
   /**
@@ -105,14 +95,10 @@ class StatusBarManager {
    */
   toggleVisibility() {
     this.isVisible = !this.isVisible;
-    if (this.isVisible) {
-      this.updateData();
-    } else {
-      if (this.statusBarItem) {
-        this.statusBarItem.text = "$(eye-closed)";
-        this.statusBarItem.tooltip =
-          "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
-      }
+    if (!this.isVisible && this.statusBarItem) {
+      this.statusBarItem.text = "$(eye-closed)";
+      this.statusBarItem.tooltip =
+        "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
     }
   }
 

@@ -7,6 +7,7 @@ const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
 const { AlarmManager } = require("./managers/alarmManager");
 const { getStocks } = require("./config");
+const { getStockList } = require("./services/stockService");
 const { isTradingTime } = require("./utils/tradingTime");
 
 // 全局变量
@@ -37,7 +38,7 @@ function activate(context) {
     (e) => {
       // 只响应本插件配置变化
       if (e.affectsConfiguration("watch-stock")) {
-        statusBarManager.updateData();
+        updateDataAndCheckAlarms();
       }
     },
   );
@@ -215,11 +216,22 @@ function registerCommands(context) {
 }
 
 /**
- * 更新数据并检查闹钟
+ * 获取股票数据、更新状态栏、检查闹钟
+ * 数据获取与状态栏可见性无关，确保隐藏时闹钟仍能触发
  */
 async function updateDataAndCheckAlarms() {
-  const stockInfos = await statusBarManager.updateData();
-  if (alarmManager && stockInfos && stockInfos.length > 0) {
+  const stocks = getStocks();
+  let stockInfos = [];
+
+  if (stocks.length > 0) {
+    stockInfos = await getStockList(stocks);
+  }
+
+  // 渲染状态栏（内部会判断 isVisible）
+  statusBarManager.render(stocks, stockInfos);
+
+  // 闹钟检查不依赖可见性
+  if (alarmManager && stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
   }
 }
