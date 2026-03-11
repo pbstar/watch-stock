@@ -73,8 +73,8 @@ function parseStockData(code, data) {
   }
 
   // 计算涨跌和百分比
-  const change = current - close;
-  const changePercent = ((change / close) * 100).toFixed(2);
+  const changeValue = current - close;
+  const changePercent = ((changeValue / close) * 100).toFixed(2);
 
   // 判断是否为ETF
   const isETF =
@@ -87,10 +87,9 @@ function parseStockData(code, data) {
     name,
     code,
     current: current.toFixed(decimals),
-    change: change.toFixed(decimals),
+    changeValue: changeValue.toFixed(decimals),
     changePercent,
     amount,
-    isUp: change >= 0,
     market: code.substring(0, 2),
     isETF,
     dateTime,

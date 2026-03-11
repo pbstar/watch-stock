@@ -3,7 +3,11 @@
  */
 
 const vscode = require("vscode");
-const { getMaxDisplayCount, getShowTwoLetterCode } = require("../config");
+const {
+  getMaxDisplayCount,
+  getShowTwoLetterCode,
+  getShowChangeValue,
+} = require("../config");
 
 class StatusBarManager {
   constructor() {
@@ -51,15 +55,16 @@ class StatusBarManager {
     const maxDisplayCount = getMaxDisplayCount();
     const displayStocks = stockInfos.slice(0, maxDisplayCount);
     const showTwoLetterCode = getShowTwoLetterCode();
+    const showChangeValue = getShowChangeValue();
 
     // 构建状态栏文本
     const stockTexts = displayStocks.map((stock) => {
-      const symbol = stock.isUp ? "↗" : "↘";
+      const symbol = stock.changeValue >= 0 ? "↗" : "↘";
       const displayName =
         showTwoLetterCode && stock.name.length > 2
           ? stock.name.substring(0, 2)
           : stock.name;
-      return `${displayName} ${stock.current} ${symbol}${stock.changePercent}%`;
+      return `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
     });
 
     // 处理超出显示限制的情况
@@ -76,8 +81,8 @@ class StatusBarManager {
       .map(
         (stock) =>
           `${stock.name}(${stock.code}): ${stock.current} ${
-            stock.change >= 0 ? "+" : ""
-          }${stock.change}(${stock.changePercent}%)`,
+            stock.changeValue >= 0 ? "+" : ""
+          }${stock.changePercent}%(${stock.changeValue})`,
       )
       .join("\n");
 

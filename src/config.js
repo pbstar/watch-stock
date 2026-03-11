@@ -54,6 +54,15 @@ function getShowTwoLetterCode() {
 }
 
 /**
+ * 是否显示涨跌值
+ * @returns {boolean}
+ */
+function getShowChangeValue() {
+  const config = getConfig();
+  return config.get("showChangeValue", false);
+}
+
+/**
  * 获取股票代码列表
  * @returns {string[]} 股票代码数组
  */
@@ -89,5 +98,6 @@ module.exports = {
   saveStocks,
   getMaxDisplayCount,
   getShowTwoLetterCode,
+  getShowChangeValue,
   moveStock,
 };

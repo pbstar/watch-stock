@@ -33,7 +33,7 @@
    - 点击状态栏或使用命令面板
    - 使用快捷键：`Ctrl+Alt+S`（Windows/Linux）或 `Cmd+Alt+S`（macOS）
 6. **手动刷新**：点击状态栏 → 选择"刷新行情数据" 或 使用命令面板
-7. **个性化配置**：在 VS Code 设置中搜索 `watch-stock`，可配置股票列表、最大显示数量、是否显示 2 位简称等
+7. **个性化配置**：在 VS Code 设置中搜索 `watch-stock`，可配置股票列表、最大显示数量、是否显示 2 位简称、是否显示涨跌值等
 
 ## 📋 支持的输入格式
 
@@ -50,6 +50,7 @@
 | `watch-stock.priceAlarms`       | array   | `[]`           | 价格闹钟列表            |
 | `watch-stock.maxDisplayCount`   | number  | `5`            | 状态栏最大显示股票数量  |
 | `watch-stock.showTwoLetterCode` | boolean | `false`        | 状态栏是否显示 2 位简称 |
+| `watch-stock.showChangeValue`   | boolean | `false`        | 状态栏是否显示涨跌值    |
 
 ### 配置示例
 
@@ -66,7 +67,8 @@
     }
   ],
   "watch-stock.maxDisplayCount": 3,
-  "watch-stock.showTwoLetterCode": true
+  "watch-stock.showTwoLetterCode": true,
+  "watch-stock.showChangeValue": true
 }
 ```
 
