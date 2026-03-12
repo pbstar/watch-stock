@@ -45,12 +45,21 @@ function getMaxDisplayCount() {
 }
 
 /**
- * 是否显示2位简称
+ * 是否显示简称
  * @returns {boolean}
  */
-function getShowTwoLetterCode() {
+function getShowMiniName() {
   const config = getConfig();
-  return config.get("showTwoLetterCode", false);
+  return config.get("showMiniName", false);
+}
+
+/**
+ * 获取股票简称映射
+ * @returns {Record<string, string>}
+ */
+function getStockMiniNames() {
+  const config = getConfig();
+  return config.get("stockMiniNames", {});
 }
 
 /**
@@ -97,7 +106,8 @@ module.exports = {
   getStocks,
   saveStocks,
   getMaxDisplayCount,
-  getShowTwoLetterCode,
+  getShowMiniName,
+  getStockMiniNames,
   getShowChangeValue,
   moveStock,
 };

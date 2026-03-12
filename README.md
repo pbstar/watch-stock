@@ -33,7 +33,7 @@
    - 点击状态栏或使用命令面板
    - 使用快捷键：`Ctrl+Alt+S`（Windows/Linux）或 `Cmd+Alt+S`（macOS）
 6. **手动刷新**：点击状态栏 → 选择"刷新行情数据" 或 使用命令面板
-7. **个性化配置**：在 VS Code 设置中搜索 `watch-stock`，可配置股票列表、最大显示数量、是否显示 2 位简称、是否显示涨跌值等
+7. **个性化配置**：在 VS Code 设置中搜索 `watch-stock`，可配置股票列表、最大显示数量、是否显示简称、自定义股票简称、是否显示涨跌值等
 
 ## 📋 支持的输入格式
 
@@ -44,13 +44,14 @@
 
 在 VS Code 设置中搜索 `watch-stock`，可配置以下选项：
 
-| 配置项                          | 类型    | 默认值         | 说明                    |
-| ------------------------------- | ------- | -------------- | ----------------------- |
-| `watch-stock.stocks`            | array   | `["sh000001"]` | 股票代码列表            |
-| `watch-stock.priceAlarms`       | array   | `[]`           | 价格闹钟列表            |
-| `watch-stock.maxDisplayCount`   | number  | `5`            | 状态栏最大显示股票数量  |
-| `watch-stock.showTwoLetterCode` | boolean | `false`        | 状态栏是否显示 2 位简称 |
-| `watch-stock.showChangeValue`   | boolean | `false`        | 状态栏是否显示涨跌值    |
+| 配置项                        | 类型    | 默认值         | 说明                                             |
+| ----------------------------- | ------- | -------------- | ------------------------------------------------ |
+| `watch-stock.stocks`          | array   | `["sh000001"]` | 股票代码列表                                     |
+| `watch-stock.priceAlarms`     | array   | `[]`           | 价格闹钟列表                                     |
+| `watch-stock.maxDisplayCount` | number  | `5`            | 状态栏最大显示股票数量                           |
+| `watch-stock.showMiniName`    | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
+| `watch-stock.stockMiniNames`  | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
+| `watch-stock.showChangeValue` | boolean | `false`        | 状态栏是否显示涨跌值                             |
 
 ### 配置示例
 
@@ -67,7 +68,11 @@
     }
   ],
   "watch-stock.maxDisplayCount": 3,
-  "watch-stock.showTwoLetterCode": true,
+  "watch-stock.showMiniName": true,
+  "watch-stock.stockMiniNames": {
+    "sh601318": "平安",
+    "sh600519": "茅台"
+  },
   "watch-stock.showChangeValue": true
 }
 ```
@@ -92,7 +97,7 @@
 
 1. **调整显示数量**：修改 `watch-stock.maxDisplayCount` 配置（建议 3-8 之间）
 2. **使用自定义排序**：通过"排序股票"功能，将最重要的股票排在前面优先显示
-3. **启用简称显示**：开启 `watch-stock.showTwoLetterCode`，节省空间显示更多股票
+3. **启用简称显示**：开启 `watch-stock.showMiniName`，节省空间显示更多股票；可通过 `watch-stock.stockMiniNames` 为每只股票配置自定义简称
 
 ### ❓ 数据格式异常怎么办？
 

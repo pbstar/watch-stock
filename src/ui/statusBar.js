@@ -5,7 +5,8 @@
 const vscode = require("vscode");
 const {
   getMaxDisplayCount,
-  getShowTwoLetterCode,
+  getShowMiniName,
+  getStockMiniNames,
   getShowChangeValue,
 } = require("../config");
 
@@ -54,16 +55,18 @@ class StatusBarManager {
     // 状态栏显示前 maxDisplayCount 个股票
     const maxDisplayCount = getMaxDisplayCount();
     const displayStocks = stockInfos.slice(0, maxDisplayCount);
-    const showTwoLetterCode = getShowTwoLetterCode();
+    const showMiniName = getShowMiniName();
+    const stockMiniNames = getStockMiniNames();
     const showChangeValue = getShowChangeValue();
 
     // 构建状态栏文本
     const stockTexts = displayStocks.map((stock) => {
       const symbol = stock.changeValue >= 0 ? "↗" : "↘";
-      const displayName =
-        showTwoLetterCode && stock.name.length > 2
-          ? stock.name.substring(0, 2)
-          : stock.name;
+      // 优先取配置简称，无配置时截取前两位
+      const displayName = showMiniName
+        ? stockMiniNames[stock.code] ||
+          (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
+        : stock.name;
       return `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
     });
 
