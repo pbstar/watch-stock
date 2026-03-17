@@ -5,7 +5,7 @@
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
-const { AlarmManager } = require("./managers/alarmManager");
+const AlarmManager = require("./managers/alarmManager");
 const { getStocks } = require("./config");
 const { getStockList } = require("./services/stockService");
 const { isTradingTime } = require("./utils/tradingTime");
@@ -221,17 +221,13 @@ function registerCommands(context) {
  */
 async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
-  let stockInfos = [];
-
-  if (stocks.length > 0) {
-    stockInfos = await getStockList(stocks);
-  }
+  const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
 
   // 渲染状态栏（内部会判断 isVisible）
   statusBarManager.render(stocks, stockInfos);
 
   // 闹钟检查不依赖可见性
-  if (alarmManager && stockInfos.length > 0) {
+  if (stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
   }
 }

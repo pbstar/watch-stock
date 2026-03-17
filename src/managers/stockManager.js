@@ -151,8 +151,7 @@ class StockManager {
     if (confirm === "确定") {
       // 删除所有相关闹钟
       if (alarmManager) {
-        const { clearAllAlarms } = require("./alarmManager");
-        await clearAllAlarms();
+        await alarmManager.clearAllAlarms();
       }
 
       await saveStocks([]);

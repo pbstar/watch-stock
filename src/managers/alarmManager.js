@@ -5,9 +5,13 @@
 
 const vscode = require("vscode");
 const { getStockList } = require("../services/stockService");
+const { getStocks } = require("../config");
 
 const CONFIG_SECTION = "watch-stock";
 const ALARMS_KEY = "priceAlarms";
+
+// 条件文本映射
+const conditionText = (condition) => (condition === "above" ? "高于" : "低于");
 
 /**
  * 获取所有闹钟
@@ -57,32 +61,12 @@ async function removeAlarm(alarmId) {
   await saveAlarms(newAlarms);
 }
 
-/**
- * 删除股票相关的所有闹钟
- * @param {string} stockCode - 股票代码
- */
-async function removeAlarmsByStock(stockCode) {
-  const alarms = getAlarms();
-  const newAlarms = alarms.filter(
-    (a) => a.stockCode !== stockCode.toLowerCase(),
-  );
-  await saveAlarms(newAlarms);
-}
-
-/**
- * 清空所有闹钟
- */
-async function clearAllAlarms() {
-  await saveAlarms([]);
-}
-
 class AlarmManager {
   /**
    * 管理闹钟（设置和管理合一）
    */
   async manageAlarms() {
     const alarms = getAlarms();
-    const { getStocks } = require("../config");
     const stocks = getStocks();
 
     const options = [];
@@ -114,10 +98,9 @@ class AlarmManager {
       // 添加现有闹钟
       alarms.forEach((alarm) => {
         const info = stockInfos.find((s) => s.code === alarm.stockCode);
-        const conditionText = alarm.condition === "above" ? "高于" : "低于";
         const price = parseFloat(alarm.targetPrice).toFixed(2);
         options.push({
-          label: `${info ? info.name : alarm.stockCode} 价格${conditionText} ${price} 时提醒`,
+          label: `${info ? info.name : alarm.stockCode} 价格${conditionText(alarm.condition)} ${price} 时提醒`,
           description: "点击删除",
           action: "delete",
           alarm: alarm,
@@ -165,7 +148,6 @@ class AlarmManager {
    * 添加新闹钟
    */
   async addNewAlarm() {
-    const { getStocks } = require("../config");
     const stocks = getStocks();
 
     if (stocks.length === 0) {
@@ -252,9 +234,8 @@ class AlarmManager {
       selectedCondition.value,
     );
 
-    const conditionText = selectedCondition.value === "above" ? "高于" : "低于";
     vscode.window.showInformationMessage(
-      `已设置闹钟: ${selectedStock.label} 价格${conditionText} ${targetPrice} 时提醒`,
+      `已设置闹钟: ${selectedStock.label} 价格${conditionText(selectedCondition.value)} ${targetPrice} 时提醒`,
     );
   }
 
@@ -290,16 +271,9 @@ class AlarmManager {
       }
 
       const currentPrice = parseFloat(stockInfo.current);
-      let isTriggered = false;
-
-      if (alarm.condition === "above" && currentPrice >= alarm.targetPrice) {
-        isTriggered = true;
-      } else if (
-        alarm.condition === "below" &&
-        currentPrice <= alarm.targetPrice
-      ) {
-        isTriggered = true;
-      }
+      const isTriggered =
+        (alarm.condition === "above" && currentPrice >= alarm.targetPrice) ||
+        (alarm.condition === "below" && currentPrice <= alarm.targetPrice);
 
       if (isTriggered) {
         triggeredAlarms.push({
@@ -317,16 +291,34 @@ class AlarmManager {
     }
 
     for (const alarm of triggeredAlarms) {
-      const conditionText = alarm.condition === "above" ? "高于" : "低于";
       vscode.window.showInformationMessage(
-        `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${conditionText} ${alarm.targetPrice}`,
+        `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${conditionText(alarm.condition)} ${alarm.targetPrice}`,
         "知道了",
       );
     }
   }
 
   /**
+   * 删除股票相关的所有闹钟
+   * @param {string} stockCode - 股票代码
+   */
+  async removeAlarmsByStock(stockCode) {
+    const alarms = getAlarms();
+    const newAlarms = alarms.filter(
+      (a) => a.stockCode !== stockCode.toLowerCase(),
+    );
+    await saveAlarms(newAlarms);
+  }
+
+  /**
    * 清空所有闹钟
+   */
+  async clearAllAlarms() {
+    await saveAlarms([]);
+  }
+
+  /**
+   * 清空所有闹钟（带确认弹窗）
    */
   async deleteAllAlarms() {
     const confirm = await vscode.window.showWarningMessage(
@@ -336,14 +328,10 @@ class AlarmManager {
     );
 
     if (confirm === "确定") {
-      await clearAllAlarms();
+      await this.clearAllAlarms();
       vscode.window.showInformationMessage("已删除所有闹钟");
     }
   }
 }
 
-module.exports = {
-  AlarmManager,
-  removeAlarmsByStock,
-  clearAllAlarms,
-};
+module.exports = AlarmManager;
