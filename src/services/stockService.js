@@ -76,9 +76,15 @@ function parseStockData(code, data) {
   const changeValue = current - close;
   const changePercent = ((changeValue / close) * 100).toFixed(2);
 
-  // 判断是否为ETF
+  // 判断是否为基金/ETF
+  const codeNum = code.substring(2);
+  const isFundByCode =
+    (code.startsWith("sh") && codeNum.startsWith("5")) ||
+    (code.startsWith("sz") && codeNum.startsWith("1"));
   const isETF =
+    isFundByCode ||
     name.includes("ETF") ||
+    name.includes("LOF") ||
     (current < 3 && (name.includes("基金") || name.includes("指数")));
   const decimals = isETF ? 3 : 2;
   const dateTime = `${parts[30]} ${parts[31]}`;
