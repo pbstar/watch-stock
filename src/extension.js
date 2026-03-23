@@ -184,11 +184,14 @@ function registerCommands(context) {
     },
   );
 
-  // 切换显示/隐藏
+  // 切换显示/隐藏（恢复显示时需重新渲染，否则仍停留在隐藏图标）
   const toggleVisibilityCommand = vscode.commands.registerCommand(
     "watch-stock.toggleVisibility",
-    () => {
+    async () => {
       statusBarManager.toggleVisibility();
+      if (statusBarManager.getIsVisible()) {
+        await updateDataAndCheckAlarms();
+      }
     },
   );
 
