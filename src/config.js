@@ -72,6 +72,15 @@ function getShowChangeValue() {
 }
 
 /**
+ * 是否根据开休市时间自动显示/隐藏状态栏
+ * @returns {boolean}
+ */
+function getAutoHideByMarket() {
+  const config = getConfig();
+  return config.get("autoHideByMarket", false);
+}
+
+/**
  * 获取股票代码列表
  * @returns {string[]} 股票代码数组
  */
@@ -109,5 +118,6 @@ module.exports = {
   getShowMiniName,
   getStockMiniNames,
   getShowChangeValue,
+  getAutoHideByMarket,
   moveStock,
 };

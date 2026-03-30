@@ -95,6 +95,11 @@
           "type": "boolean",
           "default": false,
           "description": "状态栏是否显示涨跌值"
+        },
+        "watch-stock.autoHideByMarket": {
+          "type": "boolean",
+          "default": false,
+          "description": "根据开休市时间自动显示/隐藏状态栏"
         }
       }
     },

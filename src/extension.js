@@ -226,13 +226,13 @@ async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
   const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
 
-  // 渲染状态栏（内部会判断 isVisible）
-  statusBarManager.render(stocks, stockInfos);
-
   // 闹钟检查不依赖可见性
   if (stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
   }
+
+  // 渲染状态栏（内部会判断 isVisible）
+  statusBarManager.render(stocks, stockInfos);
 }
 
 /**
