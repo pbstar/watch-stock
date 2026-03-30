@@ -33,21 +33,8 @@ function activate(context) {
   // 注册命令
   registerCommands(context);
 
-  // 监听配置变化，自动更新定时器
-  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
-    (e) => {
-      // 只响应本插件配置变化
-      if (e.affectsConfiguration("watch-stock")) {
-        updateDataAndCheckAlarms();
-      }
-    },
-  );
-  context.subscriptions.push(configChangeListener);
-
   // 开始定时更新
   startRefreshTimer();
-  // 初始化时先刷新一次数据
-  updateDataAndCheckAlarms();
 }
 
 /**
@@ -187,10 +174,10 @@ function registerCommands(context) {
   // 切换显示/隐藏（恢复显示时需重新渲染，否则仍停留在隐藏图标）
   const toggleVisibilityCommand = vscode.commands.registerCommand(
     "watch-stock.toggleVisibility",
-    async () => {
+    () => {
       statusBarManager.toggleVisibility();
       if (statusBarManager.getIsVisible()) {
-        await updateDataAndCheckAlarms();
+        updateDataAndCheckAlarms();
       }
     },
   );
@@ -201,6 +188,15 @@ function registerCommands(context) {
     async () => {
       await updateDataAndCheckAlarms();
       vscode.window.showInformationMessage("股票行情数据刷新完成");
+    },
+  );
+
+  // 监听配置变化，只响应本插件配置变化
+  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+    (e) => {
+      if (e.affectsConfiguration("watch-stock")) {
+        updateDataAndCheckAlarms();
+      }
     },
   );
 
@@ -215,6 +211,7 @@ function registerCommands(context) {
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
+    configChangeListener,
   );
 }
 
@@ -243,6 +240,9 @@ function startRefreshTimer() {
   if (refreshInterval) {
     clearInterval(refreshInterval);
   }
+
+  // 初始化时先刷新一次数据
+  updateDataAndCheckAlarms();
 
   // 设置新的定时器，只在交易时间内刷新
   refreshInterval = setInterval(() => {

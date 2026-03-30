@@ -12,8 +12,10 @@ const {
 
 class StatusBarManager {
   constructor() {
+    // 状态栏项
     this.statusBarItem = null;
-    this.isVisible = true;
+    // 0 自动（依赖配置判断）1 强制显示 2 强制隐藏
+    this.userVisibleStatus = 0;
   }
 
   /**
@@ -34,9 +36,7 @@ class StatusBarManager {
    * @param {object[]} stockInfos 股票数据列表
    */
   render(stocks, stockInfos) {
-    if (!this.isVisible || !this.statusBarItem) {
-      return;
-    }
+    if (!this.statusBarItem) return;
 
     // 无股票时的提示
     if (!stocks || stocks.length === 0) {
@@ -102,8 +102,9 @@ class StatusBarManager {
    * 切换显示/隐藏
    */
   toggleVisibility() {
-    this.isVisible = !this.isVisible;
-    if (!this.isVisible && this.statusBarItem) {
+    const wasVisible = this.getIsVisible();
+    this.userVisibleStatus = wasVisible ? 2 : 1;
+    if (wasVisible && this.statusBarItem) {
       this.statusBarItem.text = "$(eye-closed)";
       this.statusBarItem.tooltip =
         "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
@@ -111,10 +112,15 @@ class StatusBarManager {
   }
 
   /**
-   * 获取是否可见
+   * 获取实际可见性
    */
   getIsVisible() {
-    return this.isVisible;
+    if (this.userVisibleStatus === 1) return true;
+    if (this.userVisibleStatus === 2) return false;
+    if (getAutoHideByMarket()) {
+      return isTradingTime();
+    }
+    return true;
   }
 
   /**
