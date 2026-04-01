@@ -6,7 +6,7 @@ const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
-const { getStocks } = require("./config");
+const { getStocks, getAutoHideByMarket } = require("./config");
 const { getStockList } = require("./services/stockService");
 const { isTradingTime } = require("./utils/tradingTime");
 
@@ -15,6 +15,14 @@ let statusBarManager;
 let stockManager;
 let alarmManager;
 let refreshInterval;
+// null=自动  true=用户强制显示  false=用户强制隐藏
+let userForced = null;
+
+// 获取状态栏是否可见
+const getIsVisible = () => {
+  if (userForced !== null) return userForced;
+  return getAutoHideByMarket() ? isTradingTime() : true;
+};
 
 /**
  * 插件激活函数
@@ -88,7 +96,7 @@ function registerCommands(context) {
     "watch-stock.manageStock",
     async () => {
       const stocks = getStocks();
-      const isVisible = statusBarManager.getIsVisible();
+      const isVisible = getIsVisible();
 
       const options = [
         {
@@ -171,13 +179,16 @@ function registerCommands(context) {
     },
   );
 
-  // 切换显示/隐藏（恢复显示时需重新渲染，否则仍停留在隐藏图标）
+  // 切换显示/隐藏
   const toggleVisibilityCommand = vscode.commands.registerCommand(
     "watch-stock.toggleVisibility",
     () => {
-      statusBarManager.toggleVisibility();
-      if (statusBarManager.getIsVisible()) {
+      userForced = getIsVisible() ? false : true;
+      // 恢复显示时重新渲染，否则停留在隐藏图标
+      if (userForced) {
         updateDataAndCheckAlarms();
+      } else {
+        statusBarManager.setHidden();
       }
     },
   );
@@ -228,8 +239,12 @@ async function updateDataAndCheckAlarms() {
     await alarmManager.checkAlarms(stockInfos);
   }
 
-  // 渲染状态栏（内部会判断 isVisible）
-  statusBarManager.render(stocks, stockInfos);
+  // 渲染状态栏
+  if (getIsVisible()) {
+    statusBarManager.render(stocks, stockInfos);
+  } else {
+    statusBarManager.setHidden();
+  }
 }
 
 /**
@@ -246,10 +261,14 @@ function startRefreshTimer() {
 
   // 设置新的定时器，只在交易时间内刷新
   refreshInterval = setInterval(() => {
-    if (isTradingTime()) {
+    const trading = isTradingTime();
+    if (trading) {
       updateDataAndCheckAlarms();
     } else {
       console.log("当前非交易时间，跳过刷新");
+      if (getAutoHideByMarket() && userForced === null) {
+        statusBarManager.setHidden();
+      }
     }
   }, 5000);
 }
