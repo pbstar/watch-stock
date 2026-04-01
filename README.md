@@ -44,14 +44,15 @@
 
 在 VS Code 设置中搜索 `watch-stock`，可配置以下选项：
 
-| 配置项                        | 类型    | 默认值         | 说明                                             |
-| ----------------------------- | ------- | -------------- | ------------------------------------------------ |
-| `watch-stock.stocks`          | array   | `["sh000001"]` | 股票代码列表                                     |
-| `watch-stock.priceAlarms`     | array   | `[]`           | 价格闹钟列表                                     |
-| `watch-stock.maxDisplayCount` | number  | `5`            | 状态栏最大显示股票数量                           |
-| `watch-stock.showMiniName`    | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
-| `watch-stock.stockMiniNames`  | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
-| `watch-stock.showChangeValue` | boolean | `false`        | 状态栏是否显示涨跌值                             |
+| 配置项                         | 类型    | 默认值         | 说明                                             |
+| ------------------------------ | ------- | -------------- | ------------------------------------------------ |
+| `watch-stock.stocks`           | array   | `["sh000001"]` | 股票代码列表                                     |
+| `watch-stock.priceAlarms`      | array   | `[]`           | 价格闹钟列表                                     |
+| `watch-stock.maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                           |
+| `watch-stock.showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
+| `watch-stock.stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
+| `watch-stock.showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                             |
+| `watch-stock.autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                |
 
 ### 配置示例
 
@@ -73,7 +74,8 @@
     "sh601318": "平安",
     "sh600519": "茅台"
   },
-  "watch-stock.showChangeValue": true
+  "watch-stock.showChangeValue": true,
+  "watch-stock.autoHideByMarket": true
 }
 ```
 
