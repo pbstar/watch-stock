@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.74.0"
@@ -95,6 +95,11 @@
           "type": "boolean",
           "default": false,
           "description": "状态栏是否显示涨跌值"
+        },
+        "watch-stock.autoHideByMarket": {
+          "type": "boolean",
+          "default": false,
+          "description": "根据开休市时间自动显示/隐藏状态栏"
         }
       }
     },

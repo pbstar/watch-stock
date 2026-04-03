@@ -13,7 +13,7 @@ const {
 class StatusBarManager {
   constructor() {
     this.statusBarItem = null;
-    this.isVisible = true;
+    this._hidden = false;
   }
 
   /**
@@ -29,14 +29,13 @@ class StatusBarManager {
   }
 
   /**
-   * 渲染股票信息到状态栏（数据由外部传入）
+   * 渲染股票信息到状态栏
    * @param {string[]} stocks 股票代码列表
    * @param {object[]} stockInfos 股票数据列表
    */
   render(stocks, stockInfos) {
-    if (!this.isVisible || !this.statusBarItem) {
-      return;
-    }
+    if (!this.statusBarItem) return;
+    this._hidden = false;
 
     // 无股票时的提示
     if (!stocks || stocks.length === 0) {
@@ -99,22 +98,13 @@ class StatusBarManager {
   }
 
   /**
-   * 切换显示/隐藏
+   * 显示隐藏图标（已隐藏时跳过，避免重复更新）
    */
-  toggleVisibility() {
-    this.isVisible = !this.isVisible;
-    if (!this.isVisible && this.statusBarItem) {
-      this.statusBarItem.text = "$(eye-closed)";
-      this.statusBarItem.tooltip =
-        "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
-    }
-  }
-
-  /**
-   * 获取是否可见
-   */
-  getIsVisible() {
-    return this.isVisible;
+  setHidden() {
+    if (this._hidden || !this.statusBarItem) return;
+    this._hidden = true;
+    this.statusBarItem.text = "$(eye-closed)";
+    this.statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
   }
 
   /**

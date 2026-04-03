@@ -6,7 +6,7 @@ const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
-const { getStocks } = require("./config");
+const { getStocks, getAutoHideByMarket } = require("./config");
 const { getStockList } = require("./services/stockService");
 const { isTradingTime } = require("./utils/tradingTime");
 
@@ -15,6 +15,14 @@ let statusBarManager;
 let stockManager;
 let alarmManager;
 let refreshInterval;
+// null=自动  true=用户强制显示  false=用户强制隐藏
+let userForced = null;
+
+// 获取状态栏是否可见
+const getIsVisible = () => {
+  if (userForced !== null) return userForced;
+  return getAutoHideByMarket() ? isTradingTime() : true;
+};
 
 /**
  * 插件激活函数
@@ -33,21 +41,8 @@ function activate(context) {
   // 注册命令
   registerCommands(context);
 
-  // 监听配置变化，自动更新定时器
-  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
-    (e) => {
-      // 只响应本插件配置变化
-      if (e.affectsConfiguration("watch-stock")) {
-        updateDataAndCheckAlarms();
-      }
-    },
-  );
-  context.subscriptions.push(configChangeListener);
-
   // 开始定时更新
   startRefreshTimer();
-  // 初始化时先刷新一次数据
-  updateDataAndCheckAlarms();
 }
 
 /**
@@ -101,7 +96,7 @@ function registerCommands(context) {
     "watch-stock.manageStock",
     async () => {
       const stocks = getStocks();
-      const isVisible = statusBarManager.getIsVisible();
+      const isVisible = getIsVisible();
 
       const options = [
         {
@@ -184,13 +179,16 @@ function registerCommands(context) {
     },
   );
 
-  // 切换显示/隐藏（恢复显示时需重新渲染，否则仍停留在隐藏图标）
+  // 切换显示/隐藏
   const toggleVisibilityCommand = vscode.commands.registerCommand(
     "watch-stock.toggleVisibility",
-    async () => {
-      statusBarManager.toggleVisibility();
-      if (statusBarManager.getIsVisible()) {
-        await updateDataAndCheckAlarms();
+    () => {
+      userForced = getIsVisible() ? false : true;
+      // 恢复显示时重新渲染，否则停留在隐藏图标
+      if (userForced) {
+        updateDataAndCheckAlarms();
+      } else {
+        statusBarManager.setHidden();
       }
     },
   );
@@ -201,6 +199,15 @@ function registerCommands(context) {
     async () => {
       await updateDataAndCheckAlarms();
       vscode.window.showInformationMessage("股票行情数据刷新完成");
+    },
+  );
+
+  // 监听配置变化，只响应本插件配置变化
+  const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+    (e) => {
+      if (e.affectsConfiguration("watch-stock")) {
+        updateDataAndCheckAlarms();
+      }
     },
   );
 
@@ -215,6 +222,7 @@ function registerCommands(context) {
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
+    configChangeListener,
   );
 }
 
@@ -226,12 +234,16 @@ async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
   const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
 
-  // 渲染状态栏（内部会判断 isVisible）
-  statusBarManager.render(stocks, stockInfos);
-
   // 闹钟检查不依赖可见性
   if (stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
+  }
+
+  // 渲染状态栏
+  if (getIsVisible()) {
+    statusBarManager.render(stocks, stockInfos);
+  } else {
+    statusBarManager.setHidden();
   }
 }
 
@@ -244,12 +256,19 @@ function startRefreshTimer() {
     clearInterval(refreshInterval);
   }
 
+  // 初始化时先刷新一次数据
+  updateDataAndCheckAlarms();
+
   // 设置新的定时器，只在交易时间内刷新
   refreshInterval = setInterval(() => {
-    if (isTradingTime()) {
+    const trading = isTradingTime();
+    if (trading) {
       updateDataAndCheckAlarms();
     } else {
       console.log("当前非交易时间，跳过刷新");
+      if (getAutoHideByMarket() && userForced === null) {
+        statusBarManager.setHidden();
+      }
     }
   }, 5000);
 }
