@@ -110,7 +110,7 @@ function registerCommands(context) {
       // 如果已有股票，添加更多选项
       if (stocks.length > 0) {
         options.push({
-          label: "$(graph) 查看股票",
+          label: "$(list-flat) 查看股票",
           description: "查看股票详情",
           action: "detail",
         });

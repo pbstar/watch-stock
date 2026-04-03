@@ -177,10 +177,10 @@
       }
 
       .up {
-        color: #f14c4c;
+        color: #c94c4c;
       }
       .dn {
-        color: #1db91d;
+        color: #2d8a2d;
       }
       .gray {
         color: var(--vscode-descriptionForeground, #888);
@@ -225,8 +225,8 @@
       const volSvg = document.getElementById("vol-svg");
 
       /* -------- 颜色常量 -------- */
-      const C_UP = "#f14c4c";
-      const C_DN = "#1db91d";
+      const C_UP = "#c94c4c";
+      const C_DN = "#2d8a2d";
       const C_GRID = "rgba(128,128,128,0.18)";
       const C_BDR = "rgba(128,128,128,0.3)";
       const C_AXIS = "var(--vscode-descriptionForeground, #888)";
@@ -303,7 +303,7 @@
         }
         placeholder.style.display = "none";
 
-        const W = chartWrap.clientWidth;
+        const W = 600;
         const H = chartWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
@@ -313,7 +313,7 @@
         const preClose = info?.preClose
           ? parseFloat(info.preClose)
           : parseFloat(info?.current || 0) -
-              parseFloat(info?.changeValue || 0) || minuteData[0].price;
+              parseFloat(info?.changeValue || 0) || minuteData[0]?.price;
 
         const prices = minuteData.map((d) => d.price);
         const lastPrice = prices[prices.length - 1];
@@ -413,20 +413,15 @@
 
         chartSvg.innerHTML = `
         <defs>
-          <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${lc}" stop-opacity="0.28"/>
-            <stop offset="100%" stop-color="${lc}" stop-opacity="0.02"/>
-          </linearGradient>
           <clipPath id="cc">
             <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}"/>
           </clipPath>
         </defs>
         ${gridLines}
         <line x1="${PAD.l}" y1="${pcY.toFixed(1)}" x2="${PAD.l + cW}" y2="${pcY.toFixed(1)}"
-          stroke="${lc}" stroke-opacity="0.45" stroke-dasharray="4,3" stroke-width="1"/>
-        <path d="${fp}" fill="url(#fg)" clip-path="url(#cc)"/>
-        <path d="${lp}" fill="none" stroke="${lc}" stroke-width="1.5" clip-path="url(#cc)"/>
-        <circle cx="${xOf(n - 1).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${lc}"/>
+          stroke="${C_AXIS}" stroke-opacity="0.5" stroke-dasharray="4,3" stroke-width="1"/>
+        <path d="${lp}" fill="none" stroke="${C_AXIS}" stroke-width="1.5" clip-path="url(#cc)"/>
+        <circle cx="${xOf(n - 1).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${C_AXIS}"/>
         ${yLeftLabels}
         ${yRightLabels}
         ${xTimeLabels}
@@ -456,10 +451,11 @@
 
         const bars = minuteData
           .map((d, i) => {
-            const bH = Math.max(1, (d.volume / maxVol) * vH);
+            const bH = Math.max(1, (vols[i] / maxVol) * vH);
             const x = (xOf(i) - barW / 2).toFixed(1);
             const y = (vt + vH - bH).toFixed(1);
-            const c = d.price >= preClose ? C_UP : C_DN;
+            const prevPrice = i > 0 ? minuteData[i - 1].price : d.price;
+            const c = d.price >= prevPrice ? C_UP : C_DN;
             return `<rect x="${x}" y="${y}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="0.65"/>`;
           })
           .join("");
@@ -607,12 +603,16 @@
       });
 
       /* -------- 响应容器大小变化 -------- */
-      new ResizeObserver(() => {
-        if (minuteData) renderChart();
-      }).observe(chartWrap);
-      new ResizeObserver(() => {
-        if (minuteData) renderChart();
-      }).observe(volWrap);
+      let rafId = null;
+      const doRender = () => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (minuteData) renderChart();
+        });
+      };
+      new ResizeObserver(doRender).observe(chartWrap);
+      new ResizeObserver(doRender).observe(volWrap);
     </script>
   </body>
 </html>

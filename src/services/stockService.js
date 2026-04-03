@@ -81,6 +81,7 @@ function parseStockData(code, data) {
   return {
     name,
     code,
+    preClose: close.toFixed(decimals),
     current: current.toFixed(decimals),
     changeValue: changeValue.toFixed(decimals),
     changePercent,
