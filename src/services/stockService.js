@@ -3,7 +3,7 @@
  * 获取股票实时数据，支持批量查询
  */
 
-const { getGbk } = require("../utils/httpClient");
+const { get, getGbk } = require("../utils/httpClient");
 
 /**
  * 批量获取股票信息
@@ -91,6 +91,42 @@ function parseStockData(code, data) {
   };
 }
 
+/**
+ * 获取股票分时数据
+ * @param {string} code - 股票代码，如 sh600519
+ * @returns {Promise<Array>} 分时数据数组
+ */
+async function getStockMinute(code) {
+  try {
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${code}`;
+    const text = await get(url);
+    const res = JSON.parse(text);
+    const stockData = res?.data?.[code];
+    if (!stockData?.data?.data?.length) return [];
+
+    const d = stockData.data.date;
+    const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+
+    return stockData.data.data
+      .map((itemStr) => {
+        const item = itemStr.split(" ");
+        if (item.length !== 4 || !item[0]) return null;
+        const time = `${date} ${item[0].slice(0, 2)}:${item[0].slice(2, 4)}`;
+        return {
+          time,
+          price: parseFloat(item[1]) || 0,
+          volume: parseFloat(item[2]) || 0,
+          amount: parseFloat(item[3]) || 0,
+        };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error(`获取分时数据失败: ${error.message}`);
+    return [];
+  }
+}
+
 module.exports = {
   getStockList,
+  getStockMinute,
 };

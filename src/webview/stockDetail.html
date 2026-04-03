@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}';"
+    />
+    <title>股票分时图</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        font-family: var(
+          --vscode-font-family,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif
+        );
+        font-size: 13px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* tab 栏 */
+      .tab-bar {
+        display: flex;
+        background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+        border-bottom: 1px solid var(--vscode-panel-border, #454545);
+        overflow-x: auto;
+        scrollbar-width: none;
+        flex-shrink: 0;
+      }
+      .tab-bar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px;
+        cursor: pointer;
+        border-right: 1px solid var(--vscode-panel-border, #454545);
+        white-space: nowrap;
+        color: var(--vscode-tab-inactiveForeground, #8c8c8c);
+        background: var(--vscode-tab-inactiveBackground, #2d2d2d);
+        border-top: 2px solid transparent;
+        transition: background 0.1s;
+        user-select: none;
+      }
+      .tab:hover {
+        background: var(--vscode-tab-hoverBackground, #2a2d2e);
+      }
+      .tab.active {
+        color: var(--vscode-tab-activeForeground, #ccc);
+        background: var(--vscode-tab-activeBackground, #1e1e1e);
+        border-top-color: var(--vscode-tab-activeBorderTop, #007acc);
+      }
+      .tab-name {
+        font-weight: 500;
+        font-size: 13px;
+      }
+      .tab-chg {
+        font-size: 11px;
+      }
+
+      /* 主内容区 */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 14px 16px 12px;
+        overflow-y: auto;
+        gap: 10px;
+      }
+
+      /* 股票信息头部 */
+      .s-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        min-height: 36px;
+      }
+      .s-name {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .s-code {
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground, #888);
+      }
+      .s-price {
+        font-size: 26px;
+        font-weight: 700;
+        margin-left: 4px;
+        line-height: 1;
+      }
+      .s-chg {
+        font-size: 13px;
+      }
+      .s-time {
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground, #888);
+        margin-left: auto;
+      }
+      .btn-refresh {
+        background: none;
+        border: 1px solid var(--vscode-panel-border, #454545);
+        color: var(--vscode-editor-foreground);
+        padding: 3px 9px;
+        cursor: pointer;
+        border-radius: 2px;
+        font-size: 12px;
+      }
+      .btn-refresh:hover {
+        background: var(--vscode-list-hoverBackground, #2a2d2e);
+      }
+
+      /* 分时图区域 */
+      .chart-wrap {
+        height: 240px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+      }
+      .chart-wrap svg {
+        display: block;
+      }
+
+      /* 成交量图区域 */
+      .vol-wrap {
+        height: 72px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+      }
+      .vol-wrap svg {
+        display: block;
+      }
+
+      .placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--vscode-descriptionForeground, #888);
+        font-size: 13px;
+      }
+
+      /* 悬停提示框 */
+      .tooltip {
+        position: absolute;
+        background: var(--vscode-editorWidget-background, #252526);
+        border: 1px solid var(--vscode-editorWidget-border, #454545);
+        border-radius: 3px;
+        padding: 7px 10px;
+        font-size: 12px;
+        line-height: 1.7;
+        pointer-events: none;
+        display: none;
+        z-index: 10;
+        white-space: nowrap;
+      }
+
+      .up {
+        color: #f14c4c;
+      }
+      .dn {
+        color: #1db91d;
+      }
+      .gray {
+        color: var(--vscode-descriptionForeground, #888);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tab-bar" id="tab-bar"></div>
+    <div class="main">
+      <div class="s-header" id="s-header">
+        <span class="gray">加载中...</span>
+      </div>
+      <div class="chart-wrap" id="chart-wrap">
+        <div class="placeholder" id="placeholder">正在获取分时数据...</div>
+        <svg id="chart-svg"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <!-- 成交量 -->
+      <div class="vol-wrap" id="vol-wrap">
+        <svg id="vol-svg"></svg>
+      </div>
+    </div>
+
+    <script nonce="{{NONCE}}">
+      const vscode = acquireVsCodeApi();
+
+      /* -------- 状态 -------- */
+      let stocks = [];
+      let activeCode = null;
+      let stocksMap = {};
+      let minuteData = null;
+      let activeInfo = null;
+
+      /* -------- DOM -------- */
+      const tabBar = document.getElementById("tab-bar");
+      const sHeader = document.getElementById("s-header");
+      const chartWrap = document.getElementById("chart-wrap");
+      const chartSvg = document.getElementById("chart-svg");
+      const placeholder = document.getElementById("placeholder");
+      const tooltipEl = document.getElementById("tooltip");
+      const volWrap = document.getElementById("vol-wrap");
+      const volSvg = document.getElementById("vol-svg");
+
+      /* -------- 颜色常量 -------- */
+      const C_UP = "#f14c4c";
+      const C_DN = "#1db91d";
+      const C_GRID = "rgba(128,128,128,0.18)";
+      const C_BDR = "rgba(128,128,128,0.3)";
+      const C_AXIS = "var(--vscode-descriptionForeground, #888)";
+
+      /* -------- 渲染 Tab -------- */
+      function renderTabs() {
+        tabBar.innerHTML = stocks
+          .map((s) => {
+            const v = parseFloat(s.changePercent);
+            const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+            const sign = v > 0 ? "+" : "";
+            const active = s.code === activeCode ? " active" : "";
+            return `<div class="tab${active}" data-code="${s.code}">
+          <span class="tab-name">${s.name}</span>
+          <span class="tab-chg ${cls}">${sign}${s.changePercent}%</span>
+        </div>`;
+          })
+          .join("");
+
+        tabBar.querySelectorAll(".tab").forEach((el) => {
+          el.addEventListener("click", () => {
+            const c = el.dataset.code;
+            if (c !== activeCode) {
+              activeCode = c;
+              minuteData = null;
+              activeInfo = stocksMap[c] || null;
+              renderTabs();
+              renderHeader();
+              vscode.postMessage({ type: "switchStock", code: c });
+            }
+          });
+        });
+      }
+
+      /* -------- 渲染头部信息 -------- */
+      function renderHeader() {
+        const s = activeInfo;
+        if (!s) {
+          sHeader.innerHTML = '<span class="gray">加载中...</span>';
+          return;
+        }
+        const v = parseFloat(s.changePercent);
+        const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+        const sign = v > 0 ? "+" : "";
+        sHeader.innerHTML = `
+        <span class="s-name">${s.name}</span>
+        <span class="s-code">${s.code.toUpperCase()}</span>
+        <span class="s-price ${cls}">${s.current}</span>
+        <span class="s-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
+        <span class="s-time">${s.dateTime || ""}</span>
+        <button class="btn-refresh" id="btn-refresh">↻&nbsp;刷新</button>
+      `;
+        document.getElementById("btn-refresh").addEventListener("click", () => {
+          vscode.postMessage({ type: "refresh" });
+        });
+      }
+
+      /* -------- 加载中状态 -------- */
+      function showLoading() {
+        minuteData = null;
+        chartSvg.innerHTML = "";
+        volSvg.innerHTML = "";
+        placeholder.style.display = "flex";
+        placeholder.textContent = "正在获取分时数据...";
+      }
+
+      /* -------- 渲染分时图 -------- */
+      function renderChart() {
+        if (!minuteData || !minuteData.length) {
+          placeholder.style.display = "flex";
+          placeholder.textContent = "暂无分时数据";
+          chartSvg.innerHTML = "";
+          return;
+        }
+        placeholder.style.display = "none";
+
+        const W = chartWrap.clientWidth;
+        const H = chartWrap.clientHeight;
+        if (W < 10 || H < 10) return;
+
+        const info = activeInfo;
+        const dec = info?.isETF ? 3 : 2;
+        // 昨收价
+        const preClose = info?.preClose
+          ? parseFloat(info.preClose)
+          : parseFloat(info?.current || 0) -
+              parseFloat(info?.changeValue || 0) || minuteData[0].price;
+
+        const prices = minuteData.map((d) => d.price);
+        const lastPrice = prices[prices.length - 1];
+        const isUp = lastPrice >= preClose;
+        const lc = isUp ? C_UP : C_DN;
+
+        // Y 轴范围：以昨收为中心对称扩展
+        const maxDev =
+          Math.max(
+            ...prices.map((p) => Math.abs(p - preClose)),
+            preClose * 0.005,
+          ) * 1.15;
+        const yMin = preClose - maxDev;
+        const yMax = preClose + maxDev;
+
+        const PAD = { t: 12, r: 58, b: 26, l: 62 };
+        const cW = W - PAD.l - PAD.r;
+        const cH = H - PAD.t - PAD.b;
+        const n = minuteData.length;
+
+        const xOf = (i) => PAD.l + (i / Math.max(n - 1, 1)) * cW;
+        const yOf = (p) => PAD.t + (1 - (p - yMin) / (yMax - yMin)) * cH;
+        const pcY = yOf(preClose);
+
+        // 折线和填充路径
+        const pts = minuteData.map(
+          (d, i) => `${xOf(i).toFixed(1)},${yOf(d.price).toFixed(1)}`,
+        );
+        const lp = "M " + pts.join(" L ");
+        const lx = xOf(n - 1).toFixed(1);
+        const bY = (PAD.t + cH).toFixed(1);
+        const fp = `${lp} L ${lx},${bY} L ${xOf(0).toFixed(1)},${bY} Z`;
+
+        // Y 轴刻度（5 条）
+        const yTicks = Array.from({ length: 5 }, (_, i) => {
+          const p = yMin + ((yMax - yMin) * i) / 4;
+          const pct = ((p - preClose) / preClose) * 100;
+          const y = yOf(p);
+          return {
+            y,
+            price: p.toFixed(dec),
+            pct: (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%",
+            color: pct > 0.01 ? C_UP : pct < -0.01 ? C_DN : C_AXIS,
+          };
+        });
+
+        // X 轴时间刻度
+        const tMarks = [
+          "09:30",
+          "10:00",
+          "10:30",
+          "11:00",
+          "11:30",
+          "13:00",
+          "13:30",
+          "14:00",
+          "14:30",
+          "15:00",
+        ];
+        const xTicks = tMarks
+          .map((t) => {
+            const idx = minuteData.findIndex((d) => d.time.slice(-5) >= t);
+            return idx >= 0 ? { label: t, x: xOf(idx) } : null;
+          })
+          .filter(Boolean);
+
+        chartSvg.setAttribute("width", W);
+        chartSvg.setAttribute("height", H);
+
+        const gridLines = yTicks
+          .map(
+            (tk) =>
+              `<line x1="${PAD.l}" y1="${tk.y.toFixed(1)}" x2="${PAD.l + cW}" y2="${tk.y.toFixed(1)}" stroke="${C_GRID}" stroke-width="1"/>`,
+          )
+          .join("");
+
+        const yLeftLabels = yTicks
+          .map(
+            (tk) =>
+              `<text x="${PAD.l - 5}" y="${(tk.y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="${C_AXIS}">${tk.price}</text>`,
+          )
+          .join("");
+
+        const yRightLabels = yTicks
+          .map(
+            (tk) =>
+              `<text x="${PAD.l + cW + 5}" y="${(tk.y + 4).toFixed(1)}" text-anchor="start" font-size="11" fill="${tk.color}">${tk.pct}</text>`,
+          )
+          .join("");
+
+        const xTimeLabels = xTicks
+          .map(
+            (tk) =>
+              `<text x="${tk.x.toFixed(1)}" y="${(PAD.t + cH + 17).toFixed(1)}" text-anchor="middle" font-size="11" fill="${C_AXIS}">${tk.label}</text>`,
+          )
+          .join("");
+
+        chartSvg.innerHTML = `
+        <defs>
+          <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${lc}" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="${lc}" stop-opacity="0.02"/>
+          </linearGradient>
+          <clipPath id="cc">
+            <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}"/>
+          </clipPath>
+        </defs>
+        ${gridLines}
+        <line x1="${PAD.l}" y1="${pcY.toFixed(1)}" x2="${PAD.l + cW}" y2="${pcY.toFixed(1)}"
+          stroke="${lc}" stroke-opacity="0.45" stroke-dasharray="4,3" stroke-width="1"/>
+        <path d="${fp}" fill="url(#fg)" clip-path="url(#cc)"/>
+        <path d="${lp}" fill="none" stroke="${lc}" stroke-width="1.5" clip-path="url(#cc)"/>
+        <circle cx="${xOf(n - 1).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${lc}"/>
+        ${yLeftLabels}
+        ${yRightLabels}
+        ${xTimeLabels}
+        <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="none" stroke="${C_BDR}" stroke-width="1"/>
+        <rect id="hit" x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="transparent" style="cursor:crosshair"/>
+      `;
+
+        renderVolume(PAD, cW, n, xOf, preClose);
+        setupCrosshair(PAD, cW, cH, n, xOf, yOf, preClose, dec, lc);
+      }
+
+      /* -------- 渲染成交量柱状图 -------- */
+      function renderVolume(PAD, cW, n, xOf, preClose) {
+        const W = volWrap.clientWidth;
+        const H = volWrap.clientHeight;
+        if (W < 10 || H < 10) return;
+
+        // 累积成交量转每分钟成交量
+        const vols = minuteData.map((d, i) =>
+          i === 0 ? d.volume : Math.max(0, d.volume - minuteData[i - 1].volume),
+        );
+        const maxVol = Math.max(...vols, 1);
+        const vt = 4,
+          vb = 16;
+        const vH = H - vt - vb;
+        const barW = Math.max(1, (cW / n) * 0.75);
+
+        const bars = minuteData
+          .map((d, i) => {
+            const bH = Math.max(1, (d.volume / maxVol) * vH);
+            const x = (xOf(i) - barW / 2).toFixed(1);
+            const y = (vt + vH - bH).toFixed(1);
+            const c = d.price >= preClose ? C_UP : C_DN;
+            return `<rect x="${x}" y="${y}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="0.65"/>`;
+          })
+          .join("");
+
+        volSvg.setAttribute("width", W);
+        volSvg.setAttribute("height", H);
+        volSvg.innerHTML = `
+        <defs><clipPath id="vcc"><rect x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}"/></clipPath></defs>
+        <g clip-path="url(#vcc)">${bars}</g>
+        <text x="${PAD.l - 5}" y="${vt + 9}" text-anchor="end" font-size="10" fill="${C_AXIS}">${fmtVol(maxVol)}</text>
+        <rect x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}" fill="none" stroke="${C_BDR}" stroke-width="1"/>
+        <rect id="vol-hit" x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}" fill="transparent" style="cursor:crosshair"/>
+      `;
+      }
+
+      /* -------- 鼠标十字线 -------- */
+      function setupCrosshair(PAD, cW, cH, n, xOf, yOf, preClose, dec, lc) {
+        const hit = document.getElementById("hit");
+        if (!hit) return;
+
+        const ns = "http://www.w3.org/2000/svg";
+
+        hit.addEventListener("mousemove", (e) => {
+          const sr = chartSvg.getBoundingClientRect();
+          const mx = e.clientX - sr.left;
+          const idx = Math.round(((mx - PAD.l) / cW) * (n - 1));
+          const ci = Math.max(0, Math.min(n - 1, idx));
+          const d = minuteData[ci];
+          if (!d) return;
+
+          const px = xOf(ci);
+          const py = yOf(d.price);
+
+          chartSvg.querySelectorAll(".ch").forEach((el) => el.remove());
+          volSvg.querySelectorAll(".ch").forEach((el) => el.remove());
+
+          // 分时图垂直线
+          const vl = document.createElementNS(ns, "line");
+          vl.setAttribute("x1", px.toFixed(1));
+          vl.setAttribute("y1", PAD.t);
+          vl.setAttribute("x2", px.toFixed(1));
+          vl.setAttribute("y2", (PAD.t + cH).toFixed(1));
+          vl.setAttribute("stroke", "rgba(140,140,140,0.5)");
+          vl.setAttribute("stroke-width", "1");
+          vl.setAttribute("stroke-dasharray", "3,3");
+          vl.classList.add("ch");
+          chartSvg.appendChild(vl);
+
+          // 成交量图同步垂直线
+          const vvl = document.createElementNS(ns, "line");
+          vvl.setAttribute("x1", px.toFixed(1));
+          vvl.setAttribute("y1", "0");
+          vvl.setAttribute("x2", px.toFixed(1));
+          vvl.setAttribute("y2", volSvg.getAttribute("height") || "72");
+          vvl.setAttribute("stroke", "rgba(140,140,140,0.5)");
+          vvl.setAttribute("stroke-width", "1");
+          vvl.setAttribute("stroke-dasharray", "3,3");
+          vvl.classList.add("ch");
+          volSvg.appendChild(vvl);
+
+          // 水平线
+          const hl = document.createElementNS(ns, "line");
+          hl.setAttribute("x1", PAD.l);
+          hl.setAttribute("y1", py.toFixed(1));
+          hl.setAttribute("x2", (PAD.l + cW).toFixed(1));
+          hl.setAttribute("y2", py.toFixed(1));
+          hl.setAttribute("stroke", "rgba(140,140,140,0.5)");
+          hl.setAttribute("stroke-width", "1");
+          hl.setAttribute("stroke-dasharray", "3,3");
+          hl.classList.add("ch");
+          chartSvg.appendChild(hl);
+
+          // 数据点圆圈
+          const dot = document.createElementNS(ns, "circle");
+          dot.setAttribute("cx", px.toFixed(1));
+          dot.setAttribute("cy", py.toFixed(1));
+          dot.setAttribute("r", "4");
+          dot.setAttribute("fill", "var(--vscode-editor-background)");
+          dot.setAttribute("stroke", lc);
+          dot.setAttribute("stroke-width", "2");
+          dot.classList.add("ch");
+          chartSvg.appendChild(dot);
+
+          // 悬停提示内容
+          const pct = ((d.price - preClose) / preClose) * 100;
+          const chg = d.price - preClose;
+          const sign = pct >= 0 ? "+" : "";
+          const cls = pct > 0 ? "up" : pct < 0 ? "dn" : "gray";
+          tooltipEl.innerHTML = `
+          <div class="gray">${d.time.slice(-5)}</div>
+          <div>价格：<span class="${cls}">${d.price.toFixed(dec)}</span></div>
+          <div>涨跌：<span class="${cls}">${sign}${chg.toFixed(dec)}&nbsp;(${sign}${pct.toFixed(2)}%)</span></div>
+          <div class="gray">成交量：${fmtVol(ci === 0 ? d.volume : Math.max(0, d.volume - minuteData[ci - 1].volume))}</div>
+        `;
+
+          // 定位提示框（避免溢出边界）
+          const wr = chartWrap.getBoundingClientRect();
+          let tx = e.clientX - wr.left + 14;
+          let ty = e.clientY - wr.top - 8;
+          if (tx + 175 > wr.width) tx = e.clientX - wr.left - 185;
+          if (ty + 110 > wr.height) ty = wr.height - 118;
+          tooltipEl.style.left = tx + "px";
+          tooltipEl.style.top = ty + "px";
+          tooltipEl.style.display = "block";
+        });
+
+        hit.addEventListener("mouseleave", () => {
+          chartSvg.querySelectorAll(".ch").forEach((el) => el.remove());
+          volSvg.querySelectorAll(".ch").forEach((el) => el.remove());
+          tooltipEl.style.display = "none";
+        });
+      }
+
+      /* -------- 工具函数 -------- */
+      function fmtVol(v) {
+        if (v >= 1e8) return (v / 1e8).toFixed(2) + "亿";
+        if (v >= 1e4) return (v / 1e4).toFixed(2) + "万";
+        return String(Math.round(v));
+      }
+
+      /* -------- 消息处理 -------- */
+      window.addEventListener("message", (e) => {
+        const msg = e.data;
+        if (msg.type === "init") {
+          stocks = msg.stocks;
+          activeCode = msg.activeCode;
+          stocksMap = {};
+          stocks.forEach((s) => {
+            stocksMap[s.code] = s;
+          });
+          activeInfo = stocksMap[activeCode] || null;
+          renderTabs();
+          renderHeader();
+        } else if (msg.type === "loading") {
+          if (msg.code === activeCode) showLoading();
+        } else if (msg.type === "minuteData") {
+          if (msg.code === activeCode) {
+            minuteData = msg.data;
+            activeInfo = msg.stockInfo || stocksMap[msg.code] || null;
+            if (activeInfo) stocksMap[msg.code] = activeInfo;
+            renderHeader();
+            renderChart();
+          }
+        }
+      });
+
+      /* -------- 响应容器大小变化 -------- */
+      new ResizeObserver(() => {
+        if (minuteData) renderChart();
+      }).observe(chartWrap);
+      new ResizeObserver(() => {
+        if (minuteData) renderChart();
+      }).observe(volWrap);
+    </script>
+  </body>
+</html>

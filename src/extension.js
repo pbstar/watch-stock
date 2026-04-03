@@ -4,6 +4,7 @@
 
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
+const StockDetailPanel = require("./ui/stockDetail");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
 const { getStocks, getAutoHideByMarket } = require("./config");
@@ -109,6 +110,11 @@ function registerCommands(context) {
       // 如果已有股票，添加更多选项
       if (stocks.length > 0) {
         options.push({
+          label: "$(graph) 查看股票",
+          description: "查看股票详情",
+          action: "detail",
+        });
+        options.push({
           label: "$(remove) 移除股票",
           description: "从已添加的股票中选择移除",
           action: "remove",
@@ -157,6 +163,9 @@ function registerCommands(context) {
         case "add":
           await vscode.commands.executeCommand("watch-stock.addStock");
           break;
+        case "detail":
+          await vscode.commands.executeCommand("watch-stock.viewDetail");
+          break;
         case "remove":
           await vscode.commands.executeCommand("watch-stock.removeStock");
           break;
@@ -202,6 +211,24 @@ function registerCommands(context) {
     },
   );
 
+  // 查看分时图
+  const viewDetailCommand = vscode.commands.registerCommand(
+    "watch-stock.viewDetail",
+    async () => {
+      const stocks = getStocks();
+      if (stocks.length === 0) {
+        vscode.window.showInformationMessage("请先添加股票");
+        return;
+      }
+      const infos = await getStockList(stocks);
+      if (infos.length === 0) {
+        vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
+        return;
+      }
+      await StockDetailPanel.show(infos);
+    },
+  );
+
   // 监听配置变化，只响应本插件配置变化
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
     (e) => {
@@ -222,6 +249,7 @@ function registerCommands(context) {
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
+    viewDetailCommand,
     configChangeListener,
   );
 }
