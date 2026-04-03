@@ -3,8 +3,7 @@
  * 根据股票名称搜索股票代码
  */
 
-const { httpGet } = require("../utils/httpClient");
-const { simpleDecode } = require("../utils/encoding");
+const { getGbk } = require("../utils/httpClient");
 
 /**
  * 根据股票名称搜索股票代码
@@ -31,19 +30,9 @@ async function searchStockCode(keyword) {
 async function searchBySina(keyword) {
   try {
     const url = `https://suggest3.sinajs.cn/suggest/type=11,12,13,14,15,21,22,23,24,25,31,32,33,34,35&key=${encodeURIComponent(
-      keyword
+      keyword,
     )}`;
-    const response = await httpGet(url, {
-      timeout: 5000,
-      responseType: "arraybuffer",
-      headers: {
-        Referer: "https://finance.sina.com.cn",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const data = simpleDecode(response.data);
+    const data = await getGbk(url);
     const match = data.match(/var suggestvalue="([^"]+)"/);
 
     if (match?.[1]) {

@@ -3,8 +3,7 @@
  * 获取股票实时数据，支持批量查询
  */
 
-const { httpGet } = require("../utils/httpClient");
-const { simpleDecode } = require("../utils/encoding");
+const { getGbk } = require("../utils/httpClient");
 
 /**
  * 批量获取股票信息
@@ -16,17 +15,7 @@ async function getStockList(codes) {
 
   try {
     const url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
-    const response = await httpGet(url, {
-      timeout: 5000,
-      responseType: "arraybuffer",
-      headers: {
-        Referer: "https://finance.sina.com.cn",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-
-    const data = simpleDecode(response.data);
+    const data = await getGbk(url);
     const results = data
       .split("\n")
       .map((line) => {
