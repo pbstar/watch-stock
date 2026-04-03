@@ -220,12 +220,7 @@ function registerCommands(context) {
         vscode.window.showInformationMessage("请先添加股票");
         return;
       }
-      const infos = await getStockList(stocks);
-      if (infos.length === 0) {
-        vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
-        return;
-      }
-      await StockDetailPanel.show(infos);
+      await StockDetailPanel.show();
     },
   );
 

@@ -127,7 +127,105 @@ async function getStockMinute(code) {
   }
 }
 
+/**
+ * 格式化股票代码
+ * @param {string} code - 股票代码
+ * @returns {string} 格式化后的代码
+ */
+function formatStockCode(code) {
+  if (code.startsWith("6")) return "sh" + code;
+  if (code.startsWith("0") || code.startsWith("3")) return "sz" + code;
+  return code;
+}
+
+/**
+ * 安全转换为数字
+ * @param {string} val - 原始值
+ * @returns {number} 数字
+ */
+function safeNumber(val) {
+  const n = parseFloat(val);
+  return isNaN(n) ? 0 : n;
+}
+
+/**
+ * 解析完整行情数据
+ * @param {string[]} fields - 字段数组
+ * @returns {Object} 解析后的股票信息
+ */
+function parseFullQuote(fields) {
+  return {
+    name: fields[1] ?? "",
+    code: formatStockCode(fields[2] ?? ""),
+    price: safeNumber(fields[3]),
+    close: safeNumber(fields[4]),
+    open: safeNumber(fields[5]),
+    volume: safeNumber(fields[6]),
+    changePercent: safeNumber(fields[32]),
+    high: safeNumber(fields[33]),
+    low: safeNumber(fields[34]),
+    amount: safeNumber(fields[37]) * 10000,
+    turnoverRatio: safeNumber(fields[38]),
+    pe: safeNumber(fields[39]),
+    circulationMarket: safeNumber(fields[44]) * 100000000,
+    totalMarket: safeNumber(fields[45]) * 100000000,
+    pb: safeNumber(fields[46]),
+    volumeRatio: safeNumber(fields[49]),
+    avgPrice: safeNumber(fields[51]),
+    circulatingShares: safeNumber(fields[72]),
+    totalShares: safeNumber(fields[73]),
+  };
+}
+
+/**
+ * 解析腾讯行情响应
+ * @param {string} text - 响应文本
+ * @returns {Array} 股票信息数组
+ */
+function parseQuoteResponse(text) {
+  const lines = text
+    .split(";")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const results = [];
+  for (const line of lines) {
+    const eqIdx = line.indexOf("=");
+    if (eqIdx < 0) continue;
+    let key = line.slice(0, eqIdx).trim();
+    if (key.startsWith("v_")) key = key.slice(2);
+    let raw = line.slice(eqIdx + 1).trim();
+    if (raw.startsWith('"') && raw.endsWith('"')) {
+      raw = raw.slice(1, -1);
+    }
+    const fields = raw.split("~");
+    results.push(parseFullQuote(fields));
+  }
+  return results;
+}
+
+/**
+ * 获取股票详细行情列表
+ * @param {string[]} codes - 股票代码数组，如 ['600519', '000001']
+ * @returns {Promise<Array>} 股票详细信息数组
+ */
+async function getStockQuoteList(codes) {
+  if (!codes?.length) return [];
+
+  try {
+    const formattedCodes = codes.map(formatStockCode).join(",");
+    const url = `https://qt.gtimg.cn/?q=${formattedCodes}`;
+    const res = await getGbk(url);
+    if (!res) return [];
+    const data = parseQuoteResponse(res);
+    return data;
+  } catch (error) {
+    console.error(`获取股票详细行情失败: ${error.message}`);
+    return [];
+  }
+}
+
 module.exports = {
   getStockList,
   getStockMinute,
+  getStockQuoteList,
 };

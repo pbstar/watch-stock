@@ -89,9 +89,16 @@
       /* 股票信息头部 */
       .s-header {
         display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex-shrink: 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--vscode-panel-border, #454545);
+      }
+      .s-header-top {
+        display: flex;
         align-items: center;
         gap: 8px;
-        flex-shrink: 0;
         min-height: 36px;
       }
       .s-name {
@@ -129,26 +136,55 @@
         background: var(--vscode-list-hoverBackground, #2a2d2e);
       }
 
+      /* 详细信息网格 */
+      .s-details {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px 16px;
+        font-size: 12px;
+      }
+      .s-detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .s-detail-label {
+        color: var(--vscode-descriptionForeground, #888);
+      }
+      .s-detail-value {
+        font-weight: 500;
+      }
+
       /* 分时图区域 */
       .chart-wrap {
         height: 240px;
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
+        display: flex;
+        justify-content: center;
       }
       .chart-wrap svg {
         display: block;
+        min-width: 500px;
+        max-width: 1000px;
+        width: 100%;
       }
 
       /* 成交量图区域 */
       .vol-wrap {
-        height: 72px;
+        height: 80px;
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
+        display: flex;
+        justify-content: center;
       }
       .vol-wrap svg {
         display: block;
+        min-width: 500px;
+        max-width: 1000px;
+        width: 100%;
       }
 
       .placeholder {
@@ -211,8 +247,10 @@
       let stocks = [];
       let activeCode = null;
       let stocksMap = {};
+      let quoteDataMap = {};
       let minuteData = null;
       let activeInfo = null;
+      let activeQuote = null;
 
       /* -------- DOM -------- */
       const tabBar = document.getElementById("tab-bar");
@@ -247,23 +285,46 @@
           .join("");
 
         tabBar.querySelectorAll(".tab").forEach((el) => {
-          el.addEventListener("click", () => {
-            const c = el.dataset.code;
-            if (c !== activeCode) {
-              activeCode = c;
-              minuteData = null;
-              activeInfo = stocksMap[c] || null;
-              renderTabs();
-              renderHeader();
-              vscode.postMessage({ type: "switchStock", code: c });
-            }
-          });
+        el.addEventListener("click", () => {
+          const c = el.dataset.code;
+          if (c !== activeCode) {
+            activeCode = c;
+            minuteData = null;
+            activeInfo = stocksMap[c] || null;
+            activeQuote = quoteDataMap[c] || null;
+            renderTabs();
+            renderHeader();
+            vscode.postMessage({ type: "switchStock", code: c });
+          }
         });
+      });
+      }
+
+      /* -------- 格式化工具函数 -------- */
+      function fmtNumber(n, decimals = 2) {
+        if (n === null || n === undefined || isNaN(n)) return "-";
+        return n.toFixed(decimals);
+      }
+
+      function fmtVolume(n) {
+        if (n === null || n === undefined || isNaN(n)) return "-";
+        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
+        return n.toFixed(0);
+      }
+
+      function fmtMoney(n) {
+        if (n === null || n === undefined || isNaN(n)) return "-";
+        if (n >= 1e12) return (n / 1e12).toFixed(2) + "万亿";
+        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
+        return n.toFixed(2);
       }
 
       /* -------- 渲染头部信息 -------- */
       function renderHeader() {
         const s = activeInfo;
+        const q = activeQuote;
         if (!s) {
           sHeader.innerHTML = '<span class="gray">加载中...</span>';
           return;
@@ -271,13 +332,74 @@
         const v = parseFloat(s.changePercent);
         const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
         const sign = v > 0 ? "+" : "";
+
+        // 构建详细信息HTML
+        let detailsHtml = "";
+        if (q) {
+          detailsHtml = `
+        <div class="s-details">
+          <div class="s-detail-item">
+            <span class="s-detail-label">今开</span>
+            <span class="s-detail-value ${q.open > q.close ? 'up' : q.open < q.close ? 'dn' : ''}">${fmtNumber(q.open)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">最高</span>
+            <span class="s-detail-value ${q.high > q.close ? 'up' : ''}">${fmtNumber(q.high)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">最低</span>
+            <span class="s-detail-value ${q.low < q.close ? 'dn' : ''}">${fmtNumber(q.low)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">昨收</span>
+            <span class="s-detail-value">${fmtNumber(q.close)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">成交量</span>
+            <span class="s-detail-value">${fmtVolume(q.volume)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">成交额</span>
+            <span class="s-detail-value">${fmtMoney(q.amount)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">换手率</span>
+            <span class="s-detail-value">${q.turnoverRatio !== null ? q.turnoverRatio.toFixed(2) + '%' : '-'}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">量比</span>
+            <span class="s-detail-value">${q.volumeRatio !== null ? q.volumeRatio.toFixed(2) : '-'}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">市盈率(TTM)</span>
+            <span class="s-detail-value">${q.pe !== null ? q.pe.toFixed(2) : '-'}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">市净率</span>
+            <span class="s-detail-value">${q.pb !== null ? q.pb.toFixed(2) : '-'}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">总市值</span>
+            <span class="s-detail-value">${fmtMoney(q.totalMarket)}</span>
+          </div>
+          <div class="s-detail-item">
+            <span class="s-detail-label">流通市值</span>
+            <span class="s-detail-value">${fmtMoney(q.circulationMarket)}</span>
+          </div>
+        </div>
+      `;
+        }
+
         sHeader.innerHTML = `
-        <span class="s-name">${s.name}</span>
-        <span class="s-code">${s.code.toUpperCase()}</span>
-        <span class="s-price ${cls}">${s.current}</span>
-        <span class="s-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
-        <span class="s-time">${s.dateTime || ""}</span>
-        <button class="btn-refresh" id="btn-refresh">↻&nbsp;刷新</button>
+        <div class="s-header-top">
+          <span class="s-name">${s.name}</span>
+          <span class="s-code">${s.code.toUpperCase()}</span>
+          <span class="s-price ${cls}">${s.current}</span>
+          <span class="s-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
+          <span class="s-time">${s.dateTime || ""}</span>
+          <button class="btn-refresh" id="btn-refresh">↻&nbsp;刷新</button>
+        </div>
+        ${detailsHtml}
       `;
         document.getElementById("btn-refresh").addEventListener("click", () => {
           vscode.postMessage({ type: "refresh" });
@@ -303,7 +425,7 @@
         }
         placeholder.style.display = "none";
 
-        const W = 600;
+        const W = Math.min(1000, Math.max(500, chartWrap.clientWidth));
         const H = chartWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
@@ -435,7 +557,7 @@
 
       /* -------- 渲染成交量柱状图 -------- */
       function renderVolume(PAD, cW, n, xOf, preClose) {
-        const W = volWrap.clientWidth;
+        const W = Math.min(1000, Math.max(500, volWrap.clientWidth));
         const H = volWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
@@ -583,10 +705,12 @@
           stocks = msg.stocks;
           activeCode = msg.activeCode;
           stocksMap = {};
+          quoteDataMap = msg.quoteData || {};
           stocks.forEach((s) => {
             stocksMap[s.code] = s;
           });
           activeInfo = stocksMap[activeCode] || null;
+          activeQuote = quoteDataMap[activeCode] || null;
           renderTabs();
           renderHeader();
         } else if (msg.type === "loading") {
@@ -595,6 +719,7 @@
           if (msg.code === activeCode) {
             minuteData = msg.data;
             activeInfo = msg.stockInfo || stocksMap[msg.code] || null;
+            activeQuote = msg.quoteInfo || quoteDataMap[msg.code] || null;
             if (activeInfo) stocksMap[msg.code] = activeInfo;
             renderHeader();
             renderChart();

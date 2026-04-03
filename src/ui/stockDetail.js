@@ -6,7 +6,11 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const { getStockMinute } = require("../services/stockService");
+const {
+  getStockMinute,
+  getStockQuoteList,
+} = require("../services/stockService");
+const { getStocks } = require("../config");
 
 class StockDetailPanel {
   static current = null;
@@ -16,17 +20,10 @@ class StockDetailPanel {
     this._disposables = [];
     this._stocks = [];
     this._activeCode = null;
+    this._quoteMap = new Map();
 
-    // 监听 webview 消息
     this._panel.webview.onDidReceiveMessage(
-      async (msg) => {
-        if (msg.type === "switchStock") {
-          this._activeCode = msg.code;
-          await this._fetchAndSend(msg.code);
-        } else if (msg.type === "refresh") {
-          if (this._activeCode) await this._fetchAndSend(this._activeCode);
-        }
-      },
+      (msg) => this._handleMessage(msg),
       null,
       this._disposables,
     );
@@ -34,47 +31,79 @@ class StockDetailPanel {
     this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
   }
 
-  /**
-   * 打开或刷新面板
-   * @param {object[]} stockInfos 股票数据列表
-   * @param {string} [initialCode] 初始选中代码
-   */
-  static async show(stockInfos, initialCode) {
-    const col = vscode.ViewColumn.Two;
+  async _handleMessage(msg) {
+    if (msg.type === "switchStock") {
+      this._activeCode = msg.code;
+      await this._fetchAndSend(msg.code);
+    } else if (msg.type === "refresh" && this._activeCode) {
+      await this._fetchAndSend(this._activeCode);
+    }
+  }
 
-    if (StockDetailPanel.current) {
-      StockDetailPanel.current._panel.reveal(col);
-      await StockDetailPanel.current._load(stockInfos, initialCode);
+  static async show() {
+    const configStocks = getStocks();
+    if (!configStocks.length) {
+      vscode.window.showInformationMessage("请先添加股票");
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      "stockDetail",
-      "查看股票",
-      col,
-      { enableScripts: true, retainContextWhenHidden: true },
-    );
+    const quotes = await getStockQuoteList(configStocks);
+    if (!quotes.length) {
+      vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
+      return;
+    }
 
-    StockDetailPanel.current = new StockDetailPanel(panel);
-    await StockDetailPanel.current._load(stockInfos, initialCode);
+    const col = vscode.ViewColumn.Two;
+    const panel = StockDetailPanel.current?._panel;
+
+    if (panel) {
+      panel.reveal(col);
+      await StockDetailPanel.current._load(quotes);
+    } else {
+      const newPanel = vscode.window.createWebviewPanel(
+        "stockDetail",
+        "查看股票",
+        col,
+        { enableScripts: true, retainContextWhenHidden: true },
+      );
+      StockDetailPanel.current = new StockDetailPanel(newPanel);
+      await StockDetailPanel.current._load(quotes);
+    }
   }
 
-  async _load(stockInfos, initialCode) {
-    this._stocks = stockInfos;
-    this._activeCode = initialCode || stockInfos[0]?.code || null;
+  _convertToStockInfo(quote) {
+    return {
+      name: quote.name,
+      code: quote.code,
+      current: quote.price.toFixed(2),
+      changeValue: (quote.price - quote.close).toFixed(2),
+      changePercent: quote.changePercent.toFixed(2),
+      preClose: quote.close.toFixed(2),
+      isETF: false,
+      dateTime: "",
+    };
+  }
 
-    const activeName =
-      stockInfos.find((s) => s.code === this._activeCode)?.name || "";
-    this._panel.title = activeName ? `查看股票 - ${activeName}` : "查看股票";
+  async _load(quotes) {
+    this._quoteMap.clear();
+    this._stocks = quotes.map((q) => {
+      this._quoteMap.set(q.code, q);
+      return this._convertToStockInfo(q);
+    });
+
+    this._activeCode = this._stocks[0]?.code || null;
+    this._panel.title = this._stocks[0]?.name
+      ? `查看股票 - ${this._stocks[0].name}`
+      : "查看股票";
     this._panel.webview.html = this._buildHtml();
 
-    // 等待 webview 初始化完成
     await new Promise((r) => setTimeout(r, 100));
 
     this._panel.webview.postMessage({
       type: "init",
-      stocks: stockInfos,
+      stocks: this._stocks,
       activeCode: this._activeCode,
+      quoteData: Object.fromEntries(this._quoteMap),
     });
 
     if (this._activeCode) {
@@ -84,13 +113,17 @@ class StockDetailPanel {
 
   async _fetchAndSend(code) {
     this._panel.webview.postMessage({ type: "loading", code });
-    const stockInfo = this._stocks.find((s) => s.code === code) || null;
-    const data = await getStockMinute(code);
+    const [stockInfo, quoteInfo, data] = await Promise.all([
+      Promise.resolve(this._stocks.find((s) => s.code === code) || null),
+      Promise.resolve(this._quoteMap.get(code) || null),
+      getStockMinute(code),
+    ]);
     this._panel.webview.postMessage({
       type: "minuteData",
       code,
       data,
       stockInfo,
+      quoteInfo,
     });
   }
 
@@ -104,7 +137,9 @@ class StockDetailPanel {
   _dispose() {
     StockDetailPanel.current = null;
     this._panel.dispose();
-    while (this._disposables.length) this._disposables.pop().dispose();
+    while (this._disposables.length) {
+      this._disposables.pop().dispose();
+    }
   }
 }
 
