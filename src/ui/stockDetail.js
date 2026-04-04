@@ -113,11 +113,9 @@ class StockDetailPanel {
 
   async _fetchAndSend(code) {
     this._panel.webview.postMessage({ type: "loading", code });
-    const [stockInfo, quoteInfo, data] = await Promise.all([
-      Promise.resolve(this._stocks.find((s) => s.code === code) || null),
-      Promise.resolve(this._quoteMap.get(code) || null),
-      getStockMinute(code),
-    ]);
+    const stockInfo = this._stocks.find((s) => s.code === code) || null;
+    const quoteInfo = this._quoteMap.get(code) || null;
+    const data = await getStockMinute(code);
     this._panel.webview.postMessage({
       type: "minuteData",
       code,

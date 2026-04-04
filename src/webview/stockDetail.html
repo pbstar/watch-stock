@@ -28,13 +28,7 @@
       body {
         background: var(--vscode-editor-background);
         color: var(--vscode-editor-foreground);
-        font-family: var(
-          --vscode-font-family,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif
-        );
+        font-family: var(--vscode-font-family, -apple-system);
         font-size: 13px;
         height: 100vh;
         display: flex;
@@ -86,10 +80,17 @@
 
       .main {
         flex: 1;
+        padding: 14px 16px 12px;
+      }
+
+      /* 统一宽度容器：600-1000px 自适应，>1000px 居中留白 */
+      .content {
+        min-width: 600px;
+        max-width: 1000px;
+        width: 100%;
+        margin: 0 auto;
         display: flex;
         flex-direction: column;
-        padding: 14px 16px 12px;
-        overflow: visible;
         gap: 10px;
       }
 
@@ -146,14 +147,12 @@
       }
 
       .s-details {
-        min-width: 600px;
-        max-width: 1000px;
         width: 100%;
-        margin: 0 auto;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 6px 16px;
         font-size: 12px;
+        padding-bottom: 10px;
       }
       .s-detail-item {
         display: flex;
@@ -177,15 +176,10 @@
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
-        display: flex;
-        justify-content: center;
         width: 100%;
-        min-width: 0;
       }
       .chart-wrap svg {
         display: block;
-        min-width: 600px;
-        max-width: 1000px;
         width: 100%;
       }
 
@@ -194,15 +188,10 @@
         flex-shrink: 0;
         position: relative;
         overflow: hidden;
-        display: flex;
-        justify-content: center;
         width: 100%;
-        min-width: 0;
       }
       .vol-wrap svg {
         display: block;
-        min-width: 600px;
-        max-width: 1000px;
         width: 100%;
       }
 
@@ -245,16 +234,18 @@
   <body>
     <div class="tab-bar" id="tab-bar"></div>
     <div class="main">
-      <div class="s-header" id="s-header">
-        <span class="gray">加载中...</span>
-      </div>
-      <div class="chart-wrap" id="chart-wrap">
-        <div class="placeholder" id="placeholder">正在获取分时数据...</div>
-        <svg id="chart-svg"></svg>
-        <div class="tooltip" id="tooltip"></div>
-      </div>
-      <div class="vol-wrap" id="vol-wrap">
-        <svg id="vol-svg"></svg>
+      <div class="content" id="content">
+        <div class="s-header" id="s-header">
+          <span class="gray">加载中...</span>
+        </div>
+        <div class="chart-wrap" id="chart-wrap">
+          <div class="placeholder" id="placeholder">正在获取分时数据...</div>
+          <svg id="chart-svg"></svg>
+          <div class="tooltip" id="tooltip"></div>
+        </div>
+        <div class="vol-wrap" id="vol-wrap">
+          <svg id="vol-svg"></svg>
+        </div>
       </div>
     </div>
 
@@ -280,6 +271,7 @@
       const tooltipEl = $("tooltip");
       const volWrap = $("vol-wrap");
       const volSvg = $("vol-svg");
+      const content = $("content");
 
       /* -------- 颜色常量（与 CSS :root 同步） -------- */
       const C_UP = "#c94c4c";
@@ -473,7 +465,7 @@
         }
         placeholder.style.display = "none";
 
-        const W = Math.min(1000, Math.max(600, chartWrap.clientWidth));
+        const W = chartWrap.clientWidth || 600;
         const H = chartWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
@@ -500,7 +492,7 @@
         const yMin = preClose - maxDev;
         const yMax = preClose + maxDev;
 
-        const PAD = { t: 12, r: 58, b: 26, l: 62 };
+        const PAD = { t: 20, r: 58, b: 26, l: 62 };
         const cW = W - PAD.l - PAD.r;
         const cH = H - PAD.t - PAD.b;
         const n = minuteData.length;
@@ -608,7 +600,7 @@
 
       /* -------- 渲染成交量柱状图 -------- */
       function renderVolume(PAD, cW, n, xOf) {
-        const W = Math.min(1000, Math.max(600, volWrap.clientWidth));
+        const W = volWrap.clientWidth || 600;
         const H = volWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
@@ -752,7 +744,7 @@
         }
       });
 
-      /* -------- 响应式ResizeObserver -------- */
+      /* -------- 响应式 ResizeObserver -------- */
       let rafId = null;
       const doRender = () => {
         if (rafId) return;
@@ -761,8 +753,7 @@
           if (minuteData) renderChart();
         });
       };
-      new ResizeObserver(doRender).observe(chartWrap);
-      new ResizeObserver(doRender).observe(volWrap);
+      new ResizeObserver(doRender).observe(content);
     </script>
   </body>
 </html>
