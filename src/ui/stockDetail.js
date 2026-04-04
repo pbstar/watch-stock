@@ -53,7 +53,7 @@ class StockDetailPanel {
       return;
     }
 
-    const col = vscode.ViewColumn.Two;
+    const col = vscode.ViewColumn.One;
     const panel = StockDetailPanel.current?._panel;
 
     if (panel) {

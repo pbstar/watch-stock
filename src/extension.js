@@ -111,7 +111,7 @@ function registerCommands(context) {
       if (stocks.length > 0) {
         options.push({
           label: "$(list-flat) 查看股票",
-          description: "查看股票详情",
+          description: "查看股票详细数据",
           action: "detail",
         });
         options.push({
@@ -211,7 +211,7 @@ function registerCommands(context) {
     },
   );
 
-  // 查看分时图
+  // 查看股票
   const viewDetailCommand = vscode.commands.registerCommand(
     "watch-stock.viewDetail",
     async () => {

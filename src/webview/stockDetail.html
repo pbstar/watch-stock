@@ -334,12 +334,6 @@
         return Number(n).toFixed(2);
       }
 
-      function priceCls(val, base) {
-        if (val > base) return "up";
-        if (val < base) return "dn";
-        return "";
-      }
-
       /* -------- 渲染 Tab（事件委托，只绑定一次） -------- */
       tabBar.addEventListener("click", (e) => {
         const tab = e.target.closest(".tab");
@@ -393,29 +387,28 @@
         if (q) {
           const close = q.close;
           const items = [
-            ["今开", fmtNum(q.open), priceCls(q.open, close)],
-            ["最高", fmtNum(q.high), q.high > close ? "up" : ""],
-            ["最低", fmtNum(q.low), q.low < close ? "dn" : ""],
-            ["昨收", fmtNum(q.close), ""],
-            ["成交量", fmtVol(q.volume), ""],
-            ["成交额", fmtMoney(q.amount), ""],
+            ["今开", fmtNum(q.open)],
+            ["最高", fmtNum(q.high)],
+            ["最低", fmtNum(q.low)],
+            ["昨收", fmtNum(q.close)],
+            ["成交量", fmtVol(q.volume)],
+            ["成交额", fmtMoney(q.amount)],
             [
               "换手率",
               q.turnoverRatio != null ? fmtNum(q.turnoverRatio) + "%" : "-",
-              "",
             ],
-            ["量比", q.volumeRatio != null ? fmtNum(q.volumeRatio) : "-", ""],
-            ["市盈率(TTM)", q.pe != null ? fmtNum(q.pe) : "-", ""],
-            ["市净率", q.pb != null ? fmtNum(q.pb) : "-", ""],
-            ["总市值", fmtMoney(q.totalMarket), ""],
-            ["流通市值", fmtMoney(q.circulationMarket), ""],
+            ["量比", q.volumeRatio != null ? fmtNum(q.volumeRatio) : "-"],
+            ["市盈率(TTM)", q.pe != null ? fmtNum(q.pe) : "-"],
+            ["市净率", q.pb != null ? fmtNum(q.pb) : "-"],
+            ["总市值", fmtMoney(q.totalMarket)],
+            ["流通市值", fmtMoney(q.circulationMarket)],
           ];
           detailsHtml =
             `<div class="s-details">` +
             items
               .map(
-                ([label, val, c]) =>
-                  `<div class="s-detail-item"><span class="s-detail-label">${label}</span><span class="s-detail-value ${c}">${val}</span></div>`,
+                ([label, val]) =>
+                  `<div class="s-detail-item"><span class="s-detail-label">${label}</span><span class="s-detail-value">${val}</span></div>`,
               )
               .join("") +
             `</div>`;
