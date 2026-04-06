@@ -128,17 +128,6 @@ async function getStockMinute(code) {
 }
 
 /**
- * 格式化股票代码
- * @param {string} code - 股票代码
- * @returns {string} 格式化后的代码
- */
-function formatStockCode(code) {
-  if (code.startsWith("6")) return "sh" + code;
-  if (code.startsWith("0") || code.startsWith("3")) return "sz" + code;
-  return code;
-}
-
-/**
  * 安全转换为数字
  * @param {string} val - 原始值
  * @returns {number} 数字
@@ -153,10 +142,10 @@ function safeNumber(val) {
  * @param {string[]} fields - 字段数组
  * @returns {Object} 解析后的股票信息
  */
-function parseFullQuote(fields) {
+function parseFullQuote(fields, code) {
   return {
     name: fields[1] ?? "",
-    code: formatStockCode(fields[2] ?? ""),
+    code: code,
     price: safeNumber(fields[3]),
     close: safeNumber(fields[4]),
     open: safeNumber(fields[5]),
@@ -182,13 +171,13 @@ function parseFullQuote(fields) {
  * @param {string} text - 响应文本
  * @returns {Array} 股票信息数组
  */
-function parseQuoteResponse(text) {
+function parseQuoteResponse(text, codes) {
   const lines = text
     .split(";")
     .map((l) => l.trim())
     .filter(Boolean);
   const results = [];
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const eqIdx = line.indexOf("=");
     if (eqIdx < 0) continue;
     let key = line.slice(0, eqIdx).trim();
@@ -198,7 +187,7 @@ function parseQuoteResponse(text) {
       raw = raw.slice(1, -1);
     }
     const fields = raw.split("~");
-    results.push(parseFullQuote(fields));
+    results.push(parseFullQuote(fields, codes[index]));
   }
   return results;
 }
@@ -212,11 +201,10 @@ async function getStockQuoteList(codes) {
   if (!codes?.length) return [];
 
   try {
-    const formattedCodes = codes.map(formatStockCode).join(",");
-    const url = `https://qt.gtimg.cn/?q=${formattedCodes}`;
+    const url = `https://qt.gtimg.cn/?q=${codes.join(",")}`;
     const res = await getGbk(url);
     if (!res) return [];
-    const data = parseQuoteResponse(res);
+    const data = parseQuoteResponse(res, codes);
     return data;
   } catch (error) {
     console.error(`获取股票详细行情失败: ${error.message}`);
