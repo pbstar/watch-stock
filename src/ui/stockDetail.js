@@ -21,6 +21,7 @@ class StockDetailPanel {
     this._stocks = [];
     this._activeCode = null;
     this._quoteMap = new Map();
+    this._minuteCache = new Map();
 
     this._panel.webview.onDidReceiveMessage(
       (msg) => this._handleMessage(msg),
@@ -36,7 +37,7 @@ class StockDetailPanel {
       this._activeCode = msg.code;
       await this._fetchAndSend(msg.code);
     } else if (msg.type === "refresh" && this._activeCode) {
-      await this._fetchAndSend(this._activeCode);
+      await this._fetchAndSend(this._activeCode, true);
     }
   }
 
@@ -92,9 +93,7 @@ class StockDetailPanel {
     });
 
     this._activeCode = this._stocks[0]?.code || null;
-    this._panel.title = this._stocks[0]?.name
-      ? `查看股票 - ${this._stocks[0].name}`
-      : "查看股票";
+    this._panel.title = "查看股票";
     this._panel.webview.html = this._buildHtml();
 
     await new Promise((r) => setTimeout(r, 100));
@@ -111,11 +110,27 @@ class StockDetailPanel {
     }
   }
 
-  async _fetchAndSend(code) {
+  async _fetchAndSend(code, forceRefresh = false) {
     this._panel.webview.postMessage({ type: "loading", code });
     const stockInfo = this._stocks.find((s) => s.code === code) || null;
     const quoteInfo = this._quoteMap.get(code) || null;
+
+    const now = Date.now();
+    const cached = this._minuteCache.get(code);
+    if (!forceRefresh && cached && now - cached.timestamp < 10000) {
+      this._panel.webview.postMessage({
+        type: "minuteData",
+        code,
+        data: cached.data,
+        stockInfo,
+        quoteInfo,
+        cached: true,
+      });
+      return;
+    }
+
     const data = await getStockMinute(code);
+    this._minuteCache.set(code, { data, timestamp: now });
     this._panel.webview.postMessage({
       type: "minuteData",
       code,
