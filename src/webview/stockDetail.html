@@ -520,7 +520,6 @@
           "10:30",
           "11:00",
           "11:30",
-          "13:00",
           "13:30",
           "14:00",
           "14:30",
@@ -530,7 +529,9 @@
         const xTicks = tMarks
           .map((t) => {
             while (ti < n && minuteData[ti].time.slice(-5) < t) ti++;
-            return ti < n ? { label: t, x: xOf(ti) } : null;
+            return ti < n
+              ? { label: t === "11:30" ? t + "（13:00）" : t, x: xOf(ti) }
+              : null;
           })
           .filter(Boolean);
 
@@ -541,6 +542,13 @@
           .map(
             (tk) =>
               `<line x1="${PAD.l}" y1="${tk.y.toFixed(1)}" x2="${PAD.l + cW}" y2="${tk.y.toFixed(1)}" stroke="${C_GRID}" stroke-width="1"/>`,
+          )
+          .join("");
+
+        const xGridLines = xTicks
+          .map(
+            (tk) =>
+              `<line x1="${tk.x.toFixed(1)}" y1="${PAD.t}" x2="${tk.x.toFixed(1)}" y2="${PAD.t + cH}" stroke="${C_GRID}" stroke-width="1"/>`,
           )
           .join("");
 
@@ -574,6 +582,7 @@
           </linearGradient>
         </defs>
         ${gridLines}
+        ${xGridLines}
         <line x1="${PAD.l}" y1="${pcY.toFixed(1)}" x2="${PAD.l + cW}" y2="${pcY.toFixed(1)}"
           stroke="${C_AXIS}" stroke-opacity="0.5" stroke-dasharray="4,3" stroke-width="1"/>
         <path d="${fp}" fill="url(#areaGrad)" clip-path="url(#cc)"/>
