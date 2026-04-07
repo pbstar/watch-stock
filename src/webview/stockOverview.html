@@ -98,9 +98,19 @@
     renderIndexCards();
   }
 
+  /* 显示加载中状态 */
+  function showIndexLoading() {
+    const indexCards = $("index-cards");
+    if (indexCards) {
+      indexCards.innerHTML =
+        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground, #888);">正在获取数据...</div>';
+    }
+  }
+
   /* 刷新按钮点击事件 - 绑定到 overviewContainer */
   overviewContainer.addEventListener("click", (e) => {
     if (e.target.closest(".btn-refresh")) {
+      showIndexLoading();
       vscode.postMessage({ type: "refreshIndex" });
     }
   });
