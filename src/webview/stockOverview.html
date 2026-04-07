@@ -1,0 +1,92 @@
+<!-- A股全览片段：样式、HTML、JS 均在此文件，由 stockHome.js 提取注入 -->
+<style>
+  .overview-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .overview-title {
+    font-size: 13px;
+    color: var(--vscode-descriptionForeground, #888);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  }
+  .overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .ov-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-panel-border, #454545);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .ov-card:hover {
+    background: var(--vscode-list-hoverBackground, #2a2d2e);
+  }
+  .ov-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .ov-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ov-code {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #888);
+    flex-shrink: 0;
+  }
+  .ov-price {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.3px;
+  }
+  .ov-chg {
+    font-size: 11px;
+  }
+</style>
+<div class="overview-wrap" id="overview-wrap">
+  <div class="overview-title">自选股列表</div>
+  <div class="overview-cards" id="overview-cards"></div>
+</div>
+
+<script>
+  /* 渲染全览卡片 */
+  function renderOverviewCards() {
+    if (!overviewCards) return;
+    overviewCards.innerHTML = stocks
+      .map((s) => {
+        const v = parseFloat(s.changePercent);
+        const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+        const sign = v > 0 ? "+" : "";
+        return `<div class="ov-card" data-code="${s.code}">
+          <div class="ov-card-top">
+            <span class="ov-name">${escHtml(s.name)}</span>
+            <span class="ov-code">${escHtml(s.code).toUpperCase()}</span>
+          </div>
+          <span class="ov-price ${cls}">${s.current}</span>
+          <span class="ov-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
+        </div>`;
+      })
+      .join("");
+  }
+
+  /* 卡片点击跳转对应股票 tab */
+  overviewContainer.addEventListener("click", (e) => {
+    const card = e.target.closest(".ov-card");
+    if (!card) return;
+    switchToStock(card.dataset.code);
+  });
+</script>

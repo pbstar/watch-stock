@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}';"
+    />
+    <title>查看股票</title>
+    <style>
+      :root {
+        --c-up: #c94c4c;
+        --c-dn: #2d8a2d;
+        --c-grid: rgba(128, 128, 128, 0.18);
+        --c-bdr: rgba(128, 128, 128, 0.3);
+        --c-axis: var(--vscode-descriptionForeground, #888);
+        --c-ch: rgba(140, 140, 140, 0.5);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        font-family: var(--vscode-font-family, -apple-system);
+        font-size: 13px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+      }
+
+      /* tab 栏 */
+      .tab-bar {
+        display: flex;
+        background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+        border-bottom: 1px solid var(--vscode-panel-border, #454545);
+        overflow-x: auto;
+        scrollbar-width: none;
+        flex-shrink: 0;
+      }
+      .tab-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px;
+        cursor: pointer;
+        border-right: 1px solid var(--vscode-panel-border, #454545);
+        white-space: nowrap;
+        color: var(--vscode-tab-inactiveForeground, #8c8c8c);
+        background: var(--vscode-tab-inactiveBackground, #2d2d2d);
+        border-top: 2px solid transparent;
+        transition: background 0.15s ease;
+        user-select: none;
+      }
+      .tab:hover {
+        background: var(--vscode-tab-hoverBackground, #2a2d2e);
+      }
+      .tab.active {
+        color: var(--vscode-tab-activeForeground, #ccc);
+        background: var(--vscode-tab-activeBackground, #1e1e1e);
+        border-top-color: var(--vscode-tab-activeBorderTop, #007acc);
+      }
+      .tab-name {
+        font-weight: 500;
+        font-size: 13px;
+      }
+      .tab-chg {
+        font-size: 11px;
+      }
+
+      /* 主内容区 */
+      .main {
+        flex: 1;
+        padding: 14px 16px 12px;
+      }
+      /* 统一宽度容器：600-1000px 自适应，>1000px 居中留白 */
+      .content {
+        min-width: 600px;
+        max-width: 1000px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      /* 通用颜色 */
+      .up {
+        color: var(--c-up);
+      }
+      .dn {
+        color: var(--c-dn);
+      }
+      .gray {
+        color: var(--c-axis);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tab-bar" id="tab-bar"></div>
+    <div class="main">
+      <div class="content" id="content">
+        <!-- A股全览区域（由 stockOverview.html 注入） -->
+        <div id="overview-container">{{OVERVIEW_HTML}}</div>
+        <!-- 个股详情区域（由 stockDetail.html 注入） -->
+        <div
+          id="detail-container"
+          style="display: none; flex-direction: column; gap: 10px"
+        >
+          {{DETAIL_HTML}}
+        </div>
+      </div>
+    </div>
+
+    <script nonce="{{NONCE}}">
+      const vscode = acquireVsCodeApi();
+
+      /* ---- 状态 ---- */
+      let stocks = [];
+      let activeCode = "__overview__"; // __overview__ 代表 A股全览固定 tab
+      const stocksMap = {};
+      const quoteDataMap = {};
+      let minuteData = null;
+      let activeInfo = null;
+      let activeQuote = null;
+
+      /* ---- DOM 缓存 ---- */
+      const $ = (id) => document.getElementById(id);
+      const tabBar = $("tab-bar");
+      const sHeader = $("s-header");
+      const chartWrap = $("chart-wrap");
+      const chartSvg = $("chart-svg");
+      const placeholder = $("placeholder");
+      const tooltipEl = $("tooltip");
+      const volWrap = $("vol-wrap");
+      const volSvg = $("vol-svg");
+      const content = $("content");
+      const overviewContainer = $("overview-container");
+      const detailContainer = $("detail-container");
+      const overviewCards = $("overview-cards");
+
+      /* ---- 格式化工具函数 ---- */
+      function fmtNum(n, d = 2) {
+        return n == null || isNaN(n) ? "-" : Number(n).toFixed(d);
+      }
+      function fmtVol(n) {
+        if (n == null || isNaN(n)) return "-";
+        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
+        return String(Math.round(n));
+      }
+      function fmtMoney(n) {
+        if (n == null || isNaN(n)) return "-";
+        if (n >= 1e12) return (n / 1e12).toFixed(2) + "万亿";
+        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
+        return Number(n).toFixed(2);
+      }
+      function escHtml(s) {
+        const d = document.createElement("span");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      /* ---- 切换概览/详情容器 ---- */
+      function showOverview() {
+        overviewContainer.style.display = "";
+        detailContainer.style.display = "none";
+        renderOverviewCards();
+      }
+      function showDetail() {
+        overviewContainer.style.display = "none";
+        detailContainer.style.display = "flex";
+      }
+
+      /* ---- 渲染 Tab ---- */
+      tabBar.addEventListener("click", (e) => {
+        const tab = e.target.closest(".tab");
+        if (!tab) return;
+        const c = tab.dataset.code;
+        if (!c || c === activeCode) return;
+        if (c === "__overview__") {
+          activeCode = "__overview__";
+          activeInfo = null;
+          activeQuote = null;
+          minuteData = null;
+          renderTabs();
+          showOverview();
+        } else {
+          switchToStock(c);
+        }
+      });
+
+      function switchToStock(code) {
+        activeCode = code;
+        minuteData = null;
+        activeInfo = stocksMap[code] || null;
+        activeQuote = quoteDataMap[code] || null;
+        renderTabs();
+        renderHeader();
+        showDetail();
+        vscode.postMessage({ type: "switchStock", code });
+      }
+
+      function renderTabs() {
+        // 固定首个 A股全览 tab
+        const overviewActive = activeCode === "__overview__" ? " active" : "";
+        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
+        const stockTabs = stocks
+          .map((s) => {
+            const v = parseFloat(s.changePercent);
+            const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+            const sign = v > 0 ? "+" : "";
+            const active = s.code === activeCode ? " active" : "";
+            return `<div class="tab${active}" data-code="${s.code}">
+            <span class="tab-name">${escHtml(s.name)}</span>
+            <span class="tab-chg ${cls}">${sign}${s.changePercent}%</span>
+          </div>`;
+          })
+          .join("");
+        tabBar.innerHTML = overviewTab + stockTabs;
+      }
+
+      /* ---- 图表模块（由 stockChart.js 注入） ---- */
+      /* {{CHART_JS}} */
+
+      /* ---- 各片段 JS（由 stockOverview.html / stockDetail.html 的 <script> 提取注入） ---- */
+      /* {{FRAGMENT_SCRIPTS}} */
+
+      /* ---- 委托包装：供外部调用 StockChart 模块 ---- */
+      function renderChart() {
+        StockChart.render(minuteData, activeInfo);
+      }
+      function hideChEls() {
+        StockChart.hide();
+      }
+
+      /* ---- 消息处理 ---- */
+      window.addEventListener("message", (e) => {
+        const msg = e.data;
+        switch (msg.type) {
+          case "init":
+            stocks = msg.stocks;
+            activeCode = "__overview__";
+            Object.assign(quoteDataMap, msg.quoteData || {});
+            for (const s of stocks) stocksMap[s.code] = s;
+            activeInfo = null;
+            activeQuote = null;
+            renderTabs();
+            showOverview();
+            break;
+          case "loading":
+            if (msg.code === activeCode) showLoading();
+            break;
+          case "minuteData":
+            if (msg.code === activeCode) {
+              minuteData = msg.data;
+              activeInfo = msg.stockInfo || stocksMap[msg.code] || null;
+              activeQuote = msg.quoteInfo || quoteDataMap[msg.code] || null;
+              if (activeInfo) stocksMap[msg.code] = activeInfo;
+              renderHeader();
+              renderChart();
+            }
+            break;
+        }
+      });
+
+      /* ---- 响应式 ResizeObserver ---- */
+      let rafId = null;
+      const doRender = () => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (minuteData) renderChart();
+        });
+      };
+      new ResizeObserver(doRender).observe(content);
+    </script>
+  </body>
+</html>

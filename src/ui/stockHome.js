@@ -12,7 +12,7 @@ const {
 } = require("../services/stockService");
 const { getStocks } = require("../config");
 
-class StockDetailPanel {
+class StockHomePanel {
   static current = null;
 
   constructor(panel) {
@@ -55,20 +55,20 @@ class StockDetailPanel {
     }
 
     const col = vscode.ViewColumn.One;
-    const panel = StockDetailPanel.current?._panel;
+    const panel = StockHomePanel.current?._panel;
 
     if (panel) {
       panel.reveal(col);
-      await StockDetailPanel.current._load(quotes);
+      await StockHomePanel.current._load(quotes);
     } else {
       const newPanel = vscode.window.createWebviewPanel(
-        "stockDetail",
+        "stockHome",
         "查看股票",
         col,
         { enableScripts: true, retainContextWhenHidden: true },
       );
-      StockDetailPanel.current = new StockDetailPanel(newPanel);
-      await StockDetailPanel.current._load(quotes);
+      StockHomePanel.current = new StockHomePanel(newPanel);
+      await StockHomePanel.current._load(quotes);
     }
   }
 
@@ -92,7 +92,8 @@ class StockDetailPanel {
       return this._convertToStockInfo(q);
     });
 
-    this._activeCode = this._stocks[0]?.code || null;
+    // 初始停留在 A股全览 tab，不预设激活股票
+    this._activeCode = null;
     this._panel.title = "查看股票";
     this._panel.webview.html = this._buildHtml();
 
@@ -101,13 +102,9 @@ class StockDetailPanel {
     this._panel.webview.postMessage({
       type: "init",
       stocks: this._stocks,
-      activeCode: this._activeCode,
+      activeCode: null,
       quoteData: Object.fromEntries(this._quoteMap),
     });
-
-    if (this._activeCode) {
-      await this._fetchAndSend(this._activeCode);
-    }
   }
 
   async _fetchAndSend(code, forceRefresh = false) {
@@ -142,13 +139,35 @@ class StockDetailPanel {
 
   _buildHtml() {
     const nonce = crypto.randomBytes(16).toString("base64url");
-    const htmlPath = path.join(__dirname, "../webview/stockDetail.html");
-    const html = fs.readFileSync(htmlPath, "utf8");
-    return html.replace(/\{\{NONCE\}\}/g, nonce);
+    const read = (name) =>
+      fs.readFileSync(path.join(__dirname, "../webview", name), "utf8");
+
+    // 从 HTML 片段中提取 <script> 内容，并返回去掉 script 标签后的 HTML
+    const extractScript = (html) => {
+      const m = html.match(/<script>([\s\S]*?)<\/script>/);
+      return m ? m[1] : "";
+    };
+    const stripScript = (html) =>
+      html.replace(/<script>[\s\S]*?<\/script>/, "").trim();
+
+    const overviewRaw = read("stockOverview.html");
+    const detailRaw = read("stockDetail.html");
+    // 各片段的 script 内容合并为 {{FRAGMENT_SCRIPTS}}
+    const fragmentScripts = [
+      extractScript(overviewRaw),
+      extractScript(detailRaw),
+    ].join("\n");
+
+    return read("stockHome.html")
+      .replace(/\{\{NONCE\}\}/g, nonce)
+      .replace("/* {{CHART_JS}} */", read("stockChart.js"))
+      .replace("{{OVERVIEW_HTML}}", stripScript(overviewRaw))
+      .replace("{{DETAIL_HTML}}", stripScript(detailRaw))
+      .replace("/* {{FRAGMENT_SCRIPTS}} */", fragmentScripts);
   }
 
   _dispose() {
-    StockDetailPanel.current = null;
+    StockHomePanel.current = null;
     this._panel.dispose();
     while (this._disposables.length) {
       this._disposables.pop().dispose();
@@ -156,4 +175,4 @@ class StockDetailPanel {
   }
 }
 
-module.exports = StockDetailPanel;
+module.exports = StockHomePanel;

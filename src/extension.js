@@ -4,7 +4,7 @@
 
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
-const StockDetailPanel = require("./ui/stockDetail");
+const StockHomePanel = require("./ui/stockHome");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
 const { getStocks, getAutoHideByMarket } = require("./config");
@@ -220,7 +220,7 @@ function registerCommands(context) {
         vscode.window.showInformationMessage("请先添加股票");
         return;
       }
-      await StockDetailPanel.show();
+      await StockHomePanel.show();
     },
   );
 
