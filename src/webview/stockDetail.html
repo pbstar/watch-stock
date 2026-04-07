@@ -472,8 +472,20 @@
               minuteData[0]?.price ||
               0;
 
-        const prices = minuteData.map((d) => d.price);
-        const lastPrice = prices[prices.length - 1];
+        const prices = minuteData.map((d) => d.price).filter((p) => p != null);
+        if (!prices.length) {
+          placeholder.style.display = "flex";
+          placeholder.textContent = "暂无分时数据";
+          chartSvg.innerHTML = "";
+          volSvg.innerHTML = "";
+          hideChEls();
+          return;
+        }
+        const lastValidIdx = minuteData.reduce(
+          (acc, d, i) => (d.price != null ? i : acc),
+          -1,
+        );
+        const lastPrice = minuteData[lastValidIdx].price;
         const isUp = lastPrice >= preClose;
         const lc = isUp ? C_UP : C_DN;
 
@@ -494,14 +506,47 @@
         const yOf = (p) => PAD.t + ((yMax - p) / (yMax - yMin)) * cH;
         const pcY = yOf(preClose);
 
-        const pts = minuteData.map(
-          (d, i) => `${xOf(i).toFixed(1)},${yOf(d.price).toFixed(1)}`,
-        );
-        const lp = "M " + pts.join(" L ");
-        const lx = xOf(n - 1).toFixed(1);
-        const x0 = xOf(0).toFixed(1);
         const bY = (PAD.t + cH).toFixed(1);
-        const fp = `${lp} L ${lx},${bY} L ${x0},${bY} Z`;
+        // 将连续非 null 点分段，用于折线和面积路径
+        const segs = [];
+        let seg = [];
+        for (let i = 0; i < n; i++) {
+          if (minuteData[i].price != null) {
+            seg.push(i);
+          } else if (seg.length) {
+            segs.push(seg);
+            seg = [];
+          }
+        }
+        if (seg.length) segs.push(seg);
+
+        // 折线 path（各段用 M 开头，段间断开）
+        const lp = segs
+          .map((s) =>
+            s
+              .map(
+                (i, j) =>
+                  `${j === 0 ? "M" : "L"} ${xOf(i).toFixed(1)},${yOf(minuteData[i].price).toFixed(1)}`,
+              )
+              .join(" "),
+          )
+          .join(" ");
+
+        // 面积填充 path（每段单独封闭）
+        const fp = segs
+          .map((s) => {
+            const fxS = xOf(s[0]).toFixed(1);
+            const lxS = xOf(s[s.length - 1]).toFixed(1);
+            const pts = s.map(
+              (i) =>
+                `${xOf(i).toFixed(1)},${yOf(minuteData[i].price).toFixed(1)}`,
+            );
+            return `M ${pts[0]} ${pts
+              .slice(1)
+              .map((p) => `L ${p}`)
+              .join(" ")} L ${lxS},${bY} L ${fxS},${bY} Z`;
+          })
+          .join(" ");
 
         const yTicks = Array.from({ length: 5 }, (_, i) => {
           const p = yMin + ((yMax - yMin) * i) / 4;
@@ -529,9 +574,7 @@
         const xTicks = tMarks
           .map((t) => {
             while (ti < n && minuteData[ti].time.slice(-5) < t) ti++;
-            return ti < n
-              ? { label: t === "11:30" ? t + "（13:00）" : t, x: xOf(ti) }
-              : null;
+            return ti < n ? { label: t, x: xOf(ti) } : null;
           })
           .filter(Boolean);
 
@@ -587,7 +630,7 @@
           stroke="${C_AXIS}" stroke-opacity="0.5" stroke-dasharray="4,3" stroke-width="1"/>
         <path d="${fp}" fill="url(#areaGrad)" clip-path="url(#cc)"/>
         <path d="${lp}" fill="none" stroke="${lc}" stroke-width="1.3" clip-path="url(#cc)"/>
-        <circle cx="${xOf(n - 1).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${lc}"/>
+        <circle cx="${xOf(lastValidIdx).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${lc}"/>
         ${yLeftLabels}
         ${yRightLabels}
         ${xTimeLabels}
@@ -606,12 +649,15 @@
         const H = volWrap.clientHeight;
         if (W < 10 || H < 10) return;
 
-        const vols = new Array(n);
+        // 计算每分钟成交量（累计量做差），null 点填 0
+        const vols = new Array(n).fill(0);
         for (let i = 0; i < n; i++) {
-          vols[i] =
-            i === 0
-              ? minuteData[i].volume
-              : Math.max(0, minuteData[i].volume - minuteData[i - 1].volume);
+          if (minuteData[i].volume == null) continue;
+          const prevVol =
+            i > 0 && minuteData[i - 1].volume != null
+              ? minuteData[i - 1].volume
+              : 0;
+          vols[i] = Math.max(0, minuteData[i].volume - prevVol);
         }
         const maxVol = Math.max(...vols, 1);
         const vt = 4,
@@ -621,12 +667,18 @@
 
         let bars = "";
         for (let i = 0; i < n; i++) {
+          if (minuteData[i].volume == null) continue;
           const bH = Math.max(1, (vols[i] / maxVol) * vH);
           const x = (xOf(i) - barW / 2).toFixed(1);
           const y = (vt + vH - bH).toFixed(1);
           const prevPrice =
-            i > 0 ? minuteData[i - 1].price : minuteData[i].price;
-          const c = minuteData[i].price >= prevPrice ? C_UP : C_DN;
+            i > 0 && minuteData[i - 1].price != null
+              ? minuteData[i - 1].price
+              : minuteData[i].price;
+          const c =
+            minuteData[i].price != null && minuteData[i].price >= prevPrice
+              ? C_UP
+              : C_DN;
           bars += `<rect x="${x}" y="${y}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="0.65"/>`;
         }
 
@@ -659,22 +711,14 @@
           const d = minuteData[ci];
           if (!d) return;
 
-          const px = xOf(ci);
-          const py = yOf(d.price);
-          const pxS = px.toFixed(1);
-          const pyS = py.toFixed(1);
+          const pxS = xOf(ci).toFixed(1);
 
+          // 垂直线始终显示
           els.vLine.setAttribute("x1", pxS);
           els.vLine.setAttribute("y1", PAD.t);
           els.vLine.setAttribute("x2", pxS);
           els.vLine.setAttribute("y2", PAD.t + cH);
           els.vLine.style.display = "";
-
-          els.hLine.setAttribute("x1", PAD.l);
-          els.hLine.setAttribute("y1", pyS);
-          els.hLine.setAttribute("x2", PAD.l + cW);
-          els.hLine.setAttribute("y2", pyS);
-          els.hLine.style.display = "";
 
           els.vvLine.setAttribute("x1", pxS);
           els.vvLine.setAttribute("y1", 0);
@@ -682,23 +726,44 @@
           els.vvLine.setAttribute("y2", volSvg.getAttribute("height") || "72");
           els.vvLine.style.display = "";
 
-          els.dot.setAttribute("cx", pxS);
-          els.dot.setAttribute("cy", pyS);
-          els.dot.setAttribute("fill", "var(--vscode-editor-background)");
-          els.dot.setAttribute("stroke", lc);
-          els.dot.setAttribute("stroke-width", "2");
-          els.dot.style.display = "";
+          if (d.price != null) {
+            const pyS = yOf(d.price).toFixed(1);
 
-          const pct = ((d.price - preClose) / preClose) * 100;
-          const chg = d.price - preClose;
-          const sign = pct >= 0 ? "+" : "";
-          const cls = pct > 0 ? "up" : pct < 0 ? "dn" : "gray";
-          tooltipEl.innerHTML = `
-            <div class="gray">${d.time.slice(-5)}</div>
-            <div>价格：<span class="${cls}">${d.price.toFixed(dec)}</span></div>
-            <div>涨跌：<span class="${cls}">${sign}${chg.toFixed(dec)} (${sign}${pct.toFixed(2)}%)</span></div>
-            <div class="gray">成交量：${fmtVol(ci === 0 ? d.volume : Math.max(0, d.volume - minuteData[ci - 1].volume))}</div>
-          `;
+            els.hLine.setAttribute("x1", PAD.l);
+            els.hLine.setAttribute("y1", pyS);
+            els.hLine.setAttribute("x2", PAD.l + cW);
+            els.hLine.setAttribute("y2", pyS);
+            els.hLine.style.display = "";
+
+            els.dot.setAttribute("cx", pxS);
+            els.dot.setAttribute("cy", pyS);
+            els.dot.setAttribute("fill", "var(--vscode-editor-background)");
+            els.dot.setAttribute("stroke", lc);
+            els.dot.setAttribute("stroke-width", "2");
+            els.dot.style.display = "";
+
+            const pct = ((d.price - preClose) / preClose) * 100;
+            const chg = d.price - preClose;
+            const sign = pct >= 0 ? "+" : "";
+            const cls = pct > 0 ? "up" : pct < 0 ? "dn" : "gray";
+            const prevVol =
+              ci > 0 && minuteData[ci - 1].volume != null
+                ? minuteData[ci - 1].volume
+                : 0;
+            const vol =
+              ci === 0 ? d.volume : Math.max(0, (d.volume ?? 0) - prevVol);
+            tooltipEl.innerHTML = `
+              <div class="gray">${d.time.slice(-5)}</div>
+              <div>价格：<span class="${cls}">${d.price.toFixed(dec)}</span></div>
+              <div>涨跌：<span class="${cls}">${sign}${chg.toFixed(dec)} (${sign}${pct.toFixed(2)}%)</span></div>
+              <div class="gray">成交量：${fmtVol(vol)}</div>
+            `;
+          } else {
+            // 未到时间的占位点，只显示时间
+            els.hLine.style.display = "none";
+            els.dot.style.display = "none";
+            tooltipEl.innerHTML = `<div class="gray">${d.time.slice(-5)}</div><div class="gray">暂无数据</div>`;
+          }
 
           const wr = chartWrap.getBoundingClientRect();
           let tx = e.clientX - wr.left + 14;

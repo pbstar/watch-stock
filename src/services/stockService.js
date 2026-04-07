@@ -93,9 +93,35 @@ function parseStockData(code, data) {
 }
 
 /**
+ * 生成 A 股交易时间槽（09:30-11:30 和 13:00-15:00，共 242 个）
+ * @param {string} date - 日期字符串 YYYY-MM-DD
+ * @returns {string[]} 完整时间槽数组
+ */
+function buildTimeSlots(date) {
+  const slots = [];
+  // 上午 09:30-11:30
+  for (let t = 9 * 60 + 30; t <= 11 * 60 + 30; t++) {
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    slots.push(
+      `${date} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+    );
+  }
+  // 下午 13:00-15:00
+  for (let t = 13 * 60; t <= 15 * 60; t++) {
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    slots.push(
+      `${date} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+    );
+  }
+  return slots;
+}
+
+/**
  * 获取股票分时数据
  * @param {string} code - 股票代码，如 sh600519
- * @returns {Promise<Array>} 分时数据数组
+ * @returns {Promise<Array>} 分时数据数组（含 null 占位，共 242 个时间槽）
  */
 async function getStockMinute(code) {
   try {
@@ -103,24 +129,33 @@ async function getStockMinute(code) {
     const text = await get(url);
     const res = JSON.parse(text);
     const stockData = res?.data?.[code];
-    if (!stockData?.data?.data?.length) return [];
+    const d = stockData?.data?.date;
+    if (!d) return [];
 
-    const d = stockData.data.date;
     const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+    const slots = buildTimeSlots(date);
 
-    return stockData.data.data
-      .map((itemStr) => {
+    // 构建已有数据的时间映射
+    const dataMap = new Map();
+    if (stockData?.data?.data?.length) {
+      for (const itemStr of stockData.data.data) {
         const item = itemStr.split(" ");
-        if (item.length !== 4 || !item[0]) return null;
+        if (item.length !== 4 || !item[0]) continue;
         const time = `${date} ${item[0].slice(0, 2)}:${item[0].slice(2, 4)}`;
-        return {
+        dataMap.set(time, {
           time,
           price: parseFloat(item[1]) || 0,
           volume: parseFloat(item[2]) || 0,
           amount: parseFloat(item[3]) || 0,
-        };
-      })
-      .filter(Boolean);
+        });
+      }
+    }
+
+    // 按完整时间槽填充，无数据点用 null 占位
+    return slots.map(
+      (time) =>
+        dataMap.get(time) ?? { time, price: null, volume: null, amount: null },
+    );
   } catch (error) {
     console.error(`获取分时数据失败: ${error.message}`);
     return [];
@@ -194,7 +229,7 @@ function parseQuoteResponse(text, codes) {
 
 /**
  * 获取股票详细行情列表
- * @param {string[]} codes - 股票代码数组，如 ['600519', '000001']
+ * @param {string[]} codes - 股票代码数组，如 ['sh600519', 'sz000001']
  * @returns {Promise<Array>} 股票详细信息数组
  */
 async function getStockQuoteList(codes) {
