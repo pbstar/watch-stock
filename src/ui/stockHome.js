@@ -9,16 +9,28 @@ const crypto = require("crypto");
 const {
   getStockMinute,
   getStockQuoteList,
+  getStockList,
 } = require("../services/stockService");
 const { getStocks } = require("../config");
 
 class StockHomePanel {
   static current = null;
 
+  // 大盘指数代码
+  static INDEX_CODES = [
+    "sh000001",
+    "sz399001",
+    "sz399006",
+    "sh000688",
+    "sz399300",
+    "sh000016",
+  ];
+
   constructor(panel) {
     this._panel = panel;
     this._disposables = [];
     this._stocks = [];
+    this._indexStocks = [];
     this._activeCode = null;
     this._quoteMap = new Map();
     this._minuteCache = new Map();
@@ -38,7 +50,18 @@ class StockHomePanel {
       await this._fetchAndSend(msg.code);
     } else if (msg.type === "refresh" && this._activeCode) {
       await this._fetchAndSend(this._activeCode, true);
+    } else if (msg.type === "refreshIndex") {
+      await this._refreshIndexData();
     }
+  }
+
+  async _refreshIndexData() {
+    const indexData = await getStockList(StockHomePanel.INDEX_CODES);
+    this._indexStocks = indexData || [];
+    this._panel.webview.postMessage({
+      type: "indexData",
+      indexStocks: this._indexStocks,
+    });
   }
 
   static async show() {
@@ -48,7 +71,11 @@ class StockHomePanel {
       return;
     }
 
-    const quotes = await getStockQuoteList(configStocks);
+    const [quotes, indexData] = await Promise.all([
+      getStockQuoteList(configStocks),
+      getStockList(StockHomePanel.INDEX_CODES),
+    ]);
+
     if (!quotes.length) {
       vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
       return;
@@ -59,7 +86,7 @@ class StockHomePanel {
 
     if (panel) {
       panel.reveal(col);
-      await StockHomePanel.current._load(quotes);
+      await StockHomePanel.current._load(quotes, indexData);
     } else {
       const newPanel = vscode.window.createWebviewPanel(
         "stockHome",
@@ -68,7 +95,7 @@ class StockHomePanel {
         { enableScripts: true, retainContextWhenHidden: true },
       );
       StockHomePanel.current = new StockHomePanel(newPanel);
-      await StockHomePanel.current._load(quotes);
+      await StockHomePanel.current._load(quotes, indexData);
     }
   }
 
@@ -85,12 +112,13 @@ class StockHomePanel {
     };
   }
 
-  async _load(quotes) {
+  async _load(quotes, indexData = []) {
     this._quoteMap.clear();
     this._stocks = quotes.map((q) => {
       this._quoteMap.set(q.code, q);
       return this._convertToStockInfo(q);
     });
+    this._indexStocks = indexData || [];
 
     // 初始停留在 A股全览 tab，不预设激活股票
     this._activeCode = null;
@@ -102,6 +130,7 @@ class StockHomePanel {
     this._panel.webview.postMessage({
       type: "init",
       stocks: this._stocks,
+      indexStocks: this._indexStocks,
       activeCode: null,
       quoteData: Object.fromEntries(this._quoteMap),
     });
