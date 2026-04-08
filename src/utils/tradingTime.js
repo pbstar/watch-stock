@@ -36,6 +36,15 @@ function isTradingTime() {
   );
 }
 
+// 检查是否为早盘集合竞价时间
+function isMorningAuctionTime() {
+  const now = new Date();
+  const hour = now.getHours();
+  const minute = now.getMinutes();
+  return hour === 9 && minute >= 15 && minute <= 25;
+}
+
 module.exports = {
   isTradingTime,
+  isMorningAuctionTime,
 };

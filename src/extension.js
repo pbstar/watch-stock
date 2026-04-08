@@ -9,7 +9,7 @@ const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
 const { getStocks, getAutoHideByMarket } = require("./config");
 const { getStockList } = require("./services/stockService");
-const { isTradingTime } = require("./utils/tradingTime");
+const { isTradingTime, isMorningAuctionTime } = require("./utils/tradingTime");
 
 // 全局变量
 let statusBarManager;
@@ -255,7 +255,9 @@ function registerCommands(context) {
  */
 async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
-  const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
+  const isSina = !isMorningAuctionTime();
+  const stockInfos =
+    stocks.length > 0 ? await getStockList(stocks, isSina) : [];
 
   // 闹钟检查不依赖可见性
   if (stockInfos.length > 0) {

@@ -10,29 +10,59 @@ const { get, getGbk } = require("../utils/httpClient");
  * @param {string[]} codes - 股票代码数组，如 ['sh600519', 'sz000001']
  * @returns {Promise<Array>} 股票信息数组
  */
-async function getStockList(codes) {
-  if (!codes?.length) return [];
-
+async function getStockList(codes, isSina = true) {
+  let results = [];
+  if (!codes?.length) return results;
   try {
-    const url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
+    let url = "";
+    if (isSina) {
+      url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
+    } else {
+      url = `https://qt.gtimg.cn/?q=${codes.map((code) => `s_${code}`).join(",")}`;
+    }
     const data = await getGbk(url);
-    const results = data
-      .split("\n")
-      .map((line) => {
-        const match = line.match(/var hq_str_([^=]+)="([^"]+)"/);
-        if (match?.[1] && match[2] && codes.includes(match[1].toLowerCase())) {
-          return parseStockData(match[1].toLowerCase(), match[2]);
-        }
-        return null;
-      })
-      .filter(Boolean);
-
+    if (isSina) {
+      results = data
+        .split("\n")
+        .map((line) => {
+          const match = line.match(/var hq_str_([^=]+)="([^"]+)"/);
+          if (
+            match?.[1] &&
+            match[2] &&
+            codes.includes(match[1].toLowerCase())
+          ) {
+            return parseStockData(match[1].toLowerCase(), match[2]);
+          }
+          return null;
+        })
+        .filter(Boolean);
+    } else {
+      results = parseQuoteResponse(data, codes, true);
+    }
     return results;
   } catch (error) {
     const errorMsg = `获取股票数据失败: ${error.message}`;
     console.error(errorMsg);
     return [];
   }
+}
+
+/**
+ * 判断是否为基金
+ * @param {string} code - 股票代码
+ * @returns {boolean} 是否为基金
+ */
+function isFund(code, name, current) {
+  const codeNum = code.substring(2);
+  const isFundByCode =
+    (code.startsWith("sh") && codeNum.startsWith("5")) ||
+    (code.startsWith("sz") && codeNum.startsWith("1"));
+  return (
+    isFundByCode ||
+    name.includes("ETF") ||
+    name.includes("LOF") ||
+    (current < 3 && (name.includes("基金") || name.includes("指数")))
+  );
 }
 
 /**
@@ -50,12 +80,7 @@ function parseStockData(code, data) {
   const amount = parseFloat(parts[9]) || 0;
 
   // 数据验证
-  if (
-    !name ||
-    close <= 0 ||
-    !parts[30] ||
-    !parts[31]
-  ) {
+  if (!name || close <= 0 || !parts[30] || !parts[31]) {
     return null;
   }
 
@@ -69,15 +94,7 @@ function parseStockData(code, data) {
   const changePercent = ((changeValue / close) * 100).toFixed(2);
 
   // 判断是否为基金/ETF
-  const codeNum = code.substring(2);
-  const isFundByCode =
-    (code.startsWith("sh") && codeNum.startsWith("5")) ||
-    (code.startsWith("sz") && codeNum.startsWith("1"));
-  const isETF =
-    isFundByCode ||
-    name.includes("ETF") ||
-    name.includes("LOF") ||
-    (current < 3 && (name.includes("基金") || name.includes("指数")));
+  const isETF = isFund(code, name, current);
   const decimals = isETF ? 3 : 2;
   const dateTime = `${parts[30]} ${parts[31]}`;
 
@@ -205,11 +222,34 @@ function parseFullQuote(fields, code) {
 }
 
 /**
+ * 解析简单行情数据
+ * @param {string[]} fields - 字段数组
+ * @param {string} code - 股票代码
+ * @returns {Object} 解析后的股票信息
+ */
+function parseSimpleQuote(f, code) {
+  const isETF = isFund(code, f[1], safeNumber(f[3]));
+  const decimals = isETF ? 3 : 2;
+  return {
+    name: f[1],
+    code,
+    preClose: (safeNumber(f[3]) - safeNumber(f[5])).toFixed(decimals),
+    current: safeNumber(f[3]).toFixed(decimals),
+    changeValue: safeNumber(f[4]).toFixed(decimals),
+    changePercent: safeNumber(f[5]).toFixed(2),
+    amount: safeNumber(f[7]),
+    market: code.substring(0, 2),
+    isETF,
+    dateTime: "",
+  };
+}
+
+/**
  * 解析腾讯行情响应
  * @param {string} text - 响应文本
  * @returns {Array} 股票信息数组
  */
-function parseQuoteResponse(text, codes) {
+function parseQuoteResponse(text, codes, isSimple = false) {
   const lines = text
     .split(";")
     .map((l) => l.trim())
@@ -225,7 +265,11 @@ function parseQuoteResponse(text, codes) {
       raw = raw.slice(1, -1);
     }
     const fields = raw.split("~");
-    results.push(parseFullQuote(fields, codes[index]));
+    results.push(
+      isSimple
+        ? parseSimpleQuote(fields, codes[index])
+        : parseFullQuote(fields, codes[index]),
+    );
   }
   return results;
 }
