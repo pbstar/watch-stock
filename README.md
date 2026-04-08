@@ -28,10 +28,9 @@
    - 设置新闹钟：选择股票 → 选择条件（高于/低于）→ 输入目标价格
    - 管理闹钟：在闹钟列表中点击即可删除，或选择"删除所有闹钟"
    - 触发机制：价格达到目标价格时自动弹出通知，并自动删除该闹钟
-   - 自动清理：删除股票时会同步删除相关闹钟
-5. **显示/隐藏**：
-   - 点击状态栏或使用命令面板
+5. **显示/隐藏**：点击状态栏股票信息，选择"显示/隐藏状态栏"
    - 使用快捷键：`Ctrl+Alt+S`（Windows/Linux）或 `Cmd+Alt+S`（macOS）
+   - 开休市自动显隐：配置`autoHideByMarket`为`true`，即可根据当前时间自动显示/隐藏状态栏
 6. **手动刷新**：点击状态栏 → 选择"刷新行情数据" 或 使用命令面板
 7. **个性化配置**：在扩展设置中可配置股票列表、最大显示数量、是否显示简称、自定义股票简称、是否显示涨跌值、是否根据开休市时间自动显示/隐藏状态栏等
 
@@ -59,8 +58,8 @@
 
 ### ❓ 支持哪些股票？
 
-- ✅ **A 股**：上交所（sh）、深交所（sz）、北交所（bj）
-- ❌ **不支持**：港股、美股、期货
+- ✅ **A 股**：上交所（sh）、深交所（sz）、北交所（bj）的股票和ETF基金
+- ❌ **不支持**：港股、美股、期货、场外基金等
 
 ### ❓ 股票太多状态栏显示不全怎么办？
 
@@ -103,28 +102,11 @@ vsce publish
 ovsx publish
 ```
 
-### 项目结构
-
-```
-watch-stock/
-├── src/
-│   ├── extension.js               # 主入口文件
-│   ├── config.js                  # 配置管理
-│   ├── managers/                  # 业务管理模块
-│   ├── services/                  # 服务层
-│   ├── ui/                        # UI 层
-│   └── utils/                     # 工具函数
-├── images/                        # 图片资源
-├── package.json                   # 插件配置
-└── README.md                      # 说明文档
-```
-
 ## 📞 技术支持
 
 ### 问题反馈
 
-- **GitHub Issues**: [提交问题](https://github.com/pbstar/watch-stock/issues)
-- **功能建议**: 欢迎提交 Pull Request
+- **GitHub Issues**: [提交问题、建议、反馈等](https://github.com/pbstar/watch-stock/issues)
 
 ## 📄 开源协议
 
@@ -133,7 +115,7 @@ watch-stock/
 ---
 
 <div align="center">
-  <p><strong>享受编码，轻松看盘！ 📈💻</strong></p>
+  <p><strong>享受编码，轻松看盘！ 💻</strong></p>
   <p>投资有风险，入市需谨慎。本插件仅供学习交流，不构成任何投资建议。</p>
   <p>
     <a href="https://github.com/pbstar/watch-stock">⭐ Star on GitHub</a> |
