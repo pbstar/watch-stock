@@ -33,81 +33,46 @@
    - 点击状态栏或使用命令面板
    - 使用快捷键：`Ctrl+Alt+S`（Windows/Linux）或 `Cmd+Alt+S`（macOS）
 6. **手动刷新**：点击状态栏 → 选择"刷新行情数据" 或 使用命令面板
-7. **个性化配置**：在 VS Code 设置中搜索 `watch-stock`，可配置股票列表、最大显示数量、是否显示简称、自定义股票简称、是否显示涨跌值、是否根据开休市时间自动显示/隐藏状态栏等
-
-## 📋 支持的输入格式
-
-- **股票代码**：`sh600519`（上交所）、`sz000001`（深交所）、`bj430047`（北交所）
-- **中文名称**：`贵州茅台`、`中国平安` 等
+7. **个性化配置**：在扩展设置中可配置股票列表、最大显示数量、是否显示简称、自定义股票简称、是否显示涨跌值、是否根据开休市时间自动显示/隐藏状态栏等
 
 ## ⚙️ 配置选项
 
-在 VS Code 设置中搜索 `watch-stock`，可配置以下选项：
+点击插件的`扩展设置`或在设置中搜索 `@ext:pbstar.watch-stock`，可配置以下选项：
 
-| 配置项                         | 类型    | 默认值         | 说明                                             |
-| ------------------------------ | ------- | -------------- | ------------------------------------------------ |
-| `watch-stock.stocks`           | array   | `["sh000001"]` | 股票代码列表                                     |
-| `watch-stock.priceAlarms`      | array   | `[]`           | 价格闹钟列表                                     |
-| `watch-stock.maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                           |
-| `watch-stock.showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
-| `watch-stock.stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
-| `watch-stock.showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                             |
-| `watch-stock.autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                |
-
-### 配置示例
-
-```json
-{
-  "watch-stock.stocks": ["sh600519", "sz000001", "sh601318"],
-  "watch-stock.priceAlarms": [
-    {
-      "id": "sz002104_1773024618848",
-      "stockCode": "sz002104",
-      "targetPrice": 17.04,
-      "condition": "below",
-      "createdAt": "2026-03-09T02:50:18.848Z"
-    }
-  ],
-  "watch-stock.maxDisplayCount": 3,
-  "watch-stock.showMiniName": true,
-  "watch-stock.stockMiniNames": {
-    "sh601318": "平安",
-    "sh600519": "茅台"
-  },
-  "watch-stock.showChangeValue": true,
-  "watch-stock.autoHideByMarket": true
-}
-```
+| 配置项             | 类型    | 默认值         | 说明                                             |
+| ------------------ | ------- | -------------- | ------------------------------------------------ |
+| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                     |
+| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                     |
+| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                           |
+| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
+| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
+| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                             |
+| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                |
 
 ## 🛠️ 常见问题
 
 ### ❓ 股票搜索失败怎么办？
 
 1. **检查网络连接**：确保能访问新浪股票 API
-2. **确认格式**：使用标准股票代码格式（如 `sh600519`）
+2. **确认格式**：使用标准股票代码格式（如 `sh600519`）或中文名称搜索
 3. **重试搜索**：网络波动可能导致暂时失败
 
 ### ❓ 支持哪些股票？
 
 - ✅ **A 股**：上交所（sh）、深交所（sz）、北交所（bj）
-- ✅ **支持中文名称搜索**
 - ❌ **不支持**：港股、美股、期货
 
 ### ❓ 股票太多状态栏显示不全怎么办？
 
 状态栏空间有限，默认只显示前 5 只股票。你可以：
 
-1. **调整显示数量**：修改 `watch-stock.maxDisplayCount` 配置（建议 3-8 之间）
-2. **使用自定义排序**：通过"排序股票"功能，将最重要的股票排在前面优先显示
-3. **启用简称显示**：开启 `watch-stock.showMiniName`，节省空间显示更多股票；可通过 `watch-stock.stockMiniNames` 为每只股票配置自定义简称
-
-### ❓ 数据格式异常怎么办？
-
-如果存储的股票数据格式不正确，插件会自动过滤掉无效的股票代码。
+- **调整显示数量**：修改 `watch-stock.maxDisplayCount` 配置（建议 3-8 之间）
+- **使用自定义排序**：通过"排序股票"功能，将最重要的股票排在前面优先显示
+- **启用简称显示**：开启 `watch-stock.showMiniName`，显示股票简称（默认截取名称前两位），可通过 `watch-stock.stockMiniNames` 为每只股票配置自定义简称
 
 ### ❓ 开启了根据开休市时间自动显示/隐藏状态栏，但是状态栏还是不显示怎么办？
 
-手动设置过状态栏显示/隐藏，插件会记住你的选择，重启编辑器后会自动恢复。
+- 手动设置过状态栏显示/隐藏，插件会记住你的选择，重启编辑器后会自动恢复。
 
 ## 🚀 开发说明
 
