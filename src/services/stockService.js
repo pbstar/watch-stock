@@ -57,19 +57,22 @@ function parseStockData(code, data) {
   if (parts.length < 32) return null;
   const name = parts[0]?.trim() || "";
   const close = parseFloat(parts[2]) || 0;
-  const current = parseFloat(parts[3]) || 0;
+  let current = parseFloat(parts[3]) || 0;
   const amount = parseFloat(parts[9]) || 0;
 
   // 数据验证
   if (
     !name ||
     close <= 0 ||
-    current <= 0 ||
-    amount <= 0 ||
     !parts[30] ||
     !parts[31]
   ) {
     return null;
+  }
+
+  // 开盘前当前价为0，使用昨收价作为当前价
+  if (current <= 0) {
+    current = close;
   }
 
   // 计算涨跌和百分比
@@ -92,6 +95,7 @@ function parseStockData(code, data) {
   return {
     name,
     code,
+    preClose: close.toFixed(decimals),
     current: current.toFixed(decimals),
     changeValue: changeValue.toFixed(decimals),
     changePercent,
