@@ -69,6 +69,12 @@
     <button class="btn-refresh" id="refresh-btn">↻ 刷新</button>
   </div>
   <div class="overview-cards" id="index-cards"></div>
+
+  <div class="overview-header" style="margin-top: 16px">
+    <div class="overview-title">行业板块</div>
+    <button class="btn-refresh" id="refresh-industry-btn">↻ 刷新</button>
+  </div>
+  <div class="overview-cards" id="industry-cards"></div>
 </div>
 
 <script>
@@ -93,9 +99,36 @@
       .join("");
   }
 
+  /* 渲染行业板块卡片 */
+  function renderIndustryCards() {
+    const industryCards = $("industry-cards");
+    if (!industryCards || !industryStocks || !industryStocks.length) return;
+    // 按涨跌幅排序（降序）
+    const sortedStocks = [...industryStocks].sort((a, b) => {
+      const va = parseFloat(a.changePercent);
+      const vb = parseFloat(b.changePercent);
+      return vb - va;
+    });
+    industryCards.innerHTML = sortedStocks
+      .map((s) => {
+        const v = parseFloat(s.changePercent);
+        const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+        const sign = v > 0 ? "+" : "";
+        return `<div class="ov-card" data-code="${s.code}">
+          <div class="ov-card-top">
+            <span class="ov-name">${escHtml(s.name)}</span>
+            <span class="ov-code">${escHtml(s.code).toUpperCase()}</span>
+          </div>
+          <span class="ov-chg ${cls}" style="font-size: 14px; font-weight: 600;">${sign}${s.changePercent}%</span>
+        </div>`;
+      })
+      .join("");
+  }
+
   /* 渲染全览卡片 */
   function renderOverviewCards() {
     renderIndexCards();
+    renderIndustryCards();
   }
 
   /* 显示加载中状态 */
@@ -107,11 +140,23 @@
     }
   }
 
+  /* 显示行业板块加载中状态 */
+  function showIndustryLoading() {
+    const industryCards = $("industry-cards");
+    if (industryCards) {
+      industryCards.innerHTML =
+        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground, #888);">正在获取数据...</div>';
+    }
+  }
+
   /* 刷新按钮点击事件 - 绑定到 overviewContainer */
   overviewContainer.addEventListener("click", (e) => {
-    if (e.target.closest(".btn-refresh")) {
+    if (e.target.closest("#refresh-btn")) {
       showIndexLoading();
       vscode.postMessage({ type: "refreshIndex" });
+    } else if (e.target.closest("#refresh-industry-btn")) {
+      showIndustryLoading();
+      vscode.postMessage({ type: "refreshIndustry" });
     }
   });
 </script>

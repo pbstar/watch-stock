@@ -25,12 +25,200 @@ class StockHomePanel {
     "sz399300",
     "sh000016",
   ];
+  // 行业板块代码
+  static INDUSTRY_CODES = [
+    {
+      code: "sh512880",
+      name: "证券",
+    },
+    {
+      code: "sz159326",
+      name: "电网设备",
+    },
+    {
+      code: "sh512400",
+      name: "有色金属",
+    },
+    {
+      code: "sh512480",
+      name: "半导体",
+    },
+    {
+      code: "sz159928",
+      name: "消费",
+    },
+    {
+      code: "sz159206",
+      name: "卫星",
+    },
+    {
+      code: "sh512690",
+      name: "白酒",
+    },
+    {
+      code: "sh512010",
+      name: "医药",
+    },
+    {
+      code: "sh515880",
+      name: "通信",
+    },
+    {
+      code: "sh512710",
+      name: "军工",
+    },
+    {
+      code: "sh515980",
+      name: "人工智能",
+    },
+    {
+      code: "sh515220",
+      name: "煤炭",
+    },
+    {
+      code: "sz159869",
+      name: "游戏",
+    },
+    {
+      code: "sh512760",
+      name: "芯片",
+    },
+    {
+      code: "sh516160",
+      name: "新能源",
+    },
+    {
+      code: "sh562800",
+      name: "稀有金属",
+    },
+    {
+      code: "sz159766",
+      name: "旅游",
+    },
+    {
+      code: "sh512980",
+      name: "传媒",
+    },
+    {
+      code: "sh515170",
+      name: "食品饮料",
+    },
+    {
+      code: "sh515290",
+      name: "银行",
+    },
+    {
+      code: "sh515230",
+      name: "软件",
+    },
+    {
+      code: "sh561360",
+      name: "石油",
+    },
+    {
+      code: "sh510230",
+      name: "金融",
+    },
+    {
+      code: "sh512290",
+      name: "生物医药",
+    },
+    {
+      code: "sz159516",
+      name: "半导体设备",
+    },
+    {
+      code: "sh515210",
+      name: "钢铁",
+    },
+    {
+      code: "sh512670",
+      name: "国防",
+    },
+    {
+      code: "sh159625",
+      name: "绿色电力",
+    },
+    {
+      code: "sh562500",
+      name: "机器人",
+    },
+    {
+      code: "sz159611",
+      name: "电力",
+    },
+    {
+      code: "sh560080",
+      name: "中药",
+    },
+    {
+      code: "sz159870",
+      name: "化工",
+    },
+    {
+      code: "sz159930",
+      name: "能源",
+    },
+    {
+      code: "sz159992",
+      name: "创新药",
+    },
+    {
+      code: "sh516970",
+      name: "基建",
+    },
+    {
+      code: "sz159840",
+      name: "锂电池",
+    },
+    {
+      code: "sh516150",
+      name: "稀土",
+    },
+    {
+      code: "sz159865",
+      name: "养殖",
+    },
+    {
+      code: "sz159755",
+      name: "电池",
+    },
+    {
+      code: "sh516630",
+      name: "云计算",
+    },
+    {
+      code: "sh515790",
+      name: "光伏",
+    },
+    {
+      code: "sh512200",
+      name: "房地产",
+    },
+    {
+      code: "sz159996",
+      name: "家电",
+    },
+    {
+      code: "sz159227",
+      name: "航空航天",
+    },
+    {
+      code: "sh516520",
+      name: "智能驾驶",
+    },
+    {
+      code: "sh516620",
+      name: "影视",
+    },
+  ];
 
   constructor(panel) {
     this._panel = panel;
     this._disposables = [];
     this._stocks = [];
     this._indexStocks = [];
+    this._industryStocks = [];
     this._activeCode = null;
     this._quoteMap = new Map();
     this._minuteCache = new Map();
@@ -52,6 +240,8 @@ class StockHomePanel {
       await this._fetchAndSend(this._activeCode, true);
     } else if (msg.type === "refreshIndex") {
       await this._refreshIndexData();
+    } else if (msg.type === "refreshIndustry") {
+      await this._refreshIndustryData();
     }
   }
 
@@ -64,6 +254,27 @@ class StockHomePanel {
     });
   }
 
+  async _refreshIndustryData() {
+    const industryCodes = StockHomePanel.INDUSTRY_CODES.map(
+      (item) => item.code,
+    );
+    const industryData = await getStockList(industryCodes);
+    this._industryStocks = (industryData || []).map((item) => {
+      const config = StockHomePanel.INDUSTRY_CODES.find(
+        (c) => c.code === item.code,
+      );
+      return {
+        code: item.code,
+        name: config?.name || item.name,
+        changePercent: item.changePercent,
+      };
+    });
+    this._panel.webview.postMessage({
+      type: "industryData",
+      industryStocks: this._industryStocks,
+    });
+  }
+
   static async show() {
     const configStocks = getStocks();
     if (!configStocks.length) {
@@ -71,11 +282,14 @@ class StockHomePanel {
       return;
     }
 
-    const [quotes, indexData] = await Promise.all([
+    const industryCodes = StockHomePanel.INDUSTRY_CODES.map(
+      (item) => item.code,
+    );
+    const [quotes, indexData, industryData] = await Promise.all([
       getStockQuoteList(configStocks),
       getStockList(StockHomePanel.INDEX_CODES),
+      getStockList(industryCodes),
     ]);
-
     if (!quotes.length) {
       vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
       return;
@@ -86,7 +300,7 @@ class StockHomePanel {
 
     if (panel) {
       panel.reveal(col);
-      await StockHomePanel.current._load(quotes, indexData);
+      await StockHomePanel.current._load(quotes, indexData, industryData);
     } else {
       const newPanel = vscode.window.createWebviewPanel(
         "stockHome",
@@ -95,7 +309,7 @@ class StockHomePanel {
         { enableScripts: true, retainContextWhenHidden: true },
       );
       StockHomePanel.current = new StockHomePanel(newPanel);
-      await StockHomePanel.current._load(quotes, indexData);
+      await StockHomePanel.current._load(quotes, indexData, industryData);
     }
   }
 
@@ -112,14 +326,23 @@ class StockHomePanel {
     };
   }
 
-  async _load(quotes, indexData = []) {
+  async _load(quotes, indexData = [], industryData = []) {
     this._quoteMap.clear();
     this._stocks = quotes.map((q) => {
       this._quoteMap.set(q.code, q);
       return this._convertToStockInfo(q);
     });
     this._indexStocks = indexData || [];
-
+    this._industryStocks = (industryData || []).map((item) => {
+      const config = StockHomePanel.INDUSTRY_CODES.find(
+        (c) => c.code === item.code,
+      );
+      return {
+        code: item.code,
+        name: config?.name || item.name,
+        changePercent: item.changePercent,
+      };
+    });
     // 初始停留在 A股全览 tab，不预设激活股票
     this._activeCode = null;
     this._panel.title = "查看股票";
@@ -131,6 +354,7 @@ class StockHomePanel {
       type: "init",
       stocks: this._stocks,
       indexStocks: this._indexStocks,
+      industryStocks: this._industryStocks,
       activeCode: null,
       quoteData: Object.fromEntries(this._quoteMap),
     });

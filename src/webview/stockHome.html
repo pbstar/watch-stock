@@ -128,6 +128,7 @@
       /* ---- 状态 ---- */
       let stocks = [];
       let indexStocks = [];
+      let industryStocks = [];
       let activeCode = "__overview__"; // __overview__ 代表 A股全览固定 tab
       const stocksMap = {};
       const quoteDataMap = {};
@@ -253,6 +254,7 @@
           case "init":
             stocks = msg.stocks;
             indexStocks = msg.indexStocks || [];
+            industryStocks = msg.industryStocks || [];
             activeCode = "__overview__";
             Object.assign(quoteDataMap, msg.quoteData || {});
             for (const s of stocks) stocksMap[s.code] = s;
@@ -276,6 +278,10 @@
             break;
           case "indexData":
             indexStocks = msg.indexStocks || [];
+            renderOverviewCards();
+            break;
+          case "industryData":
+            industryStocks = msg.industryStocks || [];
             renderOverviewCards();
             break;
         }
