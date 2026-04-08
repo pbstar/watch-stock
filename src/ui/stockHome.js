@@ -104,7 +104,7 @@ class StockHomePanel {
       name: "食品饮料",
     },
     {
-      code: "sh515290",
+      code: "sh512800",
       name: "银行",
     },
     {
@@ -184,7 +184,7 @@ class StockHomePanel {
       name: "电池",
     },
     {
-      code: "sh516630",
+      code: "sh516510",
       name: "云计算",
     },
     {
