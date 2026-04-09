@@ -70,13 +70,7 @@ const StockChart = (() => {
     if (W < 10 || H < 10) return;
 
     const dec = activeInfo?.isETF ? 3 : 2;
-    const preClose =
-      activeInfo?.preClose != null
-        ? parseFloat(activeInfo.preClose)
-        : parseFloat(activeInfo?.current || 0) -
-            parseFloat(activeInfo?.changeValue || 0) ||
-          minuteData[0]?.price ||
-          0;
+    const preClose = parseFloat(activeInfo.preClose);
 
     const prices = minuteData.map((d) => d.price).filter((p) => p != null);
     if (!prices.length) {

@@ -317,12 +317,12 @@ class StockHomePanel {
     return {
       name: quote.name,
       code: quote.code,
-      current: quote.price.toFixed(2),
-      changeValue: (quote.price - quote.close).toFixed(2),
-      changePercent: quote.changePercent.toFixed(2),
-      preClose: quote.close.toFixed(2),
-      isETF: false,
-      dateTime: "",
+      current: quote.current,
+      changeValue: quote.changeValue,
+      changePercent: quote.changePercent,
+      preClose: quote.close,
+      isETF: quote.isETF ?? false,
+      dateTime: quote.dateTime,
     };
   }
 

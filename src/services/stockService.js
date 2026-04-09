@@ -101,12 +101,10 @@ function parseStockData(code, data) {
   return {
     name,
     code,
-    preClose: close.toFixed(decimals),
     current: current.toFixed(decimals),
     changeValue: changeValue.toFixed(decimals),
     changePercent,
     amount,
-    market: code.substring(0, 2),
     isETF,
     dateTime,
   };
@@ -198,26 +196,37 @@ function safeNumber(val) {
  * @returns {Object} 解析后的股票信息
  */
 function parseFullQuote(fields, code) {
+  const isETF = isFund(code, fields[1], safeNumber(fields[3]));
+  const decimals = isETF ? 3 : 2;
+  // 将 20260409114906 格式转换为 2026-04-09 11:49
+  const rawDateTime = fields[30] ?? "";
+  let formattedDateTime = "";
+  if (rawDateTime.length === 14) {
+    formattedDateTime = `${rawDateTime.slice(0, 4)}-${rawDateTime.slice(4, 6)}-${rawDateTime.slice(6, 8)} ${rawDateTime.slice(8, 10)}:${rawDateTime.slice(10, 12)}`;
+  }
   return {
     name: fields[1] ?? "",
     code: code,
-    price: safeNumber(fields[3]),
-    close: safeNumber(fields[4]),
-    open: safeNumber(fields[5]),
+    current: safeNumber(fields[3]).toFixed(decimals),
+    close: safeNumber(fields[4]).toFixed(decimals),
+    open: safeNumber(fields[5]).toFixed(decimals),
     volume: safeNumber(fields[6]),
-    changePercent: safeNumber(fields[32]),
-    high: safeNumber(fields[33]),
-    low: safeNumber(fields[34]),
+    changeValue: safeNumber(fields[31]).toFixed(decimals),
+    changePercent: safeNumber(fields[32]).toFixed(2),
+    high: safeNumber(fields[33]).toFixed(decimals),
+    low: safeNumber(fields[34]).toFixed(decimals),
     amount: safeNumber(fields[37]) * 10000,
-    turnoverRatio: safeNumber(fields[38]),
+    turnoverRatio: safeNumber(fields[38]).toFixed(2),
     pe: safeNumber(fields[39]),
     circulationMarket: safeNumber(fields[44]) * 100000000,
     totalMarket: safeNumber(fields[45]) * 100000000,
     pb: safeNumber(fields[46]),
-    volumeRatio: safeNumber(fields[49]),
-    avgPrice: safeNumber(fields[51]),
+    volumeRatio: safeNumber(fields[49]).toFixed(2),
+    avgPrice: safeNumber(fields[51]).toFixed(decimals),
     circulatingShares: safeNumber(fields[72]),
     totalShares: safeNumber(fields[73]),
+    isETF,
+    dateTime: formattedDateTime,
   };
 }
 
@@ -233,12 +242,10 @@ function parseSimpleQuote(f, code) {
   return {
     name: f[1],
     code,
-    preClose: (safeNumber(f[3]) - safeNumber(f[5])).toFixed(decimals),
     current: safeNumber(f[3]).toFixed(decimals),
     changeValue: safeNumber(f[4]).toFixed(decimals),
     changePercent: safeNumber(f[5]).toFixed(2),
     amount: safeNumber(f[7]),
-    market: code.substring(0, 2),
     isETF,
     dateTime: "",
   };
