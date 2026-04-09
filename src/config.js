@@ -7,6 +7,17 @@ const { isValidStockCode } = require("./utils/stockCode");
 
 const CONFIG_SECTION = "watch-stock";
 
+/** 配置项定义：key -> 默认值 */
+const CONFIG_DEFAULTS = {
+  stocks: [],
+  maxDisplayCount: 5,
+  showMiniName: false,
+  stockMiniNames: {},
+  showChangeValue: false,
+  autoHideByMarket: false,
+  priceAlarms: [],
+};
+
 /**
  * 获取配置对象
  */
@@ -15,77 +26,29 @@ function getConfig() {
 }
 
 /**
- * 获取并验证代码列表的通用函数
- * @param {string} configKey - 配置项键名
- * @param {string[]} defaultValue - 默认值
+ * 通用配置读取
+ * @param {string} key - 配置项键名
+ * @returns {*} 配置值
+ */
+function getConfigValue(key) {
+  return getConfig().get(key, CONFIG_DEFAULTS[key]);
+}
+
+/**
+ * 获取并验证股票代码列表
  * @returns {string[]} 验证后的代码数组
  */
-function getValidatedCodes(configKey) {
+function getStocks() {
   const config = getConfig();
-  const codes = config.get(configKey, []);
+  const codes = config.get("stocks", []);
 
-  // 验证所有代码格式
   const validCodes = codes.filter((code) => isValidStockCode(code));
 
-  // 如果有无效代码,更新配置
   if (validCodes.length !== codes.length) {
-    config.update(configKey, validCodes, vscode.ConfigurationTarget.Global);
+    config.update("stocks", validCodes, vscode.ConfigurationTarget.Global);
   }
 
   return validCodes;
-}
-
-/**
- * 获取最大显示数量
- * @returns {number} 最大显示股票数量
- */
-function getMaxDisplayCount() {
-  const config = getConfig();
-  return config.get("maxDisplayCount", 5);
-}
-
-/**
- * 是否显示简称
- * @returns {boolean}
- */
-function getShowMiniName() {
-  const config = getConfig();
-  return config.get("showMiniName", false);
-}
-
-/**
- * 获取股票简称映射
- * @returns {Record<string, string>}
- */
-function getStockMiniNames() {
-  const config = getConfig();
-  return config.get("stockMiniNames", {});
-}
-
-/**
- * 是否显示涨跌值
- * @returns {boolean}
- */
-function getShowChangeValue() {
-  const config = getConfig();
-  return config.get("showChangeValue", false);
-}
-
-/**
- * 是否根据开休市时间自动显示/隐藏状态栏
- * @returns {boolean}
- */
-function getAutoHideByMarket() {
-  const config = getConfig();
-  return config.get("autoHideByMarket", false);
-}
-
-/**
- * 获取股票代码列表
- * @returns {string[]} 股票代码数组
- */
-function getStocks() {
-  return getValidatedCodes("stocks");
 }
 
 /**
@@ -111,13 +74,24 @@ function moveStock(stocks, fromIndex, toIndex) {
   return result;
 }
 
+/**
+ * 保存闹钟列表
+ * @param {Array} alarms - 闹钟列表
+ */
+async function saveAlarms(alarms) {
+  const config = getConfig();
+  await config.update("priceAlarms", alarms, vscode.ConfigurationTarget.Global);
+}
+
 module.exports = {
   getStocks,
   saveStocks,
-  getMaxDisplayCount,
-  getShowMiniName,
-  getStockMiniNames,
-  getShowChangeValue,
-  getAutoHideByMarket,
+  getMaxDisplayCount: () => getConfigValue("maxDisplayCount"),
+  getShowMiniName: () => getConfigValue("showMiniName"),
+  getStockMiniNames: () => getConfigValue("stockMiniNames"),
+  getShowChangeValue: () => getConfigValue("showChangeValue"),
+  getAutoHideByMarket: () => getConfigValue("autoHideByMarket"),
   moveStock,
+  getAlarms: () => getConfigValue("priceAlarms"),
+  saveAlarms,
 };

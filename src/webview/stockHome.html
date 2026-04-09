@@ -45,9 +45,11 @@
         scrollbar-width: none;
         flex-shrink: 0;
       }
+
       .tab-bar::-webkit-scrollbar {
         display: none;
       }
+
       .tab {
         display: flex;
         align-items: center;
@@ -62,18 +64,22 @@
         transition: background 0.15s ease;
         user-select: none;
       }
+
       .tab:hover {
         background: var(--vscode-tab-hoverBackground, #2a2d2e);
       }
+
       .tab.active {
         color: var(--vscode-tab-activeForeground, #ccc);
         background: var(--vscode-tab-activeBackground, #1e1e1e);
         border-top-color: var(--vscode-tab-activeBorderTop, #007acc);
       }
+
       .tab-name {
         font-weight: 500;
         font-size: 13px;
       }
+
       .tab-chg {
         font-size: 11px;
       }
@@ -83,6 +89,7 @@
         flex: 1;
         padding: 14px 16px 12px;
       }
+
       /* 统一宽度容器：600-1000px 自适应，>1000px 居中留白 */
       .content {
         min-width: 600px;
@@ -98,14 +105,17 @@
       .up {
         color: var(--c-up);
       }
+
       .dn {
         color: var(--c-dn);
       }
+
       .gray {
         color: var(--c-axis);
       }
     </style>
   </head>
+
   <body>
     <div class="tab-bar" id="tab-bar"></div>
     <div class="main">
@@ -239,14 +249,6 @@
       /* ---- 各片段 JS（由 stockOverview.html / stockDetail.html 的 <script> 提取注入） ---- */
       /* {{FRAGMENT_SCRIPTS}} */
 
-      /* ---- 委托包装：供外部调用 StockChart 模块 ---- */
-      function renderChart() {
-        StockChart.render(minuteData, activeInfo);
-      }
-      function hideChEls() {
-        StockChart.hide();
-      }
-
       /* ---- 消息处理 ---- */
       window.addEventListener("message", (e) => {
         const msg = e.data;
@@ -273,7 +275,7 @@
               activeQuote = msg.quoteInfo || quoteDataMap[msg.code] || null;
               if (activeInfo) stocksMap[msg.code] = activeInfo;
               renderHeader();
-              renderChart();
+              StockChart.render(minuteData, activeInfo);
             }
             break;
           case "indexData":
@@ -289,14 +291,13 @@
 
       /* ---- 响应式 ResizeObserver ---- */
       let rafId = null;
-      const doRender = () => {
+      new ResizeObserver(() => {
         if (rafId) return;
         rafId = requestAnimationFrame(() => {
           rafId = null;
-          if (minuteData) renderChart();
+          if (minuteData) StockChart.render(minuteData, activeInfo);
         });
-      };
-      new ResizeObserver(doRender).observe(content);
+      }).observe(content);
     </script>
   </body>
 </html>
