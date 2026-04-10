@@ -9,7 +9,7 @@ const CONFIG_SECTION = "watch-stock";
 
 /** 配置项定义：key -> 默认值 */
 const CONFIG_DEFAULTS = {
-  stocks: [],
+  stocks: ["sh000001"],
   maxDisplayCount: 5,
   showMiniName: false,
   stockMiniNames: {},
@@ -31,7 +31,12 @@ function getConfig() {
  * @returns {*} 配置值
  */
 function getConfigValue(key) {
-  return getConfig().get(key, CONFIG_DEFAULTS[key]);
+  try {
+    return getConfig().get(key, CONFIG_DEFAULTS[key]);
+  } catch (error) {
+    console.error(`读取配置${key}失败:`, error);
+    return CONFIG_DEFAULTS[key];
+  }
 }
 
 /**

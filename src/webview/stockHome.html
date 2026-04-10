@@ -80,10 +80,6 @@
         font-size: 13px;
       }
 
-      .tab-chg {
-        font-size: 11px;
-      }
-
       /* 主内容区 */
       .main {
         flex: 1;
@@ -230,13 +226,9 @@
         const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
         const stockTabs = stocks
           .map((s) => {
-            const v = parseFloat(s.changePercent);
-            const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
-            const sign = v > 0 ? "+" : "";
             const active = s.code === activeCode ? " active" : "";
             return `<div class="tab${active}" data-code="${s.code}">
             <span class="tab-name">${escHtml(s.name)}</span>
-            <span class="tab-chg ${cls}">${sign}${s.changePercent}%</span>
           </div>`;
           })
           .join("");
