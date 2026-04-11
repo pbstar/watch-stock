@@ -1,0 +1,216 @@
+<!-- 个股详情片段：样式、HTML、JS 均在此文件，由 stockHome.js 提取注入 -->
+<style>
+  /* 头部信息 */
+  .s-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  }
+  .s-header-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    flex-wrap: wrap;
+  }
+  .s-name {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .s-code {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground, #888);
+  }
+  .s-price {
+    font-size: 26px;
+    font-weight: 700;
+    margin-left: 4px;
+    line-height: 1;
+    letter-spacing: -0.3px;
+  }
+  .s-chg {
+    font-size: 13px;
+  }
+  .s-time {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground, #888);
+    margin-left: auto;
+  }
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--vscode-panel-border, #454545);
+    color: var(--vscode-editor-foreground);
+    padding: 3px 9px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: background 0.15s ease;
+  }
+  .btn-refresh:hover {
+    background: var(--vscode-list-hoverBackground, #2a2d2e);
+  }
+
+  /* 详情指标表格 */
+  .s-details {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px 16px;
+    font-size: 12px;
+    padding-bottom: 10px;
+  }
+  .s-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .s-detail-label {
+    color: var(--vscode-descriptionForeground, #888);
+    flex-shrink: 0;
+  }
+  .s-detail-value {
+    font-weight: 500;
+    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 分时图 */
+  .chart-wrap {
+    height: 240px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+  }
+  .chart-wrap svg {
+    display: block;
+    width: 100%;
+  }
+
+  /* 成交量 */
+  .vol-wrap {
+    height: 80px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+  }
+  .vol-wrap svg {
+    display: block;
+    width: 100%;
+  }
+
+  /* 占位文字 */
+  .placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 13px;
+  }
+
+  /* 悬浮 tooltip */
+  .tooltip {
+    position: absolute;
+    background: var(--vscode-editorWidget-background, #252526);
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-radius: 3px;
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 1.7;
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+</style>
+
+<div class="s-header" id="s-header"></div>
+<div class="chart-wrap" id="chart-wrap">
+  <div class="placeholder" id="placeholder">正在获取分时数据...</div>
+  <svg id="chart-svg"></svg>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+<div class="vol-wrap" id="vol-wrap">
+  <svg id="vol-svg"></svg>
+</div>
+
+<script>
+  /* ---- 渲染个股头部 ---- */
+  sHeader.addEventListener("click", (e) => {
+    if (e.target.closest(".btn-refresh"))
+      vscode.postMessage({ type: "refresh" });
+  });
+
+  function renderHeader() {
+    if (activeCode === "__overview__") return;
+    const s = activeInfo;
+    const q = activeQuote;
+    if (!s) {
+      sHeader.innerHTML = '<span class="gray">加载中...</span>';
+      return;
+    }
+    const v = parseFloat(s.changePercent);
+    const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
+    const sign = v > 0 ? "+" : "";
+    let detailsHtml = "";
+    if (q) {
+      const items = [
+        ["今开", fmtNum(q.open)],
+        ["最高", fmtNum(q.high)],
+        ["最低", fmtNum(q.low)],
+        ["昨收", fmtNum(q.close)],
+        ["成交量", fmtVol(q.volume)],
+        ["成交额", fmtMoney(q.amount)],
+        [
+          "换手率",
+          q.turnoverRatio != null ? fmtNum(q.turnoverRatio) + "%" : "-",
+        ],
+        ["量比", q.volumeRatio != null ? fmtNum(q.volumeRatio) : "-"],
+        ["市盈率(TTM)", q.pe != null ? fmtNum(q.pe) : "-"],
+        ["市净率", q.pb != null ? fmtNum(q.pb) : "-"],
+        ["总市值", fmtMoney(q.totalMarket)],
+        ["流通市值", fmtMoney(q.circulationMarket)],
+      ];
+      detailsHtml =
+        `<div class="s-details">` +
+        items
+          .map(
+            ([label, val]) =>
+              `<div class="s-detail-item"><span class="s-detail-label">${label}</span><span class="s-detail-value">${val}</span></div>`,
+          )
+          .join("") +
+        `</div>`;
+    }
+    sHeader.innerHTML = `
+      <div class="s-header-top">
+        <span class="s-name">${escHtml(s.name)}</span>
+        <span class="s-code">${escHtml(s.code).toUpperCase()}</span>
+        <span class="s-price ${cls}">${s.current}</span>
+        <span class="s-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
+        <span class="s-time">${s.dateTime || ""}</span>
+        <button class="btn-refresh">↻ 刷新</button>
+      </div>
+      ${detailsHtml}
+    `;
+  }
+
+  /* ---- 加载中状态 ---- */
+  function showLoading() {
+    showDetail();
+    minuteData = null;
+    chartSvg.innerHTML = "";
+    volSvg.innerHTML = "";
+    placeholder.style.display = "flex";
+    placeholder.textContent = "正在获取分时数据...";
+    StockChart.hide();
+  }
+</script>

@@ -4,11 +4,12 @@
 
 const vscode = require("vscode");
 const StatusBarManager = require("./ui/statusBar");
+const StockHomePanel = require("./ui/stockHome");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
 const { getStocks, getAutoHideByMarket } = require("./config");
 const { getStockList } = require("./services/stockService");
-const { isTradingTime } = require("./utils/tradingTime");
+const { isTradingTime, isMorningAuctionTime } = require("./utils/tradingTime");
 
 // 全局变量
 let statusBarManager;
@@ -109,6 +110,11 @@ function registerCommands(context) {
       // 如果已有股票，添加更多选项
       if (stocks.length > 0) {
         options.push({
+          label: "$(list-flat) 查看股票",
+          description: "查看股票详细数据",
+          action: "home",
+        });
+        options.push({
           label: "$(remove) 移除股票",
           description: "从已添加的股票中选择移除",
           action: "remove",
@@ -157,6 +163,9 @@ function registerCommands(context) {
         case "add":
           await vscode.commands.executeCommand("watch-stock.addStock");
           break;
+        case "home":
+          await vscode.commands.executeCommand("watch-stock.viewHome");
+          break;
         case "remove":
           await vscode.commands.executeCommand("watch-stock.removeStock");
           break;
@@ -202,6 +211,19 @@ function registerCommands(context) {
     },
   );
 
+  // 查看股票
+  const viewHomeCommand = vscode.commands.registerCommand(
+    "watch-stock.viewHome",
+    async () => {
+      const stocks = getStocks();
+      if (stocks.length === 0) {
+        vscode.window.showInformationMessage("请先添加股票");
+        return;
+      }
+      await StockHomePanel.show();
+    },
+  );
+
   // 监听配置变化，只响应本插件配置变化
   const configChangeListener = vscode.workspace.onDidChangeConfiguration(
     (e) => {
@@ -222,6 +244,7 @@ function registerCommands(context) {
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
+    viewHomeCommand,
     configChangeListener,
   );
 }
@@ -232,7 +255,9 @@ function registerCommands(context) {
  */
 async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
-  const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
+  const isSina = !isMorningAuctionTime();
+  const stockInfos =
+    stocks.length > 0 ? await getStockList(stocks, isSina) : [];
 
   // 闹钟检查不依赖可见性
   if (stockInfos.length > 0) {

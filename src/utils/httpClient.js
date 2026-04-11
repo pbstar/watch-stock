@@ -1,61 +1,42 @@
-/**
- * 简单的HTTP GET请求工具
- */
+// HTTP 请求工具，基于 VS Code 内置的全局 fetch
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-const https = require("https");
-const http = require("http");
-const { URL } = require("url");
+// 特殊域名 Referer 映射
+const REFERER_MAP = {
+  "sinajs.cn": "https://finance.sina.com.cn",
+  "sina.com.cn": "https://finance.sina.com.cn",
+};
 
-/**
- * 简单的HTTP GET请求
- * @param {string} url - 请求URL
- * @param {object} options - 选项
- * @returns {Promise} 响应对象
- */
-async function httpGet(url, options = {}) {
-  return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url);
-    const isHttps = parsedUrl.protocol === "https:";
-    const client = isHttps ? https : http;
-
-    const requestOptions = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port,
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: "GET",
-      timeout: options.timeout || 5000,
-      headers: options.headers || {},
+// 构造 fetch 配置，自动注入 Referer
+function buildOptions(url, extraHeaders = {}) {
+  try {
+    const { protocol, hostname } = new URL(url);
+    const matched = Object.keys(REFERER_MAP).find((key) =>
+      hostname.endsWith(key),
+    );
+    const origin = matched
+      ? REFERER_MAP[matched]
+      : `${protocol}//www.${hostname}`;
+    return {
+      headers: { "User-Agent": UA, Referer: origin, ...extraHeaders },
+      signal: AbortSignal.timeout(10000),
     };
-
-    const req = client.request(requestOptions, (res) => {
-      let data = [];
-
-      res.on("data", (chunk) => {
-        data.push(chunk);
-      });
-
-      res.on("end", () => {
-        const buffer = Buffer.concat(data);
-        const result = {
-          data:
-            options.responseType === "arraybuffer" ? buffer : buffer.toString(),
-          status: res.statusCode,
-          headers: res.headers,
-        };
-        resolve(result);
-      });
-    });
-
-    req.on("error", reject);
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Request timeout"));
-    });
-
-    req.end();
-  });
+  } catch {
+    return { headers: { "User-Agent": UA, ...extraHeaders } };
+  }
 }
 
-module.exports = {
-  httpGet,
-};
+// GET 请求，返回文本
+async function get(url, extraHeaders = {}) {
+  const res = await fetch(url, buildOptions(url, extraHeaders));
+  return res.text();
+}
+
+// GET 请求，返回 GBK 解码后的字符串
+async function getGbk(url, extraHeaders = {}) {
+  const res = await fetch(url, buildOptions(url, extraHeaders));
+  const buf = await res.arrayBuffer();
+  return new TextDecoder("gbk").decode(buf);
+}
+
+module.exports = { get, getGbk };

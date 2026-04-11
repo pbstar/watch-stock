@@ -11,31 +11,54 @@
 function isTradingTime() {
   const now = new Date();
   const day = now.getDay();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
 
   // 周末不交易
   if (day === 0 || day === 6) {
     return false;
   }
 
-  // 转换为分钟数便于比较
-  const currentMinutes = hour * 60 + minute;
-
-  // 上午交易时段：9:15-11:30
-  const morningStart = 9 * 60 + 15;
-  const morningEnd = 11 * 60 + 30;
-
-  // 下午交易时段：13:00-15:00
-  const afternoonStart = 13 * 60;
-  const afternoonEnd = 15 * 60;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   return (
-    (currentMinutes >= morningStart && currentMinutes <= morningEnd) ||
-    (currentMinutes >= afternoonStart && currentMinutes <= afternoonEnd)
+    (currentMinutes >= 555 && currentMinutes <= 690) || // 9:15-11:30
+    (currentMinutes >= 780 && currentMinutes <= 900) // 13:00-15:00
   );
+}
+
+/**
+ * 检查是否为早盘集合竞价时间（9:15-9:25）
+ * @returns {boolean}
+ */
+function isMorningAuctionTime() {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return currentMinutes >= 555 && currentMinutes <= 565; // 9:15-9:25
+}
+
+/**
+ * 生成 A 股交易时间槽（09:30-11:30 和 13:00-15:00，共 242 个）
+ * @param {string} date - 日期字符串 YYYY-MM-DD
+ * @returns {string[]} 完整时间槽数组
+ */
+function buildTimeSlots(date) {
+  const slots = [];
+  // 上午 09:30-11:30
+  for (let t = 570; t <= 690; t++) {
+    slots.push(
+      `${date} ${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`,
+    );
+  }
+  // 下午 13:00-15:00
+  for (let t = 780; t <= 900; t++) {
+    slots.push(
+      `${date} ${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`,
+    );
+  }
+  return slots;
 }
 
 module.exports = {
   isTradingTime,
+  isMorningAuctionTime,
+  buildTimeSlots,
 };
