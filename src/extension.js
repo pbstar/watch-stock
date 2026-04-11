@@ -112,7 +112,7 @@ function registerCommands(context) {
         options.push({
           label: "$(list-flat) 查看股票",
           description: "查看股票详细数据",
-          action: "detail",
+          action: "home",
         });
         options.push({
           label: "$(remove) 移除股票",
@@ -163,8 +163,8 @@ function registerCommands(context) {
         case "add":
           await vscode.commands.executeCommand("watch-stock.addStock");
           break;
-        case "detail":
-          await vscode.commands.executeCommand("watch-stock.viewDetail");
+        case "home":
+          await vscode.commands.executeCommand("watch-stock.viewHome");
           break;
         case "remove":
           await vscode.commands.executeCommand("watch-stock.removeStock");
@@ -212,8 +212,8 @@ function registerCommands(context) {
   );
 
   // 查看股票
-  const viewDetailCommand = vscode.commands.registerCommand(
-    "watch-stock.viewDetail",
+  const viewHomeCommand = vscode.commands.registerCommand(
+    "watch-stock.viewHome",
     async () => {
       const stocks = getStocks();
       if (stocks.length === 0) {
@@ -244,7 +244,7 @@ function registerCommands(context) {
     manageStockCommand,
     toggleVisibilityCommand,
     refreshDataCommand,
-    viewDetailCommand,
+    viewHomeCommand,
     configChangeListener,
   );
 }

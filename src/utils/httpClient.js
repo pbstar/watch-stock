@@ -1,4 +1,4 @@
-// HTTP 请求工具，基于全局 fetch（Node 18+）
+// HTTP 请求工具，基于 VS Code 内置的全局 fetch
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
 // 特殊域名 Referer 映射
