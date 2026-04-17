@@ -118,6 +118,11 @@ function parseSinaStockData(code, data) {
     amount,
     isETF,
     dateTime: `${parts[30]} ${parts[31]}`,
+    close,
+    buy1Volume: Math.round(parseFloat(parts[10]) / 100) || 0,
+    sell1Volume: Math.round(parseFloat(parts[20]) / 100) || 0,
+    buy1Price: parseFloat(parts[6]) || 0,
+    sell1Price: parseFloat(parts[7]) || 0,
   };
 }
 
@@ -183,6 +188,11 @@ function parseSimpleQuote(fields, code) {
     amount: safeNumber(fields[7]),
     isETF,
     dateTime: "",
+    close: undefined,
+    buy1Volume: undefined,
+    sell1Volume: undefined,
+    buy1Price: undefined,
+    sell1Price: undefined,
   };
 }
 

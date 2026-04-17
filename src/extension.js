@@ -7,9 +7,14 @@ const StatusBarManager = require("./ui/statusBar");
 const StockHomePanel = require("./ui/stockHome");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
-const { getStocks, getAutoHideByMarket } = require("./config");
+const {
+  getStocks,
+  getAutoHideByMarket,
+  getEnableLockTip,
+} = require("./config");
 const { getStockList } = require("./services/stockService");
 const { isTradingTime, isMorningAuctionTime } = require("./utils/tradingTime");
+const { calcLockAmount, formatLockAmount } = require("./utils/lockFormatter");
 
 // 全局变量
 let statusBarManager;
@@ -24,6 +29,105 @@ const getIsVisible = () => {
   if (userForced !== null) return userForced;
   return getAutoHideByMarket() ? isTradingTime() : true;
 };
+
+const lockTipCache = new Map();
+
+function getLimitPercent(code, name) {
+  if (name && /ST/i.test(name)) return 5;
+  if (code.startsWith("sz30")) return 20;
+  if (code.startsWith("sh68")) return 20;
+  if (code.startsWith("bj")) return 30;
+  return 10;
+}
+
+function calculateLockInfo(stock) {
+  const limit = getLimitPercent(stock.code, stock.name);
+  const changePercent = parseFloat(stock.changePercent);
+  const isLimitUp = changePercent >= limit - 0.1 && stock.sell1Volume === 0;
+  const isLimitDown = changePercent <= -(limit - 0.1) && stock.buy1Volume === 0;
+
+  let lockCount = 0;
+  if (isLimitUp) {
+    lockCount = stock.buy1Volume || 0;
+  } else if (isLimitDown) {
+    lockCount = stock.sell1Volume || 0;
+  }
+
+  return { isLimitUp, isLimitDown, lockCount };
+}
+
+function checkLockTip(stockInfos) {
+  const now = Date.now();
+  const COOLDOWN = 60000;
+
+  for (const stock of stockInfos) {
+    const prev = lockTipCache.get(stock.code);
+    const lockAmount = calcLockAmount(stock);
+    const curr = {
+      isLimitUp: stock.isLimitUp,
+      isLimitDown: stock.isLimitDown,
+      lockAmount,
+    };
+
+    const message = getLockChangeMessage(stock, prev, curr);
+
+    if (message && canNotify(prev, now, COOLDOWN)) {
+      vscode.window.showInformationMessage(message);
+      curr.lastNotifyTime = now;
+    } else if (prev) {
+      curr.lastNotifyTime = prev.lastNotifyTime;
+    }
+
+    lockTipCache.set(stock.code, curr);
+  }
+}
+
+function getLockChangeMessage(stock, prev, curr) {
+  if (!prev) {
+    if (curr.isLimitUp) {
+      return `🔒 ${stock.name} 涨停，封单${formatLockAmount(curr.lockAmount)}`;
+    }
+    if (curr.isLimitDown) {
+      return `🔒 ${stock.name} 跌停，封单${formatLockAmount(curr.lockAmount)}`;
+    }
+    return "";
+  }
+
+  if (!curr.isLimitUp && !curr.isLimitDown) {
+    if (prev.isLimitUp || prev.isLimitDown) {
+      return `🔓 ${stock.name} 已开板`;
+    }
+    return "";
+  }
+
+  const MIN_LOCK = 5000000;
+  const delta = curr.lockAmount - prev.lockAmount;
+
+  if (curr.isLimitUp && Math.abs(delta) >= MIN_LOCK) {
+    if (delta < 0 && prev.lockAmount > 0 && -delta / prev.lockAmount >= 0.1) {
+      return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，注意开板风险`;
+    }
+    if (delta > 0 && delta / prev.lockAmount >= 0.2) {
+      return `🔒 ${stock.name} 封单增加${Math.round((delta / prev.lockAmount) * 100)}%`;
+    }
+  }
+
+  if (curr.isLimitDown && Math.abs(delta) >= MIN_LOCK) {
+    if (delta > 0 && delta / prev.lockAmount >= 0.2) {
+      return `🔒 ${stock.name} 封单增加${Math.round((delta / prev.lockAmount) * 100)}%，跌停封单持续堆积`;
+    }
+    if (delta < 0 && prev.lockAmount > 0 && -delta / prev.lockAmount >= 0.1) {
+      return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，抛压有所缓解`;
+    }
+  }
+
+  return "";
+}
+
+function canNotify(prev, now, cooldown) {
+  if (!prev?.lastNotifyTime) return true;
+  return now - prev.lastNotifyTime >= cooldown;
+}
 
 /**
  * 插件激活函数
@@ -259,12 +363,19 @@ async function updateDataAndCheckAlarms() {
   const stockInfos =
     stocks.length > 0 ? await getStockList(stocks, isSina) : [];
 
-  // 闹钟检查不依赖可见性
+  for (const stock of stockInfos) {
+    const lockInfo = calculateLockInfo(stock);
+    Object.assign(stock, lockInfo);
+  }
+
   if (stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
   }
 
-  // 渲染状态栏
+  if (isSina && getEnableLockTip()) {
+    checkLockTip(stockInfos);
+  }
+
   if (getIsVisible()) {
     statusBarManager.render(stocks, stockInfos);
   } else {
