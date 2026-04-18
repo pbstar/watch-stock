@@ -1,9 +1,9 @@
 /**
- * 配置管理模块
+ * VS Code 配置管理模块
  */
 
 const vscode = require("vscode");
-const { isValidStockCode } = require("./utils/stockCode");
+const { isValidStockCode } = require("../utils/stockUtils");
 
 const CONFIG_SECTION = "watch-stock";
 

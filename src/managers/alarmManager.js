@@ -5,7 +5,7 @@
 
 const vscode = require("vscode");
 const { getStockList } = require("../services/stockService");
-const { getStocks, getAlarms, saveAlarms } = require("../config");
+const { getStocks, getAlarms, saveAlarms } = require("../configs/vscodeConfig");
 
 /** 条件文本映射 */
 const CONDITION_TEXT = { above: "高于", below: "低于" };

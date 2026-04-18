@@ -9,8 +9,8 @@ const {
   getStockMiniNames,
   getShowChangeValue,
   getShowLockCount,
-} = require("../config");
-const { calcLockAmount, formatLockAmount } = require("../utils/lockFormatter");
+} = require("../configs/vscodeConfig");
+const { formatAmount } = require("../utils/stockUtils");
 
 class StatusBarManager {
   constructor() {
@@ -71,9 +71,8 @@ class StatusBarManager {
         : stock.name;
       let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
       if (showLockCount && (stock.isLimitUp || stock.isLimitDown)) {
-        const lockAmount = calcLockAmount(stock);
-        if (lockAmount > 0) {
-          text += ` 封${formatLockAmount(lockAmount)}`;
+        if (stock.lockAmount > 0) {
+          text += ` 封${formatAmount(stock.lockAmount)}`;
         }
       }
       return text;
@@ -95,9 +94,8 @@ class StatusBarManager {
           stock.changeValue >= 0 ? "+" : ""
         }${stock.changePercent}%(${stock.changeValue})`;
         if (stock.isLimitUp || stock.isLimitDown) {
-          const lockAmount = calcLockAmount(stock);
           const type = stock.isLimitUp ? "涨停" : "跌停";
-          line += ` ${type}封单: ${formatLockAmount(lockAmount)}`;
+          line += ` ${type}封单: ${formatAmount(stock.lockAmount)}`;
         }
         return line;
       })

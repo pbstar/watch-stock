@@ -5,47 +5,7 @@
 
 const { get, getGbk } = require("../utils/httpClient");
 const { buildTimeSlots } = require("../utils/tradingTime");
-
-/**
- * 判断是否为基金/ETF
- * @param {string} code - 股票代码（小写，如 sh600519）
- * @param {string} name - 股票名称
- * @param {number} current - 当前价格
- * @returns {boolean}
- */
-function isFund(code, name, current) {
-  const codeNum = code.substring(2);
-  const isFundByCode =
-    (code.startsWith("sh") && codeNum.startsWith("5")) ||
-    (code.startsWith("sz") && codeNum.startsWith("1"));
-  return (
-    isFundByCode ||
-    (name && (name.includes("ETF") || name.includes("LOF"))) ||
-    (current > 0 &&
-      current < 3 &&
-      name &&
-      (name.includes("基金") || name.includes("指数")))
-  );
-}
-
-/**
- * 获取价格精度小数位数
- * @param {boolean} isETF - 是否为基金
- * @returns {number}
- */
-function getDecimals(isETF) {
-  return isETF ? 3 : 2;
-}
-
-/**
- * 安全转换为数字
- * @param {string} val - 原始值
- * @returns {number}
- */
-function safeNumber(val) {
-  const n = parseFloat(val);
-  return isNaN(n) ? 0 : n;
-}
+const { isFund, getDecimals, safeNumber } = require("../utils/stockUtils");
 
 /**
  * 批量获取股票信息
