@@ -42,17 +42,17 @@
 
 点击插件的`扩展设置`或在设置中搜索 `@ext:pbstar.watch-stock`，可配置以下选项：
 
-| 配置项             | 类型    | 默认值         | 说明                                             |
-| ------------------ | ------- | -------------- | ------------------------------------------------ |
-| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                     |
-| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                     |
-| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                           |
-| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
-| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
-| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                             |
-| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                |
-| `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                           |
-| `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                             |
+| 配置项             | 类型    | 默认值         | 说明                                          |
+| ------------------ | ------- | -------------- | --------------------------------------------- |
+| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                  |
+| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                  |
+| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                        |
+| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时截取名称前两位  |
+| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，如 `{"sh601318": "平安"}` |
+| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                          |
+| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏             |
+| `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                        |
+| `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                          |
 
 ## 🛠️ 常见问题
 
@@ -63,9 +63,9 @@
 
 ### 2.支持哪些股票❓
 
-- ✅ **支持**：A 股上交所（sh）、深交所（sz）的股票和ETF基金
-- ⚠️ **部分支持**：A 股北交所（bj）的股票部分功能暂不支持
-- ❌ **不支持**：港股、美股、期货、场外基金等
+- **支持**：A 股上交所（sh）、深交所（sz）的股票和ETF基金
+- **部分支持**：A 股北交所（bj）的股票部分功能暂不支持
+- **不支持**：港股、美股、期货、场外基金等
 
 ### 3.股票太多状态栏显示不全怎么办❓
 

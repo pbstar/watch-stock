@@ -76,8 +76,8 @@ function getLockChangeMessage(stock, prev, curr) {
   const MIN_LOCK = 5000000;
   const delta = curr.lockAmount - prev.lockAmount;
 
-  if (curr.isLimitUp && Math.abs(delta) >= MIN_LOCK) {
-    if (delta < 0 && prev.lockAmount > 0 && -delta / prev.lockAmount >= 0.1) {
+  if (curr.isLimitUp && Math.abs(delta) >= MIN_LOCK && prev.lockAmount > 0) {
+    if (delta < 0 && -delta / prev.lockAmount >= 0.1) {
       return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，注意开板风险`;
     }
     if (delta > 0 && delta / prev.lockAmount >= 0.2) {
@@ -85,11 +85,11 @@ function getLockChangeMessage(stock, prev, curr) {
     }
   }
 
-  if (curr.isLimitDown && Math.abs(delta) >= MIN_LOCK) {
+  if (curr.isLimitDown && Math.abs(delta) >= MIN_LOCK && prev.lockAmount > 0) {
     if (delta > 0 && delta / prev.lockAmount >= 0.2) {
       return `🔒 ${stock.name} 封单增加${Math.round((delta / prev.lockAmount) * 100)}%，跌停封单持续堆积`;
     }
-    if (delta < 0 && prev.lockAmount > 0 && -delta / prev.lockAmount >= 0.1) {
+    if (delta < 0 && -delta / prev.lockAmount >= 0.1) {
       return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，抛压有所缓解`;
     }
   }
