@@ -70,10 +70,8 @@ class StatusBarManager {
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
         : stock.name;
       let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
-      if (showLockCount && (stock.isLimitUp || stock.isLimitDown)) {
-        if (stock.lockAmount > 0) {
-          text += ` 封${formatAmount(stock.lockAmount)}`;
-        }
+      if (showLockCount && stock.lockAmount > 0 && stock.priceType !== "none") {
+        text += ` 封${formatAmount(stock.lockAmount)}`;
       }
       return text;
     });
