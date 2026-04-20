@@ -4,50 +4,46 @@
  */
 
 const vscode = require("vscode");
-const { getEnableLockTip } = require("../configs/vscodeConfig");
 const { getLimitPercent, formatAmount } = require("../utils/stockUtils");
 
 const lockTipCache = new Map();
+const COOLDOWN = 60000;
+const MIN_LOCK = 5000000;
 
 function calculateLockInfo(stock) {
   const limit = getLimitPercent(stock.code, stock.name);
   const changePercent = parseFloat(stock.changePercent);
   const isLimitUp = changePercent >= limit - 0.1 && stock.sell1Volume === 0;
   const isLimitDown = changePercent <= -(limit - 0.1) && stock.buy1Volume === 0;
-
-  let lockCount = 0;
-  let lockAmount = 0;
-  if (isLimitUp) {
-    lockCount = stock.buy1Volume || 0;
-    lockAmount = (stock.buy1Volume || 0) * 100 * (stock.buy1Price || 0);
-  } else if (isLimitDown) {
-    lockCount = stock.sell1Volume || 0;
-    lockAmount = (stock.sell1Volume || 0) * 100 * (stock.sell1Price || 0);
-  }
-
-  return { isLimitUp, isLimitDown, lockCount, lockAmount };
+  const volume = isLimitUp ? stock.buy1Volume || 0 : stock.sell1Volume || 0;
+  const price = isLimitUp ? stock.buy1Price || 0 : stock.sell1Price || 0;
+  const lockAmount = volume * 100 * price;
+  const priceType = isLimitUp ? "up" : isLimitDown ? "down" : "none";
+  return { priceType, lockAmount };
 }
 
 function checkLockTip(stockInfos) {
-  if (!getEnableLockTip()) return;
-
   const now = Date.now();
-  const COOLDOWN = 60000;
 
   for (const stock of stockInfos) {
     const prev = lockTipCache.get(stock.code);
     const curr = {
-      isLimitUp: stock.isLimitUp,
-      isLimitDown: stock.isLimitDown,
+      priceType: stock.priceType,
       lockAmount: stock.lockAmount,
+      lastNotifyTime: now,
     };
 
-    const message = getLockChangeMessage(stock, prev, curr);
+    if (!prev) {
+      lockTipCache.set(stock.code, curr);
+      continue;
+    }
 
-    if (message && canNotify(prev, now, COOLDOWN)) {
+    const message = getLockChangeMessage(stock, prev, curr);
+    const canNotify = now - prev.lastNotifyTime >= COOLDOWN;
+
+    if (message && canNotify) {
       vscode.window.showInformationMessage(message);
-      curr.lastNotifyTime = now;
-    } else if (prev) {
+    } else {
       curr.lastNotifyTime = prev.lastNotifyTime;
     }
 
@@ -56,50 +52,33 @@ function checkLockTip(stockInfos) {
 }
 
 function getLockChangeMessage(stock, prev, curr) {
-  if (!prev) {
-    if (curr.isLimitUp) {
-      return `🔒 ${stock.name} 涨停，封单${formatAmount(curr.lockAmount)}`;
-    }
-    if (curr.isLimitDown) {
-      return `🔒 ${stock.name} 跌停，封单${formatAmount(curr.lockAmount)}`;
-    }
-    return "";
+  // 上次未涨停未跌停，当前涨停或跌停
+  if (prev.priceType === "none" && curr.priceType !== "none") {
+    return `🔒 ${stock.name} ${curr.priceType === "up" ? "涨停" : "跌停"}，封单${formatAmount(curr.lockAmount)}`;
   }
-
-  if (!curr.isLimitUp && !curr.isLimitDown) {
-    if (prev.isLimitUp || prev.isLimitDown) {
-      return `🔓 ${stock.name} 已开板`;
-    }
-    return "";
+  // 上次涨停当前未涨停或上次跌停当前未跌停
+  if (
+    (prev.priceType === "up" && curr.priceType !== "up") ||
+    (prev.priceType === "down" && curr.priceType !== "down")
+  ) {
+    return `🔓 ${stock.name} ${prev.priceType === "up" ? "涨停" : "跌停"}已开板`;
   }
-
-  const MIN_LOCK = 5000000;
-  const delta = curr.lockAmount - prev.lockAmount;
-
-  if (curr.isLimitUp && Math.abs(delta) >= MIN_LOCK && prev.lockAmount > 0) {
-    if (delta < 0 && -delta / prev.lockAmount >= 0.1) {
-      return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，注意开板风险`;
+  //上次涨停当前涨停或上次跌停当前跌停
+  if (
+    (prev.priceType === "up" && curr.priceType === "up") ||
+    (prev.priceType === "down" && curr.priceType === "down")
+  ) {
+    const delta = curr.lockAmount - prev.lockAmount;
+    const deltaChange = Math.round((Math.abs(delta) / prev.lockAmount) * 100);
+    if (Math.abs(delta) < MIN_LOCK || Math.abs(deltaChange) < 5) {
+      return "";
     }
-    if (delta > 0 && delta / prev.lockAmount >= 0.2) {
-      return `🔒 ${stock.name} 封单增加${Math.round((delta / prev.lockAmount) * 100)}%`;
-    }
+    // 封单增加
+    if (delta > 0) return `🔒 ${stock.name} 封单增加${deltaChange}%`;
+    // 封单减少
+    return `⚠️ ${stock.name} 封单减少${deltaChange}%，${curr.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
   }
-
-  if (curr.isLimitDown && Math.abs(delta) >= MIN_LOCK && prev.lockAmount > 0) {
-    if (delta > 0 && delta / prev.lockAmount >= 0.2) {
-      return `🔒 ${stock.name} 封单增加${Math.round((delta / prev.lockAmount) * 100)}%，跌停封单持续堆积`;
-    }
-    if (delta < 0 && -delta / prev.lockAmount >= 0.1) {
-      return `⚠️ ${stock.name} 封单减少${Math.round((-delta / prev.lockAmount) * 100)}%，抛压有所缓解`;
-    }
-  }
-
   return "";
-}
-
-function canNotify(prev, now, cooldown) {
-  if (!prev?.lastNotifyTime) return true;
-  return now - prev.lastNotifyTime >= cooldown;
 }
 
 module.exports = { calculateLockInfo, checkLockTip };
