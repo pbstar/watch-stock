@@ -91,8 +91,8 @@ class StatusBarManager {
         let line = `${stock.name}(${stock.code}): ${stock.current} ${
           stock.changeValue >= 0 ? "+" : ""
         }${stock.changePercent}%(${stock.changeValue})`;
-        if (stock.isLimitUp || stock.isLimitDown) {
-          const type = stock.isLimitUp ? "涨停" : "跌停";
+        if (stock.priceType !== "none") {
+          const type = stock.priceType === "up" ? "涨停" : "跌停";
           line += ` ${type}封单: ${formatAmount(stock.lockAmount)}`;
         }
         return line;
