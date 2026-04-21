@@ -118,6 +118,7 @@ ovsx publish
   <p>
     <a href="https://github.com/pbstar/watch-stock">⭐ Star on GitHub</a> |
     <a href="https://github.com/pbstar/watch-stock/issues">🐛 报告问题</a> |
-    <a href="https://github.com/pbstar/watch-stock/blob/main/CHANGELOG.md">📝 更新日志</a>
+    <a href="https://github.com/pbstar/watch-stock/blob/main/CHANGELOG.md">📝 更新日志</a> |
+    <a href="https://github.com/pbstar/watch-stock/blob/main/LICENSE"> 📜 MIT License</a>
   </p>
 </div>

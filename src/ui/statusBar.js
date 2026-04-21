@@ -70,7 +70,11 @@ class StatusBarManager {
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
         : stock.name;
       let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
-      if (showLockCount && stock.lockAmount > 0 && stock.priceType !== "none") {
+      if (
+        showLockCount &&
+        stock.lockAmount > 0 &&
+        (stock.priceType === "up" || stock.priceType === "down")
+      ) {
         text += ` 封${formatAmount(stock.lockAmount)}`;
       }
       return text;
@@ -91,7 +95,7 @@ class StatusBarManager {
         let line = `${stock.name}(${stock.code}): ${stock.current} ${
           stock.changeValue >= 0 ? "+" : ""
         }${stock.changePercent}%(${stock.changeValue})`;
-        if (stock.priceType !== "none") {
+        if (stock.priceType === "up" || stock.priceType === "down") {
           const type = stock.priceType === "up" ? "涨停" : "跌停";
           line += ` ${type}封单: ${formatAmount(stock.lockAmount)}`;
         }

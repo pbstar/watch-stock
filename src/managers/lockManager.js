@@ -11,6 +11,12 @@ const COOLDOWN = 60000;
 const MIN_LOCK = 5000000;
 
 function calculateLockInfo(stock) {
+  if (
+    (stock.buy1Price === 0 && stock.sell1Price === 0) ||
+    (stock.buy1Volume === 0 && stock.sell1Volume === 0)
+  ) {
+    return { priceType: "err", lockAmount: 0 };
+  }
   const limit = getLimitPercent(stock.code, stock.name);
   const changePercent = parseFloat(stock.changePercent);
   const isLimitUp = changePercent >= limit - 0.1 && stock.sell1Volume === 0;
@@ -26,6 +32,7 @@ function checkLockTip(stockInfos) {
   const now = Date.now();
 
   for (const stock of stockInfos) {
+    if (stock.priceType === "err") continue;
     const prev = lockTipCache.get(stock.code);
     const curr = {
       priceType: stock.priceType,
