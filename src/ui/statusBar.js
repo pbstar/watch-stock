@@ -8,7 +8,9 @@ const {
   getShowMiniName,
   getStockMiniNames,
   getShowChangeValue,
-} = require("../config");
+  getShowLockCount,
+} = require("../configs/vscodeConfig");
+const { formatAmount } = require("../utils/stockUtils");
 
 class StatusBarManager {
   constructor() {
@@ -57,6 +59,7 @@ class StatusBarManager {
     const showMiniName = getShowMiniName();
     const stockMiniNames = getStockMiniNames();
     const showChangeValue = getShowChangeValue();
+    const showLockCount = getShowLockCount();
 
     // 构建状态栏文本
     const stockTexts = displayStocks.map((stock) => {
@@ -66,7 +69,15 @@ class StatusBarManager {
         ? stockMiniNames[stock.code] ||
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
         : stock.name;
-      return `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
+      let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
+      if (
+        showLockCount &&
+        stock.lockAmount > 0 &&
+        (stock.priceType === "up" || stock.priceType === "down")
+      ) {
+        text += ` 封${formatAmount(stock.lockAmount)}`;
+      }
+      return text;
     });
 
     // 处理超出显示限制的情况
@@ -80,12 +91,16 @@ class StatusBarManager {
 
     // 构建悬停提示
     let tooltip = stockInfos
-      .map(
-        (stock) =>
-          `${stock.name}(${stock.code}): ${stock.current} ${
-            stock.changeValue >= 0 ? "+" : ""
-          }${stock.changePercent}%(${stock.changeValue})`,
-      )
+      .map((stock) => {
+        let line = `${stock.name}(${stock.code}): ${stock.current} ${
+          stock.changeValue >= 0 ? "+" : ""
+        }${stock.changePercent}%(${stock.changeValue})`;
+        if (stock.priceType === "up" || stock.priceType === "down") {
+          const type = stock.priceType === "up" ? "涨停" : "跌停";
+          line += ` ${type}封单: ${formatAmount(stock.lockAmount)}`;
+        }
+        return line;
+      })
       .join("\n");
 
     // 添加获取失败提示（如果有）

@@ -1,9 +1,9 @@
 /**
- * 配置管理模块
+ * VS Code 配置管理模块
  */
 
 const vscode = require("vscode");
-const { isValidStockCode } = require("./utils/stockCode");
+const { isValidStockCode } = require("../utils/stockUtils");
 
 const CONFIG_SECTION = "watch-stock";
 
@@ -16,6 +16,8 @@ const CONFIG_DEFAULTS = {
   showChangeValue: false,
   autoHideByMarket: false,
   priceAlarms: [],
+  enableLockTip: false,
+  showLockCount: false,
 };
 
 /**
@@ -96,6 +98,8 @@ module.exports = {
   getStockMiniNames: () => getConfigValue("stockMiniNames"),
   getShowChangeValue: () => getConfigValue("showChangeValue"),
   getAutoHideByMarket: () => getConfigValue("autoHideByMarket"),
+  getEnableLockTip: () => getConfigValue("enableLockTip"),
+  getShowLockCount: () => getConfigValue("showLockCount"),
   moveStock,
   getAlarms: () => getConfigValue("priceAlarms"),
   saveAlarms,

@@ -7,6 +7,7 @@
 - 📈 **实时行情** 状态栏实时显示股票价格和涨跌幅
 - 📋 **查看股票** 查看指数、板块、分时图和成交量等
 - ⏰ **价格闹钟** 设置价格提醒，价格达到目标自动通知
+- 🔒 **封单监控** 监控涨跌停股票封单数量，异动自动通知
 - 🔄 **自定义排序** 支持调整股票显示顺序，优先关注重要股票
 - 👁️ **显示/隐藏** 一键隐藏/显示状态栏股票信息
 - ⌨️ **快捷键** 支持快捷键快速切换显示/隐藏
@@ -41,15 +42,17 @@
 
 点击插件的`扩展设置`或在设置中搜索 `@ext:pbstar.watch-stock`，可配置以下选项：
 
-| 配置项             | 类型    | 默认值         | 说明                                             |
-| ------------------ | ------- | -------------- | ------------------------------------------------ |
-| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                     |
-| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                     |
-| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                           |
-| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时默认截取名称前两位 |
-| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，例如 `{"sh601318": "平安"}`  |
-| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                             |
-| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                |
+| 配置项             | 类型    | 默认值         | 说明                                          |
+| ------------------ | ------- | -------------- | --------------------------------------------- |
+| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                  |
+| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                  |
+| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                        |
+| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时截取名称前两位  |
+| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，如 `{"sh601318": "平安"}` |
+| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                          |
+| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏             |
+| `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                        |
+| `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                          |
 
 ## 🛠️ 常见问题
 
@@ -60,9 +63,9 @@
 
 ### 2.支持哪些股票❓
 
-- ✅ **支持**：A 股上交所（sh）、深交所（sz）的股票和ETF基金
-- ⚠️ **部分支持**：A 股北交所（bj）的股票部分功能暂不支持
-- ❌ **不支持**：港股、美股、期货、场外基金等
+- **支持**：A 股上交所（sh）、深交所（sz）的股票和ETF基金
+- **部分支持**：A 股北交所（bj）的股票部分功能暂不支持
+- **不支持**：港股、美股、期货、场外基金等
 
 ### 3.股票太多状态栏显示不全怎么办❓
 
@@ -115,6 +118,7 @@ ovsx publish
   <p>
     <a href="https://github.com/pbstar/watch-stock">⭐ Star on GitHub</a> |
     <a href="https://github.com/pbstar/watch-stock/issues">🐛 报告问题</a> |
-    <a href="https://github.com/pbstar/watch-stock/blob/main/CHANGELOG.md">📝 更新日志</a>
+    <a href="https://github.com/pbstar/watch-stock/blob/main/CHANGELOG.md">📝 更新日志</a> |
+    <a href="https://github.com/pbstar/watch-stock/blob/main/LICENSE"> 📜 MIT License</a>
   </p>
 </div>

@@ -7,7 +7,12 @@ const StatusBarManager = require("./ui/statusBar");
 const StockHomePanel = require("./ui/stockHome");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
-const { getStocks, getAutoHideByMarket } = require("./config");
+const LockManager = require("./managers/lockManager");
+const {
+  getStocks,
+  getAutoHideByMarket,
+  getEnableLockTip,
+} = require("./configs/vscodeConfig");
 const { getStockList } = require("./services/stockService");
 const { isTradingTime, isMorningAuctionTime } = require("./utils/tradingTime");
 
@@ -259,12 +264,19 @@ async function updateDataAndCheckAlarms() {
   const stockInfos =
     stocks.length > 0 ? await getStockList(stocks, isSina) : [];
 
-  // 闹钟检查不依赖可见性
+  for (const stock of stockInfos) {
+    const lockInfo = LockManager.calculateLockInfo(stock);
+    Object.assign(stock, lockInfo);
+  }
+
   if (stockInfos.length > 0) {
     await alarmManager.checkAlarms(stockInfos);
   }
 
-  // 渲染状态栏
+  if (isSina && getEnableLockTip()) {
+    LockManager.checkLockTip(stockInfos);
+  }
+
   if (getIsVisible()) {
     statusBarManager.render(stocks, stockInfos);
   } else {

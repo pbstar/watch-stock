@@ -4,10 +4,10 @@
  */
 
 const vscode = require("vscode");
-const { isValidStockCode } = require("../utils/stockCode");
+const { isValidStockCode } = require("../utils/stockUtils");
 const { searchStockCode } = require("../services/stockSearch");
 const { getStockList } = require("../services/stockService");
-const { getStocks, saveStocks, moveStock } = require("../config");
+const { getStocks, saveStocks, moveStock } = require("../configs/vscodeConfig");
 
 class StockManager {
   /**
