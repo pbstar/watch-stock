@@ -14,7 +14,11 @@ const {
   getEnableLockTip,
 } = require("./configs/vscodeConfig");
 const { getStockList } = require("./services/stockService");
-const { isTradingTime, isMorningAuctionTime } = require("./utils/tradingTime");
+const {
+  isTradingTime,
+  isMorningAuctionTime,
+  isAfternoonAuctionTime,
+} = require("./utils/tradingTime");
 
 // 全局变量
 let statusBarManager;
@@ -260,9 +264,10 @@ function registerCommands(context) {
  */
 async function updateDataAndCheckAlarms() {
   const stocks = getStocks();
-  const isSina = !isMorningAuctionTime();
+  const isMorningAuction = isMorningAuctionTime();
+  const isAfternoonAuction = isAfternoonAuctionTime();
   const stockInfos =
-    stocks.length > 0 ? await getStockList(stocks, isSina) : [];
+    stocks.length > 0 ? await getStockList(stocks, !isMorningAuction) : [];
 
   for (const stock of stockInfos) {
     const lockInfo = LockManager.calculateLockInfo(stock);
@@ -273,7 +278,7 @@ async function updateDataAndCheckAlarms() {
     await alarmManager.checkAlarms(stockInfos);
   }
 
-  if (isSina && getEnableLockTip()) {
+  if (!isMorningAuction && !isAfternoonAuction && getEnableLockTip()) {
     LockManager.checkLockTip(stockInfos);
   }
 

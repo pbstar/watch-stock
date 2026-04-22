@@ -36,6 +36,16 @@ function isMorningAuctionTime() {
 }
 
 /**
+ * 检查是否为尾盘集合竞价时间（14:57-15:00）
+ * @returns {boolean}
+ */
+function isAfternoonAuctionTime() {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return currentMinutes >= 897 && currentMinutes <= 900; // 14:57-15:00
+}
+
+/**
  * 生成 A 股交易时间槽（09:30-11:30 和 13:00-15:00，共 242 个）
  * @param {string} date - 日期字符串 YYYY-MM-DD
  * @returns {string[]} 完整时间槽数组
@@ -60,5 +70,6 @@ function buildTimeSlots(date) {
 module.exports = {
   isTradingTime,
   isMorningAuctionTime,
+  isAfternoonAuctionTime,
   buildTimeSlots,
 };
