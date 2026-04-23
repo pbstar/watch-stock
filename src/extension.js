@@ -8,6 +8,7 @@ const StockHomePanel = require("./ui/stockHome");
 const StockManager = require("./managers/stockManager");
 const AlarmManager = require("./managers/alarmManager");
 const LockManager = require("./managers/lockManager");
+const { sendMsg } = require("./utils/sendMsg");
 const {
   getStocks,
   getAutoHideByMarket,
@@ -216,7 +217,7 @@ function registerCommands(context) {
     "watch-stock.refreshData",
     async () => {
       await updateDataAndCheckAlarms();
-      vscode.window.showInformationMessage("股票行情数据刷新完成");
+      sendMsg("股票行情数据刷新完成");
     },
   );
 
@@ -226,7 +227,7 @@ function registerCommands(context) {
     async () => {
       const stocks = getStocks();
       if (stocks.length === 0) {
-        vscode.window.showInformationMessage("请先添加股票");
+        sendMsg("请先添加股票", { type: "warning" });
         return;
       }
       await StockHomePanel.show();

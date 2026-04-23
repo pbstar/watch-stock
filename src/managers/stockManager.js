@@ -4,6 +4,7 @@
  */
 
 const vscode = require("vscode");
+const { sendMsg } = require("../utils/sendMsg");
 const { isValidStockCode } = require("../utils/stockUtils");
 const { searchStockCode } = require("../services/stockSearch");
 const { getStockList } = require("../services/stockService");
@@ -44,7 +45,7 @@ class StockManager {
     }
 
     if (!stockCode) {
-      vscode.window.showErrorMessage(
+      sendMsg(
         `股票获取失败："${stockInput}"\n\n` +
           "可能的原因：\n" +
           "• 股票名称或代码输入错误\n" +
@@ -54,6 +55,7 @@ class StockManager {
           "• 使用股票代码（如：sh601318）\n" +
           "• 检查股票名称拼写\n" +
           "• 稍后重试",
+        { type: "error" },
       );
       return;
     }
@@ -61,23 +63,21 @@ class StockManager {
     // 检查是否已存在
     const stocks = getStocks();
     if (stocks.includes(stockCode.toLowerCase())) {
-      vscode.window.showWarningMessage("该股票已存在");
+      sendMsg("该股票已存在", { type: "warning" });
       return;
     }
 
     // 验证股票是否存在
     const stockInfo = await getStockList([stockCode]);
     if (!stockInfo || !stockInfo[0].name) {
-      vscode.window.showErrorMessage("股票获取失败，请检查股票代码或名称");
+      sendMsg("股票获取失败，请检查股票代码或名称", { type: "error" });
       return;
     }
 
     // 添加股票
     stocks.push(stockCode.toLowerCase());
     await saveStocks(stocks);
-    vscode.window.showInformationMessage(
-      `已添加: ${stockInfo[0].name}(${stockInfo[0].code})`,
-    );
+    sendMsg(`已添加: ${stockInfo[0].name}(${stockInfo[0].code})`);
 
     // 触发更新
     if (onUpdate) {
@@ -93,7 +93,7 @@ class StockManager {
   async removeStock(onUpdate, alarmManager) {
     const stocks = getStocks();
     if (stocks.length === 0) {
-      vscode.window.showInformationMessage("当前没有添加任何股票");
+      sendMsg("当前没有添加任何股票", { type: "warning" });
       return;
     }
 
@@ -122,7 +122,7 @@ class StockManager {
         await alarmManager.removeAlarmsByStock(selected.code);
       }
 
-      vscode.window.showInformationMessage(`已移除: ${selected.label}`);
+      sendMsg(`已移除: ${selected.label}`);
 
       // 触发更新
       if (onUpdate) {
@@ -155,7 +155,7 @@ class StockManager {
       }
 
       await saveStocks([]);
-      vscode.window.showInformationMessage("已清空所有股票");
+      sendMsg("已清空所有股票");
 
       // 触发更新
       if (onUpdate) {
@@ -171,12 +171,12 @@ class StockManager {
   async sortStocks(onUpdate) {
     const stocks = getStocks();
     if (stocks.length === 0) {
-      vscode.window.showInformationMessage("当前没有添加任何股票");
+      sendMsg("当前没有添加任何股票", { type: "warning" });
       return;
     }
 
     if (stocks.length === 1) {
-      vscode.window.showInformationMessage("只有一只股票，无需排序");
+      sendMsg("只有一只股票，无需排序", { type: "warning" });
       return;
     }
 
@@ -242,7 +242,7 @@ class StockManager {
       (s) => s && s.code === selectedStock.code,
     );
     const stockName = stockInfo ? stockInfo.name : selectedStock.code;
-    vscode.window.showInformationMessage(`已调整 "${stockName}" 的显示顺序`);
+    sendMsg(`已调整 "${stockName}" 的显示顺序`);
 
     // 触发更新
     if (onUpdate) {

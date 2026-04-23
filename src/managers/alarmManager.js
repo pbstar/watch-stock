@@ -4,6 +4,7 @@
  */
 
 const vscode = require("vscode");
+const { sendMsg } = require("../utils/sendMsg");
 const { getStockList } = require("../services/stockService");
 const { getStocks, getAlarms, saveAlarms } = require("../configs/vscodeConfig");
 
@@ -63,7 +64,7 @@ class AlarmManager {
     }
 
     if (options.length === 0) {
-      vscode.window.showInformationMessage("请先添加股票才能设置闹钟");
+      sendMsg("请先添加股票才能设置闹钟", { type: "warning" });
       return;
     }
 
@@ -79,7 +80,7 @@ class AlarmManager {
         break;
       case "delete":
         await this._removeAlarm(selected.alarm.id);
-        vscode.window.showInformationMessage("已删除闹钟");
+        sendMsg("已删除闹钟");
         await this.manageAlarms();
         break;
       case "clearAll":
@@ -94,7 +95,7 @@ class AlarmManager {
   async _addAlarm() {
     const stocks = getStocks();
     if (stocks.length === 0) {
-      vscode.window.showInformationMessage("请先添加股票");
+      sendMsg("请先添加股票", { type: "warning" });
       return;
     }
 
@@ -152,15 +153,15 @@ class AlarmManager {
 
       const price = parseFloat(priceInput);
       if (isNaN(price) || price <= 0) {
-        vscode.window.showErrorMessage("请输入有效的价格");
+        sendMsg("请输入有效的价格", { type: "error" });
         continue;
       }
       if (selectedCondition.value === "above" && price <= currentPrice) {
-        vscode.window.showErrorMessage("目标价格必须高于当前价格");
+        sendMsg("目标价格必须高于当前价格", { type: "error" });
         continue;
       }
       if (selectedCondition.value === "below" && price >= currentPrice) {
-        vscode.window.showErrorMessage("目标价格必须低于当前价格");
+        sendMsg("目标价格必须低于当前价格", { type: "error" });
         continue;
       }
 
@@ -179,7 +180,7 @@ class AlarmManager {
     alarms.push(alarm);
     await saveAlarms(alarms);
 
-    vscode.window.showInformationMessage(
+    sendMsg(
       `已设置闹钟: ${selectedStock.label} 价格${CONDITION_TEXT[selectedCondition.value]} ${targetPrice} 时提醒`,
     );
   }
@@ -204,7 +205,7 @@ class AlarmManager {
     );
     if (confirm === "确定") {
       await saveAlarms([]);
-      vscode.window.showInformationMessage("已删除所有闹钟");
+      sendMsg("已删除所有闹钟");
     }
   }
 
@@ -248,9 +249,8 @@ class AlarmManager {
     }
 
     for (const alarm of triggeredAlarms) {
-      vscode.window.showInformationMessage(
+      sendMsg(
         `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${CONDITION_TEXT[alarm.condition]} ${alarm.targetPrice}`,
-        "知道了",
       );
     }
   }

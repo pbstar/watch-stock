@@ -3,11 +3,10 @@
  * 处理涨跌停封单计算、异动检测和通知
  */
 
-const vscode = require("vscode");
+const { sendMsg } = require("../utils/sendMsg");
 const { getLimitPercent, formatAmount } = require("../utils/stockUtils");
 
 const lockTipCache = new Map();
-const COOLDOWN = 60000;
 const MIN_LOCK = 5000000;
 
 function calculateLockInfo(stock) {
@@ -29,46 +28,36 @@ function calculateLockInfo(stock) {
 }
 
 function checkLockTip(stockInfos) {
-  const now = Date.now();
-
   for (const stock of stockInfos) {
     if (stock.priceType === "err") continue;
     const prev = lockTipCache.get(stock.code);
-    const curr = {
+
+    const message = getLockChangeMessage(prev, stock);
+    if (!message) continue;
+
+    sendMsg(message, {
+      rateLimit: true,
+      showTime: true,
+    });
+
+    lockTipCache.set(stock.code, {
       priceType: stock.priceType,
       lockAmount: stock.lockAmount,
-      lastNotifyTime: now,
-    };
-
-    if (!prev) {
-      lockTipCache.set(stock.code, curr);
-      continue;
-    }
-
-    const message = getLockChangeMessage(stock, prev, curr);
-    const canNotify = now - prev.lastNotifyTime >= COOLDOWN;
-
-    if (message && canNotify) {
-      vscode.window.showInformationMessage(message);
-    } else {
-      curr.lastNotifyTime = prev.lastNotifyTime;
-    }
-
-    lockTipCache.set(stock.code, curr);
+    });
   }
 }
 
-function getLockChangeMessage(stock, prev, curr) {
+function getLockChangeMessage(prev, curr) {
   // 上次未涨停未跌停，当前涨停或跌停
   if (prev.priceType === "none" && curr.priceType !== "none") {
-    return `🔒 ${stock.name} ${curr.priceType === "up" ? "涨停" : "跌停"}，封单${formatAmount(curr.lockAmount)}`;
+    return `🔒 ${curr.name} ${curr.priceType === "up" ? "涨停" : "跌停"}，封单${formatAmount(curr.lockAmount)}`;
   }
   // 上次涨停当前未涨停或上次跌停当前未跌停
   if (
     (prev.priceType === "up" && curr.priceType !== "up") ||
     (prev.priceType === "down" && curr.priceType !== "down")
   ) {
-    return `🔓 ${stock.name} ${prev.priceType === "up" ? "涨停" : "跌停"}已开板`;
+    return `🔓 ${curr.name} ${prev.priceType === "up" ? "涨停" : "跌停"}已开板`;
   }
   //上次涨停当前涨停或上次跌停当前跌停
   if (
@@ -81,9 +70,9 @@ function getLockChangeMessage(stock, prev, curr) {
       return "";
     }
     // 封单增加
-    if (delta > 0) return `🔒 ${stock.name} 封单增加${deltaChange}%`;
+    if (delta > 0) return `🔒 ${curr.name} 封单增加${deltaChange}%`;
     // 封单减少
-    return `⚠️ ${stock.name} 封单减少${deltaChange}%，${curr.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
+    return `⚠️ ${curr.name} 封单减少${deltaChange}%，${curr.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
   }
   return "";
 }

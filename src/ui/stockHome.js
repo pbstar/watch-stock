@@ -6,6 +6,7 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const { sendMsg } = require("../utils/sendMsg");
 const {
   getStockMinute,
   getStockQuoteList,
@@ -98,7 +99,7 @@ class StockHomePanel {
   static async show() {
     const configStocks = getStocks();
     if (!configStocks.length) {
-      vscode.window.showInformationMessage("请先添加股票");
+      sendMsg("请先添加股票", { type: "warning" });
       return;
     }
 
@@ -109,7 +110,7 @@ class StockHomePanel {
     ]);
 
     if (!quotes.length) {
-      vscode.window.showErrorMessage("获取股票数据失败，请检查网络连接");
+      sendMsg("获取股票数据失败，请检查网络连接", { type: "error" });
       return;
     }
 
