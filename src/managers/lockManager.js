@@ -67,9 +67,10 @@ function getLockChangeMessage(prev, curr) {
       return "";
     }
     // 封单增加
-    if (delta > 0) return `🔒 ${curr.name} 封单增加${deltaChange}%`;
+    if (delta > 0)
+      return `🔒 ${curr.name} 封单增加${formatAmount(Math.abs(delta))}（${deltaChange}%）`;
     // 封单减少
-    return `⚠️ ${curr.name} 封单减少${deltaChange}%，${curr.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
+    return `⚠️ ${curr.name} 封单减少${formatAmount(Math.abs(delta))}（${deltaChange}%），${curr.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
   }
   return "";
 }

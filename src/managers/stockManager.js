@@ -45,18 +45,7 @@ class StockManager {
     }
 
     if (!stockCode) {
-      sendMsg(
-        `股票获取失败："${stockInput}"\n\n` +
-          "可能的原因：\n" +
-          "• 股票名称或代码输入错误\n" +
-          "• 该股票不存在或已退市\n" +
-          "• 网络连接问题\n\n" +
-          "请尝试：\n" +
-          "• 使用股票代码（如：sh601318）\n" +
-          "• 检查股票名称拼写\n" +
-          "• 稍后重试",
-        { type: "error" },
-      );
+      sendMsg(`股票获取失败："${stockInput}"，请稍后重试`, { type: "error" });
       return;
     }
 
