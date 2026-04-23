@@ -51,7 +51,7 @@ function sendMsg(text, options = {}) {
     // 可以发送，带上之前被缓存的消息
     let finalText = text;
     if (pendingMessages.length > 0) {
-      finalText = `${pendingMessages.join("\n")}\n${text}`;
+      finalText = `${pendingMessages.join("--")}--[${formatTime()}] ${text}`;
       pendingMessages = [];
     }
     lastNotifyTime = now;

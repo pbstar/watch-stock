@@ -29,18 +29,18 @@ function calculateLockInfo(stock) {
 
 function checkLockTip(stockInfos) {
   for (const stock of stockInfos) {
-    if (stock.priceType === "err") continue;
+    if (!stock || stock.priceType === "err") continue;
     const prev = lockTipCache.get(stock.code);
-
-    const message = getLockChangeMessage(prev, stock);
-    if (!message) continue;
-
-    sendMsg(message, { rateLimit: true });
-
-    lockTipCache.set(stock.code, {
+    const data = {
       priceType: stock.priceType,
       lockAmount: stock.lockAmount,
-    });
+    };
+    if (prev) {
+      const message = getLockChangeMessage(prev, stock);
+      if (!message) continue;
+      sendMsg(message, { rateLimit: true });
+    }
+    lockTipCache.set(stock.code, data);
   }
 }
 
