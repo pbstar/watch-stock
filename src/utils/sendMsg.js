@@ -24,40 +24,22 @@ function formatTime() {
 }
 
 /**
- * 构建带样式的消息文本
- * @param {string} text - 原始消息
- * @param {boolean} showTime - 是否显示时间
- * @returns {string}
- */
-function buildMessage(text, showTime) {
-  if (!showTime) return text;
-  return `[${formatTime()}] ${text}`;
-}
-
-/**
  * 发送统一消息
  * @param {string} text - 消息内容
  * @param {Object} options - 配置项
  * @param {boolean} options.rateLimit - 是否限流，默认 false
- * @param {boolean} options.showTime - 是否显示时间，默认 false
  * @param {string} options.type - 消息类型: info | warning | error，默认 info
  * @param {boolean} options.showConfirm - 是否显示"知道了"按钮，默认 false
  * @returns {void}
  */
 function sendMsg(text, options = {}) {
-  const {
-    rateLimit = false,
-    showTime = false,
-    type = "info",
-    showConfirm = false,
-  } = options;
+  const { rateLimit = false, type = "info", showConfirm = false } = options;
 
   const buttons = showConfirm ? ["知道了"] : [];
 
   // 不限流直接发送
   if (!rateLimit) {
-    const msg = buildMessage(text, showTime);
-    showVscodeMessage(msg, type, buttons);
+    showVscodeMessage(text, type, buttons);
     return;
   }
 
@@ -73,10 +55,10 @@ function sendMsg(text, options = {}) {
       pendingMessages = [];
     }
     lastNotifyTime = now;
-    showVscodeMessage(buildMessage(finalText, showTime || true), type, buttons);
+    showVscodeMessage(finalText, type, buttons);
   } else {
     // 被限流，缓存消息等下次一起发
-    pendingMessages.push(text);
+    pendingMessages.push(`[${formatTime()}] ${text}`);
   }
 }
 

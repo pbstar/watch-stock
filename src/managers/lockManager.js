@@ -35,10 +35,7 @@ function checkLockTip(stockInfos) {
     const message = getLockChangeMessage(prev, stock);
     if (!message) continue;
 
-    sendMsg(message, {
-      rateLimit: true,
-      showTime: true,
-    });
+    sendMsg(message, { rateLimit: true });
 
     lockTipCache.set(stock.code, {
       priceType: stock.priceType,
