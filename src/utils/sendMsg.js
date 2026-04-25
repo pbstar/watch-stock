@@ -34,7 +34,6 @@ function formatTime() {
  */
 function sendMsg(text, options = {}) {
   const { rateLimit = false, type = "info", showConfirm = false } = options;
-
   const buttons = showConfirm ? ["知道了"] : [];
 
   // 不限流直接发送
@@ -51,7 +50,7 @@ function sendMsg(text, options = {}) {
     // 可以发送，带上之前被缓存的消息
     let finalText = text;
     if (pendingMessages.length > 0) {
-      finalText = `${pendingMessages.join("--")}--[${formatTime()}] ${text}`;
+      finalText = `${pendingMessages.join(" --- ")} --- [${formatTime()}] ${text}`;
       pendingMessages = [];
     }
     lastNotifyTime = now;
