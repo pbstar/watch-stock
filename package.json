@@ -3,19 +3,24 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "1.5.3",
+  "version": "2.0.0",
   "publisher": "pbstar",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.96.0",
+    "node": ">=18"
   },
-  "scripts": {},
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "npm run typecheck && node esbuild.config.mjs --watch",
+    "build": "npm run typecheck && node esbuild.config.mjs && vsce package"
+  },
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./src/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -122,7 +127,13 @@
       }
     ]
   },
-  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/vscode": "1.96.0",
+    "@vscode/vsce": "^3.9.1",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
+  },
   "keywords": [
     "摸鱼看盘",
     "stock",
@@ -137,5 +148,7 @@
   "bugs": {
     "url": "https://github.com/pbstar/watch-stock/issues"
   },
-  "homepage": "https://github.com/pbstar/watch-stock#readme"
+  "homepage": "https://github.com/pbstar/watch-stock#readme",
+  "author": "pbstar@sina.cn",
+  "license": "MIT"
 }

@@ -1,27 +1,15 @@
-/**
- * 状态栏管理模块
- */
+// 状态栏渲染
+import * as vscode from "vscode";
+import { config } from "../config";
+import { formatAmount } from "../utils/stock";
+import type { Stock } from "../types";
 
-const vscode = require("vscode");
-const {
-  getMaxDisplayCount,
-  getShowMiniName,
-  getStockMiniNames,
-  getShowChangeValue,
-  getShowLockCount,
-} = require("../configs/vscodeConfig");
-const { formatAmount } = require("../utils/stockUtils");
+export class StatusBarManager {
+  private statusBarItem: vscode.StatusBarItem | null = null;
+  private hidden = false;
 
-class StatusBarManager {
-  constructor() {
-    this.statusBarItem = null;
-    this._hidden = false;
-  }
-
-  /**
-   * 初始化状态栏
-   */
-  initialize() {
+  // 初始化状态栏
+  initialize(): void {
     this.statusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       0,
@@ -30,41 +18,32 @@ class StatusBarManager {
     this.statusBarItem.show();
   }
 
-  /**
-   * 渲染股票信息到状态栏
-   * @param {string[]} stocks 股票代码列表
-   * @param {object[]} stockInfos 股票数据列表
-   */
-  render(stocks, stockInfos) {
+  // 渲染股票信息
+  render(stocks: string[], stockInfos: Stock[]): void {
     if (!this.statusBarItem) return;
-    this._hidden = false;
+    this.hidden = false;
 
-    // 无股票时的提示
     if (!stocks || stocks.length === 0) {
       this.statusBarItem.text = "$(add) 点击添加股票";
       this.statusBarItem.tooltip = "点击管理股票，开始您的看盘之旅";
       return;
     }
 
-    // 无有效数据时的处理
     if (!stockInfos || stockInfos.length === 0) {
       this.statusBarItem.text = "$(error) 股票获取失败";
       this.statusBarItem.tooltip = "请检查网络连接或股票代码是否正确";
       return;
     }
 
-    // 状态栏显示前 maxDisplayCount 个股票
-    const maxDisplayCount = getMaxDisplayCount();
+    const maxDisplayCount = config.getMaxDisplayCount();
     const displayStocks = stockInfos.slice(0, maxDisplayCount);
-    const showMiniName = getShowMiniName();
-    const stockMiniNames = getStockMiniNames();
-    const showChangeValue = getShowChangeValue();
-    const showLockCount = getShowLockCount();
+    const showMiniName = config.getShowMiniName();
+    const stockMiniNames = config.getStockMiniNames();
+    const showChangeValue = config.getShowChangeValue();
+    const showLockCount = config.getShowLockCount();
 
-    // 构建状态栏文本
     const stockTexts = displayStocks.map((stock) => {
-      const symbol = stock.changeValue >= 0 ? "↗" : "↘";
-      // 优先取配置简称，无配置时截取前两位
+      const symbol = parseFloat(stock.changeValue) >= 0 ? "↗" : "↘";
       const displayName = showMiniName
         ? stockMiniNames[stock.code] ||
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
@@ -72,38 +51,33 @@ class StatusBarManager {
       let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
       if (
         showLockCount &&
-        stock.lockAmount > 0 &&
+        (stock.lockAmount ?? 0) > 0 &&
         (stock.priceType === "up" || stock.priceType === "down")
       ) {
-        text += ` 封${formatAmount(stock.lockAmount)}`;
+        text += ` 封${formatAmount(stock.lockAmount ?? 0)}`;
       }
       return text;
     });
 
-    // 处理超出显示限制的情况
     const text = stockTexts.join(" | ");
-    const finalText =
+    this.statusBarItem.text =
       stockInfos.length > maxDisplayCount
         ? `${text} ...(${stockInfos.length - maxDisplayCount}+)`
         : text;
 
-    this.statusBarItem.text = finalText;
-
-    // 构建悬停提示
     let tooltip = stockInfos
       .map((stock) => {
         let line = `${stock.name}(${stock.code}): ${stock.current} ${
-          stock.changeValue >= 0 ? "+" : ""
+          parseFloat(stock.changeValue) >= 0 ? "+" : ""
         }${stock.changePercent}%(${stock.changeValue})`;
         if (stock.priceType === "up" || stock.priceType === "down") {
           const type = stock.priceType === "up" ? "涨停" : "跌停";
-          line += ` ${type}封单: ${formatAmount(stock.lockAmount)}`;
+          line += ` ${type}封单: ${formatAmount(stock.lockAmount ?? 0)}`;
         }
         return line;
       })
       .join("\n");
 
-    // 添加获取失败提示（如果有）
     if (stocks.length > stockInfos.length) {
       const failedCount = stocks.length - stockInfos.length;
       tooltip += `\n\n$(warning) ${failedCount}只股票获取失败`;
@@ -112,31 +86,19 @@ class StatusBarManager {
     this.statusBarItem.tooltip = tooltip;
   }
 
-  /**
-   * 显示隐藏图标（已隐藏时跳过，避免重复更新）
-   */
-  setHidden() {
-    if (this._hidden || !this.statusBarItem) return;
-    this._hidden = true;
+  // 显示隐藏图标（已隐藏时跳过）
+  setHidden(): void {
+    if (this.hidden || !this.statusBarItem) return;
+    this.hidden = true;
     this.statusBarItem.text = "$(eye-closed)";
     this.statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
   }
 
-  /**
-   * 获取状态栏项（用于注册命令）
-   */
-  getStatusBarItem() {
+  getStatusBarItem(): vscode.StatusBarItem | null {
     return this.statusBarItem;
   }
 
-  /**
-   * 销毁状态栏
-   */
-  dispose() {
-    if (this.statusBarItem) {
-      this.statusBarItem.dispose();
-    }
+  dispose(): void {
+    this.statusBarItem?.dispose();
   }
 }
-
-module.exports = StatusBarManager;

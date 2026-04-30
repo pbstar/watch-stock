@@ -1,24 +1,29 @@
-/**
- * 价格闹钟管理模块
- * 处理股票价格闹钟的设置、触发、删除等操作
- */
+// 价格闹钟管理
+import * as vscode from "vscode";
+import { sendMsg } from "../utils/msg";
+import { getStockList } from "../services/stockService";
+import { config } from "../config";
+import type { Alarm, AlarmCondition, Stock } from "../types";
 
-const vscode = require("vscode");
-const { sendMsg } = require("../utils/sendMsg");
-const { getStockList } = require("../services/stockService");
-const { getStocks, getAlarms, saveAlarms } = require("../configs/vscodeConfig");
+const CONDITION_TEXT: Record<AlarmCondition, string> = {
+  above: "高于",
+  below: "低于",
+};
 
-/** 条件文本映射 */
-const CONDITION_TEXT = { above: "高于", below: "低于" };
+interface AlarmAction {
+  label: string;
+  description?: string;
+  action?: "add" | "delete" | "clearAll";
+  alarm?: Alarm;
+  kind?: vscode.QuickPickItemKind;
+}
 
-class AlarmManager {
-  /**
-   * 管理闹钟（设置和管理合一）
-   */
-  async manageAlarms() {
-    const alarms = getAlarms();
-    const stocks = getStocks();
-    const options = [];
+export class AlarmManager {
+  // 主入口：管理闹钟
+  async manageAlarms(): Promise<void> {
+    const alarms = config.getAlarms();
+    const stocks = config.getStocks();
+    const options: AlarmAction[] = [];
 
     if (stocks.length > 0) {
       options.push({
@@ -40,16 +45,16 @@ class AlarmManager {
         });
       }
 
-      alarms.forEach((alarm) => {
+      for (const alarm of alarms) {
         const info = stockInfos.find((s) => s.code === alarm.stockCode);
-        const price = parseFloat(alarm.targetPrice).toFixed(2);
+        const price = alarm.targetPrice.toFixed(2);
         options.push({
           label: `${info ? info.name : alarm.stockCode} 价格${CONDITION_TEXT[alarm.condition]} ${price} 时提醒`,
           description: "点击删除",
           action: "delete",
           alarm,
         });
-      });
+      }
 
       options.push({
         label: "",
@@ -76,24 +81,24 @@ class AlarmManager {
 
     switch (selected.action) {
       case "add":
-        await this._addAlarm();
+        await this.addAlarm();
         break;
       case "delete":
-        await this._removeAlarm(selected.alarm.id);
-        sendMsg("已删除闹钟");
-        await this.manageAlarms();
+        if (selected.alarm) {
+          await this.removeAlarm(selected.alarm.id);
+          sendMsg("已删除闹钟");
+          await this.manageAlarms();
+        }
         break;
       case "clearAll":
-        await this._confirmClearAll();
+        await this.confirmClearAll();
         break;
     }
   }
 
-  /**
-   * 添加新闹钟
-   */
-  async _addAlarm() {
-    const stocks = getStocks();
+  // 添加新闹钟
+  private async addAlarm(): Promise<void> {
+    const stocks = config.getStocks();
     if (stocks.length === 0) {
       sendMsg("请先添加股票", { type: "warning" });
       return;
@@ -101,9 +106,8 @@ class AlarmManager {
 
     const stockInfos = await getStockList(stocks);
 
-    // 选择股票
     const stockOptions = stocks.map((code) => {
-      const info = stockInfos.find((s) => s?.code === code);
+      const info = stockInfos.find((s) => s.code === code);
       return {
         label: info ? `${info.name}(${info.code})` : code,
         description: info ? `当前价格: ${info.current}` : "",
@@ -116,33 +120,29 @@ class AlarmManager {
     });
     if (!selectedStock) return;
 
-    // 选择条件类型
     const conditionOptions = [
       {
         label: "$(arrow-up) 价格高于",
-        value: "above",
+        value: "above" as AlarmCondition,
         description: "当股票价格上涨到指定价格时触发",
       },
       {
         label: "$(arrow-down) 价格低于",
-        value: "below",
+        value: "below" as AlarmCondition,
         description: "当股票价格下跌到指定价格时触发",
       },
     ];
 
     const selectedCondition = await vscode.window.showQuickPick(
       conditionOptions,
-      {
-        placeHolder: "选择触发条件",
-      },
+      { placeHolder: "选择触发条件" },
     );
     if (!selectedCondition) return;
 
-    // 输入目标价格
     const stockInfo = stockInfos.find((s) => s.code === selectedStock.code);
     const currentPrice = stockInfo ? parseFloat(stockInfo.current) : 0;
 
-    let targetPrice = null;
+    let targetPrice: string | null = null;
     while (targetPrice === null) {
       const priceInput = await vscode.window.showInputBox({
         prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
@@ -168,9 +168,8 @@ class AlarmManager {
       targetPrice = price.toFixed(2);
     }
 
-    // 保存闹钟
-    const alarms = getAlarms();
-    const alarm = {
+    const alarms = config.getAlarms();
+    const alarm: Alarm = {
       id: `${selectedStock.code}_${Date.now()}`,
       stockCode: selectedStock.code.toLowerCase(),
       targetPrice: parseFloat(targetPrice),
@@ -178,53 +177,46 @@ class AlarmManager {
       createdAt: new Date().toISOString(),
     };
     alarms.push(alarm);
-    await saveAlarms(alarms);
+    await config.saveAlarms(alarms);
 
     sendMsg(
       `已设置闹钟: ${selectedStock.label} 价格${CONDITION_TEXT[selectedCondition.value]} ${targetPrice} 时提醒`,
     );
   }
 
-  /**
-   * 删除指定闹钟
-   * @param {string} alarmId - 闹钟ID
-   */
-  async _removeAlarm(alarmId) {
-    const alarms = getAlarms().filter((a) => a.id !== alarmId);
-    await saveAlarms(alarms);
+  // 删除指定闹钟
+  private async removeAlarm(alarmId: string): Promise<void> {
+    const alarms = config.getAlarms().filter((a) => a.id !== alarmId);
+    await config.saveAlarms(alarms);
   }
 
-  /**
-   * 确认后清空所有闹钟
-   */
-  async _confirmClearAll() {
+  // 确认后清空
+  private async confirmClearAll(): Promise<void> {
     const confirm = await vscode.window.showWarningMessage(
       "确定要删除所有闹钟吗？",
       "确定",
       "取消",
     );
     if (confirm === "确定") {
-      await saveAlarms([]);
+      await config.saveAlarms([]);
       sendMsg("已删除所有闹钟");
     }
   }
 
-  /**
-   * 检查并触发闹钟
-   * @param {Array} stockInfos - 股票信息列表
-   */
-  async checkAlarms(stockInfos) {
-    const alarms = getAlarms();
+  // 检查并触发闹钟
+  async checkAlarms(stockInfos: Stock[]): Promise<void> {
+    const alarms = config.getAlarms();
     if (alarms.length === 0) return;
 
-    const triggeredAlarms = [];
-    const remainingAlarms = [];
+    const triggered: Array<
+      Alarm & { stockName: string; currentPrice: number }
+    > = [];
+    const remaining: Alarm[] = [];
 
     for (const alarm of alarms) {
       const stockInfo = stockInfos.find((s) => s.code === alarm.stockCode);
-
       if (!stockInfo) {
-        remainingAlarms.push(alarm);
+        remaining.push(alarm);
         continue;
       }
 
@@ -234,44 +226,33 @@ class AlarmManager {
         (alarm.condition === "below" && currentPrice <= alarm.targetPrice);
 
       if (isTriggered) {
-        triggeredAlarms.push({
-          ...alarm,
-          stockName: stockInfo.name,
-          currentPrice,
-        });
+        triggered.push({ ...alarm, stockName: stockInfo.name, currentPrice });
       } else {
-        remainingAlarms.push(alarm);
+        remaining.push(alarm);
       }
     }
 
-    if (remainingAlarms.length !== alarms.length) {
-      await saveAlarms(remainingAlarms);
+    if (remaining.length !== alarms.length) {
+      await config.saveAlarms(remaining);
     }
 
-    for (const alarm of triggeredAlarms) {
+    for (const alarm of triggered) {
       sendMsg(
         `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${CONDITION_TEXT[alarm.condition]} ${alarm.targetPrice}`,
       );
     }
   }
 
-  /**
-   * 删除股票相关的所有闹钟
-   * @param {string} stockCode - 股票代码
-   */
-  async removeAlarmsByStock(stockCode) {
-    const alarms = getAlarms().filter(
-      (a) => a.stockCode !== stockCode.toLowerCase(),
-    );
-    await saveAlarms(alarms);
+  // 删除某只股票相关的所有闹钟
+  async removeAlarmsByStock(stockCode: string): Promise<void> {
+    const alarms = config
+      .getAlarms()
+      .filter((a) => a.stockCode !== stockCode.toLowerCase());
+    await config.saveAlarms(alarms);
   }
 
-  /**
-   * 清空所有闹钟（无确认）
-   */
-  async clearAllAlarms() {
-    await saveAlarms([]);
+  // 清空所有闹钟（无确认）
+  async clearAllAlarms(): Promise<void> {
+    await config.saveAlarms([]);
   }
 }
-
-module.exports = AlarmManager;
