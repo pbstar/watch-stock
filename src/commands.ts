@@ -119,7 +119,7 @@ export function registerCommands(context: vscode.ExtensionContext): () => void {
       state.alarm.manageAlarms(),
     ),
     vscode.commands.registerCommand("watch-stock.manageStock", () =>
-      manageStock(state, refresh),
+      manageStock(state),
     ),
     vscode.commands.registerCommand("watch-stock.toggleVisibility", () => {
       state.userForced = getIsVisible(state) ? false : true;
@@ -157,10 +157,7 @@ export function registerCommands(context: vscode.ExtensionContext): () => void {
 }
 
 // 管理股票主菜单
-async function manageStock(
-  state: AppState,
-  refresh: () => void,
-): Promise<void> {
+async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
   const visible = getIsVisible(state);
 
@@ -233,9 +230,6 @@ async function manageStock(
     placeHolder: stocks.length > 0 ? "选择操作" : "还没有添加股票，请选择操作",
   });
   if (!selected) return;
-
-  // 静默引用 refresh 以免 TS 误判未使用
-  void refresh;
 
   const map: Record<Action, string> = {
     add: "watch-stock.addStock",
