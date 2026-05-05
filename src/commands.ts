@@ -25,10 +25,23 @@ const REFRESH_INTERVAL = 5000;
 interface AppState {
   statusBar: StatusBarManager;
   alarm: AlarmManager;
-  // null=自动 true=用户强制显示 false=用户强制隐藏
-  userForced: boolean | null;
+  userForced: boolean | null; // null=自动 true=用户强制显示 false=用户强制隐藏
   refreshTimer: NodeJS.Timeout | null;
 }
+
+// 全局状态
+let appState: AppState | null = null;
+const cMap: Record<string, string> = {
+  add: "watch-stock.addStock",
+  home: "watch-stock.viewHome",
+  remove: "watch-stock.removeStock",
+  sort: "watch-stock.sortStocks",
+  clear: "watch-stock.clearStocks",
+  alarm: "watch-stock.priceAlarm",
+  toggle: "watch-stock.toggleVisibility",
+  refresh: "watch-stock.refreshData",
+  manage: "watch-stock.manageStock",
+};
 
 function getIsVisible(state: AppState): boolean {
   if (state.userForced !== null) return state.userForced;
@@ -63,77 +76,48 @@ async function updateDataAndCheckAlarms(state: AppState): Promise<void> {
   }
 }
 
-// 启动定时器，固定 5s 间隔，仅交易时段拉数据
-function startRefreshTimer(state: AppState): void {
-  if (state.refreshTimer) clearInterval(state.refreshTimer);
-
-  void updateDataAndCheckAlarms(state);
-
-  state.refreshTimer = setInterval(() => {
-    if (isTradingTime()) {
-      void updateDataAndCheckAlarms(state);
-    } else if (config.getAutoHideByMarket() && state.userForced === null) {
-      state.statusBar.setHidden();
-    }
-  }, REFRESH_INTERVAL);
-}
-
-// 停止刷新
-function stopRefreshTimer(state: AppState): void {
-  if (state.refreshTimer) {
-    clearInterval(state.refreshTimer);
-    state.refreshTimer = null;
-  }
-}
-
 // 注册全部命令
-export function registerCommands(context: vscode.ExtensionContext): () => void {
-  const state: AppState = {
+export function registerCommands(context: vscode.ExtensionContext): void {
+  appState = {
     statusBar: new StatusBarManager(),
     alarm: new AlarmManager(),
     userForced: null,
     refreshTimer: null,
   };
 
-  state.statusBar.initialize();
+  appState.statusBar.initialize();
 
   const refresh = (): void => {
-    void updateDataAndCheckAlarms(state);
+    void updateDataAndCheckAlarms(appState!);
   };
 
   const subs: vscode.Disposable[] = [
-    state.statusBar.getStatusBarItem()!,
-    vscode.commands.registerCommand("watch-stock.addStock", () =>
-      addStock(refresh),
+    appState.statusBar.getStatusBarItem()!,
+    vscode.commands.registerCommand(cMap.add, () => addStock(refresh)),
+    vscode.commands.registerCommand(cMap.remove, () =>
+      removeStock(refresh, appState!.alarm),
     ),
-    vscode.commands.registerCommand("watch-stock.removeStock", () =>
-      removeStock(refresh, state.alarm),
+    vscode.commands.registerCommand(cMap.clear, () =>
+      clearStocks(refresh, appState!.alarm),
     ),
-    vscode.commands.registerCommand("watch-stock.clearStocks", () =>
-      clearStocks(refresh, state.alarm),
+    vscode.commands.registerCommand(cMap.sort, () => sortStocks(refresh)),
+    vscode.commands.registerCommand(cMap.alarm, () =>
+      appState!.alarm.manageAlarms(),
     ),
-    vscode.commands.registerCommand("watch-stock.sortStocks", () =>
-      sortStocks(refresh),
-    ),
-    vscode.commands.registerCommand("watch-stock.priceAlarm", () =>
-      state.alarm.manageAlarms(),
-    ),
-    vscode.commands.registerCommand("watch-stock.manageStock", () =>
-      manageStock(state),
-    ),
-    vscode.commands.registerCommand("watch-stock.toggleVisibility", () => {
-      state.userForced = getIsVisible(state) ? false : true;
-      if (state.userForced) {
+    vscode.commands.registerCommand(cMap.manage, () => manageStock(appState!)),
+    vscode.commands.registerCommand(cMap.toggle, () => {
+      appState!.userForced = getIsVisible(appState!) ? false : true;
+      if (appState!.userForced) {
         refresh();
       } else {
-        state.statusBar.setHidden();
+        appState!.statusBar.setHidden();
       }
     }),
-    vscode.commands.registerCommand("watch-stock.refreshData", async () => {
-      await updateDataAndCheckAlarms(state);
+    vscode.commands.registerCommand(cMap.refresh, () => {
+      refresh();
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand("watch-stock.viewHome", async () => {
+    vscode.commands.registerCommand(cMap.home, async () => {
       const stocks = config.getStocks();
       if (stocks.length === 0) {
         sendMsg("请先添加股票", { type: "warning" });
@@ -145,37 +129,36 @@ export function registerCommands(context: vscode.ExtensionContext): () => void {
       if (e.affectsConfiguration("watch-stock")) refresh();
     }),
   ];
-
   context.subscriptions.push(...subs);
+  if (appState.refreshTimer) clearInterval(appState.refreshTimer);
+  void updateDataAndCheckAlarms(appState);
+  appState.refreshTimer = setInterval(() => {
+    if (!appState) return;
+    if (isTradingTime()) {
+      void updateDataAndCheckAlarms(appState);
+    } else if (config.getAutoHideByMarket() && appState.userForced === null) {
+      appState.statusBar.setHidden();
+    }
+  }, REFRESH_INTERVAL);
+}
 
-  startRefreshTimer(state);
-
-  return (): void => {
-    stopRefreshTimer(state);
-    state.statusBar.dispose();
-  };
+// 销毁命令及相关资源
+export function disposeCommands(): void {
+  if (appState) {
+    if (appState.refreshTimer) {
+      clearInterval(appState.refreshTimer);
+      appState.refreshTimer = null;
+    }
+    appState.statusBar.dispose();
+    appState = null;
+  }
 }
 
 // 管理股票主菜单
 async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
   const visible = getIsVisible(state);
-
-  type Action =
-    | "add"
-    | "home"
-    | "remove"
-    | "sort"
-    | "clear"
-    | "alarm"
-    | "toggle"
-    | "refresh";
-
-  interface Item extends vscode.QuickPickItem {
-    action: Action;
-  }
-
-  const options: Item[] = [
+  const options = [
     {
       label: "$(add) 添加股票",
       description: "输入股票代码或名称添加",
@@ -231,15 +214,5 @@ async function manageStock(state: AppState): Promise<void> {
   });
   if (!selected) return;
 
-  const map: Record<Action, string> = {
-    add: "watch-stock.addStock",
-    home: "watch-stock.viewHome",
-    remove: "watch-stock.removeStock",
-    sort: "watch-stock.sortStocks",
-    clear: "watch-stock.clearStocks",
-    alarm: "watch-stock.priceAlarm",
-    toggle: "watch-stock.toggleVisibility",
-    refresh: "watch-stock.refreshData",
-  };
-  await vscode.commands.executeCommand(map[selected.action]);
+  await vscode.commands.executeCommand(cMap[selected.action]);
 }
