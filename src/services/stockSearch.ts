@@ -16,7 +16,7 @@ async function searchBySina(keyword: string): Promise<string | null> {
       }
     }
   } catch {
-    return null;
+    // 网络或解析异常，返回 null
   }
   return null;
 }
@@ -25,9 +25,5 @@ async function searchBySina(keyword: string): Promise<string | null> {
 export async function searchStockCode(keyword: string): Promise<string | null> {
   const trimmed = keyword?.trim();
   if (!trimmed) return null;
-  try {
-    return await searchBySina(trimmed);
-  } catch {
-    return null;
-  }
+  return searchBySina(trimmed);
 }

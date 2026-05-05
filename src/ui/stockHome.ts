@@ -19,6 +19,9 @@ import stockOverviewHtml from "../webview/stockOverview.html";
 import stockDetailHtml from "../webview/stockDetail.html";
 import stockChartHtml from "../webview/stockChart.html";
 
+// 分时数据缓存有效期：10秒
+const MINUTE_CACHE_TTL = 10000;
+
 interface MinuteCacheEntry {
   data: MinutePoint[];
   timestamp: number;
@@ -183,6 +186,7 @@ export class StockHomePanel {
     this.panel.title = "查看股票";
     this.panel.webview.html = this.buildHtml();
 
+    // 等待 webview 初始化完成后再发送数据，避免消息丢失
     await new Promise((r) => setTimeout(r, 100));
 
     this.panel.webview.postMessage({
@@ -205,7 +209,7 @@ export class StockHomePanel {
 
     const now = Date.now();
     const cached = this.minuteCache.get(code);
-    if (!forceRefresh && cached && now - cached.timestamp < 10000) {
+    if (!forceRefresh && cached && now - cached.timestamp < MINUTE_CACHE_TTL) {
       this.panel.webview.postMessage({
         type: "minuteData",
         code,
@@ -246,8 +250,7 @@ export class StockHomePanel {
   private dispose(): void {
     StockHomePanel.current = null;
     this.panel.dispose();
-    while (this.disposables.length) {
-      this.disposables.pop()?.dispose();
-    }
+    for (const d of this.disposables) d.dispose();
+    this.disposables = [];
   }
 }

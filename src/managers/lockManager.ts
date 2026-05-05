@@ -9,7 +9,8 @@ interface LockSnapshot {
 }
 
 const lockTipCache = new Map<string, LockSnapshot>();
-const MIN_LOCK = 7000000; // 七百万
+const MIN_LOCK_CHANGE = 7000000; // 封单变化通知阈值：700万
+const LOCK_CHANGE_PERCENT = 7; // 封单变化百分比通知阈值：7%
 
 // 根据五档计算封单价/封单量/类型
 export function calculateLockInfo(stock: Stock): LockInfo {
@@ -24,6 +25,7 @@ export function calculateLockInfo(stock: Stock): LockInfo {
   ) {
     return { priceType: "err", lockAmount: 0 };
   }
+
   const limit = getLimitPercent(stock.code, stock.name);
   const changePercent = parseFloat(stock.changePercent);
   const isLimitUp = changePercent >= limit - 0.1 && sell1Volume === 0;
@@ -37,41 +39,37 @@ export function calculateLockInfo(stock: Stock): LockInfo {
 
 // 根据封单变化生成通知文案
 function getLockChangeMessage(prev: LockSnapshot, stock: Stock): string {
-  // 上次未涨/跌停，当前已涨/跌停
-  if (
-    prev.priceType === "none" &&
-    (stock.priceType === "up" || stock.priceType === "down")
-  ) {
-    return `🔒 ${stock.name} ${stock.priceType === "up" ? "涨停" : "跌停"} 封单${formatAmount(stock.lockAmount ?? 0)}`;
+  const cur = stock.priceType ?? "none";
+  const curAmount = stock.lockAmount ?? 0;
+
+  // 新涨停/跌停
+  if (prev.priceType === "none" && (cur === "up" || cur === "down")) {
+    return `🔒 ${stock.name} ${cur === "up" ? "涨停" : "跌停"} 封单${formatAmount(curAmount)}`;
   }
-  // 上次涨停当前未涨停
-  if (
-    prev.priceType === "up" &&
-    (stock.priceType === "none" || stock.priceType === "down")
-  ) {
+
+  // 涨停开板
+  if (prev.priceType === "up" && cur !== "up") {
     return `🔓 ${stock.name} 涨停已开板`;
   }
-  // 上次跌停当前未跌停
-  if (
-    prev.priceType === "down" &&
-    (stock.priceType === "none" || stock.priceType === "up")
-  ) {
+
+  // 跌停开板
+  if (prev.priceType === "down" && cur !== "down") {
     return `🔓 ${stock.name} 跌停已开板`;
   }
+
   // 同向延续，封单变化超阈值
-  if (
-    (prev.priceType === "up" && stock.priceType === "up") ||
-    (prev.priceType === "down" && stock.priceType === "down")
-  ) {
-    const cur = stock.lockAmount ?? 0;
-    const delta = cur - prev.lockAmount;
-    const deltaChange = Math.round((Math.abs(delta) / prev.lockAmount) * 100);
-    if (Math.abs(delta) > MIN_LOCK && Math.abs(deltaChange) > 7) {
-      if (delta > 0)
-        return `🔒 ${stock.name} 封单增加${formatAmount(Math.abs(delta))}`;
-      return `⚠️ ${stock.name} 封单减少${formatAmount(Math.abs(delta))} ${stock.priceType === "up" ? "注意开板风险" : "抛压有所缓解"}`;
+  if (prev.priceType === cur && (cur === "up" || cur === "down")) {
+    const delta = curAmount - prev.lockAmount;
+    const absDelta = Math.abs(delta);
+    const deltaChange = Math.round((absDelta / prev.lockAmount) * 100);
+    if (absDelta > MIN_LOCK_CHANGE && deltaChange > LOCK_CHANGE_PERCENT) {
+      if (delta > 0) {
+        return `🔒 ${stock.name} 封单增加${formatAmount(absDelta)}`;
+      }
+      return `⚠️ ${stock.name} 封单减少${formatAmount(absDelta)} ${cur === "up" ? "注意开板风险" : "抛压有所缓解"}`;
     }
   }
+
   return "";
 }
 

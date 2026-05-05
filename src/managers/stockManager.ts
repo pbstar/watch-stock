@@ -22,7 +22,7 @@ export async function addStock(onUpdate?: UpdateCallback): Promise<void> {
     },
   });
 
-  if (!input || !input.trim()) return;
+  if (!input) return;
 
   const stockInput = input.trim();
   let stockCode: string | null = stockInput;
@@ -43,7 +43,7 @@ export async function addStock(onUpdate?: UpdateCallback): Promise<void> {
   }
 
   const stockInfo = await getStockList([stockCode]);
-  if (!stockInfo || !stockInfo[0]?.name) {
+  if (!stockInfo[0]?.name) {
     sendMsg("股票获取失败，请检查股票代码或名称", { type: "error" });
     return;
   }

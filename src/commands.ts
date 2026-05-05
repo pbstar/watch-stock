@@ -25,13 +25,14 @@ const REFRESH_INTERVAL = 5000;
 interface AppState {
   statusBar: StatusBarManager;
   alarm: AlarmManager;
-  userForced: boolean | null; // null=自动 true=用户强制显示 false=用户强制隐藏
+  userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
   refreshTimer: NodeJS.Timeout | null;
 }
 
 // 全局状态
 let appState: AppState | null = null;
-const cMap: Record<string, string> = {
+// 命令 ID 映射
+const COMMAND_MAP: Record<string, string> = {
   add: "watch-stock.addStock",
   home: "watch-stock.viewHome",
   remove: "watch-stock.removeStock",
@@ -93,31 +94,35 @@ export function registerCommands(context: vscode.ExtensionContext): void {
 
   const subs: vscode.Disposable[] = [
     appState.statusBar.getStatusBarItem()!,
-    vscode.commands.registerCommand(cMap.add, () => addStock(refresh)),
-    vscode.commands.registerCommand(cMap.remove, () =>
+    vscode.commands.registerCommand(COMMAND_MAP.add, () => addStock(refresh)),
+    vscode.commands.registerCommand(COMMAND_MAP.remove, () =>
       removeStock(refresh, appState!.alarm),
     ),
-    vscode.commands.registerCommand(cMap.clear, () =>
+    vscode.commands.registerCommand(COMMAND_MAP.clear, () =>
       clearStocks(refresh, appState!.alarm),
     ),
-    vscode.commands.registerCommand(cMap.sort, () => sortStocks(refresh)),
-    vscode.commands.registerCommand(cMap.alarm, () =>
+    vscode.commands.registerCommand(COMMAND_MAP.sort, () =>
+      sortStocks(refresh),
+    ),
+    vscode.commands.registerCommand(COMMAND_MAP.alarm, () =>
       appState!.alarm.manageAlarms(),
     ),
-    vscode.commands.registerCommand(cMap.manage, () => manageStock(appState!)),
-    vscode.commands.registerCommand(cMap.toggle, () => {
-      appState!.userForced = getIsVisible(appState!) ? false : true;
+    vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
+      manageStock(appState!),
+    ),
+    vscode.commands.registerCommand(COMMAND_MAP.toggle, () => {
+      appState!.userForced = !getIsVisible(appState!);
       if (appState!.userForced) {
         refresh();
       } else {
         appState!.statusBar.setHidden();
       }
     }),
-    vscode.commands.registerCommand(cMap.refresh, () => {
+    vscode.commands.registerCommand(COMMAND_MAP.refresh, () => {
       refresh();
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand(cMap.home, async () => {
+    vscode.commands.registerCommand(COMMAND_MAP.home, async () => {
       const stocks = config.getStocks();
       if (stocks.length === 0) {
         sendMsg("请先添加股票", { type: "warning" });
@@ -144,14 +149,13 @@ export function registerCommands(context: vscode.ExtensionContext): void {
 
 // 销毁命令及相关资源
 export function disposeCommands(): void {
-  if (appState) {
-    if (appState.refreshTimer) {
-      clearInterval(appState.refreshTimer);
-      appState.refreshTimer = null;
-    }
-    appState.statusBar.dispose();
-    appState = null;
+  if (!appState) return;
+  if (appState.refreshTimer) {
+    clearInterval(appState.refreshTimer);
+    appState.refreshTimer = null;
   }
+  appState.statusBar.dispose();
+  appState = null;
 }
 
 // 管理股票主菜单
@@ -214,5 +218,5 @@ async function manageStock(state: AppState): Promise<void> {
   });
   if (!selected) return;
 
-  await vscode.commands.executeCommand(cMap[selected.action]);
+  await vscode.commands.executeCommand(COMMAND_MAP[selected.action]);
 }

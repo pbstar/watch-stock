@@ -1,5 +1,6 @@
 // HTTP 请求工具，基于 VS Code 内置 fetch
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+const REQUEST_TIMEOUT = 10000; // 请求超时时间：10秒
 
 // 特殊域名 Referer 映射
 const REFERER_MAP: Record<string, string> = {
@@ -20,7 +21,7 @@ function buildOptions(url: string, extraHeaders: Headers = {}): RequestInit {
       : `${protocol}//www.${hostname}`;
     return {
       headers: { "User-Agent": UA, Referer: origin, ...extraHeaders },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT),
     };
   } catch {
     return { headers: { "User-Agent": UA, ...extraHeaders } };

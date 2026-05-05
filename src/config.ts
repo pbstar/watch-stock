@@ -64,7 +64,7 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
   { code: "sh516620", name: "影视" },
 ];
 
-// 行业板块代码列表（缓存）
+// 行业板块代码列表（由 INDUSTRY_CODES 派生的纯代码数组）
 export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
 
 // 配置项类型
@@ -100,6 +100,7 @@ function read<K extends keyof ConfigShape>(key: K): ConfigShape[K] {
   try {
     return raw().get<ConfigShape[K]>(key, DEFAULTS[key]);
   } catch {
+    // 配置读取异常时回退到默认值
     return DEFAULTS[key];
   }
 }

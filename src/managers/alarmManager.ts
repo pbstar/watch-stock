@@ -18,6 +18,20 @@ interface AlarmAction {
   kind?: vscode.QuickPickItemKind;
 }
 
+// 验证目标价格是否合法，返回错误信息或 null
+function validateTargetPrice(
+  price: number,
+  condition: AlarmCondition,
+  currentPrice: number,
+): string | null {
+  if (isNaN(price) || price <= 0) return "请输入有效的价格";
+  if (condition === "above" && price <= currentPrice)
+    return "目标价格必须高于当前价格";
+  if (condition === "below" && price >= currentPrice)
+    return "目标价格必须低于当前价格";
+  return null;
+}
+
 export class AlarmManager {
   // 主入口：管理闹钟
   async manageAlarms(): Promise<void> {
@@ -141,38 +155,17 @@ export class AlarmManager {
 
     const stockInfo = stockInfos.find((s) => s.code === selectedStock.code);
     const currentPrice = stockInfo ? parseFloat(stockInfo.current) : 0;
-
-    let targetPrice: string | null = null;
-    while (targetPrice === null) {
-      const priceInput = await vscode.window.showInputBox({
-        prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
-        placeHolder: `例如: ${selectedCondition.value === "above" ? (currentPrice + 1).toFixed(2) : (currentPrice - 1).toFixed(2)}`,
-      });
-
-      if (!priceInput) return;
-
-      const price = parseFloat(priceInput);
-      if (isNaN(price) || price <= 0) {
-        sendMsg("请输入有效的价格", { type: "error" });
-        continue;
-      }
-      if (selectedCondition.value === "above" && price <= currentPrice) {
-        sendMsg("目标价格必须高于当前价格", { type: "error" });
-        continue;
-      }
-      if (selectedCondition.value === "below" && price >= currentPrice) {
-        sendMsg("目标价格必须低于当前价格", { type: "error" });
-        continue;
-      }
-
-      targetPrice = price.toFixed(2);
-    }
+    const targetPrice = await this.inputTargetPrice(
+      selectedCondition.value,
+      currentPrice,
+    );
+    if (targetPrice === null) return;
 
     const alarms = config.getAlarms();
     const alarm: Alarm = {
       id: `${selectedStock.code}_${Date.now()}`,
       stockCode: selectedStock.code.toLowerCase(),
-      targetPrice: parseFloat(targetPrice),
+      targetPrice,
       condition: selectedCondition.value,
       createdAt: new Date().toISOString(),
     };
@@ -180,8 +173,32 @@ export class AlarmManager {
     await config.saveAlarms(alarms);
 
     sendMsg(
-      `已设置闹钟: ${selectedStock.label} 价格${CONDITION_TEXT[selectedCondition.value]} ${targetPrice} 时提醒`,
+      `已设置闹钟: ${selectedStock.label} 价格${CONDITION_TEXT[selectedCondition.value]} ${targetPrice.toFixed(2)} 时提醒`,
     );
+  }
+
+  // 循环输入目标价格，直到合法或用户取消
+  private async inputTargetPrice(
+    condition: AlarmCondition,
+    currentPrice: number,
+  ): Promise<number | null> {
+    while (true) {
+      const priceInput = await vscode.window.showInputBox({
+        prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
+        placeHolder: `例如: ${condition === "above" ? (currentPrice + 1).toFixed(2) : (currentPrice - 1).toFixed(2)}`,
+      });
+
+      if (!priceInput) return null;
+
+      const price = parseFloat(priceInput);
+      const error = validateTargetPrice(price, condition, currentPrice);
+      if (error) {
+        sendMsg(error, { type: "error" });
+        continue;
+      }
+
+      return price;
+    }
   }
 
   // 删除指定闹钟

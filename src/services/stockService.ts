@@ -41,7 +41,7 @@ function parseSinaStockData(code: string, data: string): Stock | null {
   };
 }
 
-// 腾讯源完整行情解析
+// 腾讯源完整行情解析（含市值、PE、PB 等详细指标）
 function parseFullQuote(fields: string[], code: string): StockQuote {
   const isETF = isFund(code, fields[1] ?? "", safeNumber(fields[3]));
   const dec = getDecimals(isETF);
@@ -118,7 +118,7 @@ function parseTencentLines<T>(
     .filter((v): v is T => v !== null);
 }
 
-// 批量获取股票信息（默认走新浪，集合竞价用腾讯）
+// 批量获取股票行情（默认新浪源，集合竞价期间切换腾讯简版源）
 export async function getStockList(
   codes: string[],
   isSina = true,
@@ -150,7 +150,9 @@ export async function getStockList(
 }
 
 // 详细行情列表
-export async function getStockQuoteList(codes: string[]): Promise<StockQuote[]> {
+export async function getStockQuoteList(
+  codes: string[],
+): Promise<StockQuote[]> {
   if (!codes?.length) return [];
   try {
     const url = `https://qt.gtimg.cn/?q=${codes.join(",")}`;

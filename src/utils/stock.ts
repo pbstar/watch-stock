@@ -1,6 +1,6 @@
 // 股票相关纯工具函数
 
-// 是否为基金/ETF
+// 是否为基金/ETF（按代码前缀、名称关键词、低价基金特征综合判断）
 export function isFund(code: string, name: string, current: number): boolean {
   const codeNum = code.substring(2);
   const isFundByCode =
@@ -33,7 +33,7 @@ export function isValidStockCode(code: unknown): code is string {
   return /^(sh|sz|bj)[0-9]{6}$/i.test(code);
 }
 
-// 涨跌幅限制（百分比）
+// 涨跌幅限制（百分比）：ST 5%、创业板/科创板 20%、北交所 30%、其余 10%
 export function getLimitPercent(code: string, name: string): number {
   if (name && /ST/i.test(name)) return 5;
   if (code.startsWith("sz30")) return 20;

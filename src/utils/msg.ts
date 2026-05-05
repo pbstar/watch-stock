@@ -2,7 +2,8 @@
 import * as vscode from "vscode";
 import type { SendMsgOptions } from "../types";
 
-const COOLDOWN = 60000;
+// 限流冷却时间：60秒内同类型消息合并
+const RATE_LIMIT_COOLDOWN = 60000;
 
 // 全局限流状态
 let lastNotifyTime = 0;
@@ -47,7 +48,7 @@ export function sendMsg(text: string, options: SendMsgOptions = {}): void {
   }
 
   const now = Date.now();
-  const canNotify = now - lastNotifyTime >= COOLDOWN;
+  const canNotify = now - lastNotifyTime >= RATE_LIMIT_COOLDOWN;
 
   if (canNotify) {
     // 可以发送，带上之前被缓存的消息
