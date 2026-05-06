@@ -1,6 +1,5 @@
 // 命令注册
 import * as vscode from "vscode";
-import { StatusBarManager } from "./ui/statusBar";
 import { StockHomePanel } from "./ui/stockHome";
 import {
   addStock,
@@ -8,16 +7,15 @@ import {
   clearStocks,
   sortStocks,
 } from "./managers/stockManager";
-import { manageAlarms } from "./managers/alarmManager";
+import {
+  manageAlarms,
+  removeAlarmsByStock,
+  clearAllAlarms,
+} from "./managers/alarmManager";
 import { sendMsg } from "./utils/msg";
 import { config } from "./config";
 import { getIsVisible, refreshData } from "./refresher";
-
-export interface AppState {
-  statusBar: StatusBarManager;
-  userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
-  refreshTimer: NodeJS.Timeout | null;
-}
+import type { AppState } from "./appState";
 
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {
@@ -43,16 +41,25 @@ export function registerCommands(
 
   const subs: vscode.Disposable[] = [
     appState.statusBar.getStatusBarItem()!,
-    vscode.commands.registerCommand(COMMAND_MAP.add, () => addStock(refresh)),
-    vscode.commands.registerCommand(COMMAND_MAP.remove, () =>
-      removeStock(refresh),
-    ),
-    vscode.commands.registerCommand(COMMAND_MAP.clear, () =>
-      clearStocks(refresh),
-    ),
-    vscode.commands.registerCommand(COMMAND_MAP.sort, () =>
-      sortStocks(refresh),
-    ),
+    vscode.commands.registerCommand(COMMAND_MAP.add, async () => {
+      if (await addStock()) refresh();
+    }),
+    vscode.commands.registerCommand(COMMAND_MAP.remove, async () => {
+      const removed = await removeStock();
+      if (removed) {
+        await removeAlarmsByStock(removed);
+        refresh();
+      }
+    }),
+    vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
+      if (await clearStocks()) {
+        await clearAllAlarms();
+        refresh();
+      }
+    }),
+    vscode.commands.registerCommand(COMMAND_MAP.sort, async () => {
+      if (await sortStocks()) refresh();
+    }),
     vscode.commands.registerCommand(COMMAND_MAP.alarm, () => manageAlarms()),
     vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
       manageStock(appState),

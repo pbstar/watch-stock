@@ -5,12 +5,9 @@ import { isValidStockCode } from "../utils/stock";
 import { searchStockCode } from "../services/stockSearch";
 import { getStockList } from "../services/stockService";
 import { config, moveStock } from "../config";
-import { removeAlarmsByStock, clearAllAlarms } from "./alarmManager";
 
-type UpdateCallback = () => void;
-
-// 添加股票
-export async function addStock(onUpdate: UpdateCallback): Promise<void> {
+// 添加股票，成功返回 true
+export async function addStock(): Promise<boolean> {
   const input = await vscode.window.showInputBox({
     prompt: "请输入股票代码或名称",
     placeHolder: "例如: sh600519 或 sz000001 或 贵州茅台",
@@ -22,7 +19,7 @@ export async function addStock(onUpdate: UpdateCallback): Promise<void> {
     },
   });
 
-  if (!input) return;
+  if (!input) return false;
 
   const stockInput = input.trim();
   let stockCode: string | null = stockInput;
@@ -33,34 +30,34 @@ export async function addStock(onUpdate: UpdateCallback): Promise<void> {
 
   if (!stockCode) {
     sendMsg(`股票获取失败："${stockInput}"，请稍后重试`, { type: "error" });
-    return;
+    return false;
   }
 
   const stocks = config.getStocks();
   if (stocks.includes(stockCode.toLowerCase())) {
     sendMsg("该股票已存在", { type: "warning" });
-    return;
+    return false;
   }
 
   const stockInfo = await getStockList([stockCode]);
   if (!stockInfo[0]?.name) {
     sendMsg("股票获取失败，请检查股票代码或名称", { type: "error" });
-    return;
+    return false;
   }
 
   stocks.push(stockCode.toLowerCase());
   await config.saveStocks(stocks);
   sendMsg(`已添加: ${stockInfo[0].name}(${stockInfo[0].code})`);
 
-  onUpdate();
+  return true;
 }
 
-// 移除股票
-export async function removeStock(onUpdate: UpdateCallback): Promise<void> {
+// 移除股票，成功返回被删除的 code，否则 null
+export async function removeStock(): Promise<string | null> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
     sendMsg("当前没有添加任何股票", { type: "warning" });
-    return;
+    return null;
   }
 
   const stockInfos = await getStockList(stocks);
@@ -76,46 +73,42 @@ export async function removeStock(onUpdate: UpdateCallback): Promise<void> {
   const selected = await vscode.window.showQuickPick(options, {
     placeHolder: "选择要移除的股票",
   });
-  if (!selected) return;
+  if (!selected) return null;
 
   const newStocks = stocks.filter((s) => s !== selected.code);
   await config.saveStocks(newStocks);
 
-  await removeAlarmsByStock(selected.code);
-
   sendMsg(`已移除: ${selected.label}`);
-  onUpdate();
+  return selected.code;
 }
 
-// 清空所有股票
-export async function clearStocks(onUpdate: UpdateCallback): Promise<void> {
+// 清空所有股票，成功返回 true
+export async function clearStocks(): Promise<boolean> {
   const stocks = config.getStocks();
-  if (stocks.length === 0) return;
+  if (stocks.length === 0) return false;
 
   const confirm = await vscode.window.showWarningMessage(
     "确定要清空所有股票吗？",
     "确定",
     "取消",
   );
-  if (confirm !== "确定") return;
-
-  await clearAllAlarms();
+  if (confirm !== "确定") return false;
 
   await config.saveStocks([]);
   sendMsg("已清空所有股票");
-  onUpdate();
+  return true;
 }
 
-// 排序股票
-export async function sortStocks(onUpdate: UpdateCallback): Promise<void> {
+// 排序股票，成功返回 true
+export async function sortStocks(): Promise<boolean> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
     sendMsg("当前没有添加任何股票", { type: "warning" });
-    return;
+    return false;
   }
   if (stocks.length === 1) {
     sendMsg("只有一只股票，无需排序", { type: "warning" });
-    return;
+    return false;
   }
 
   const stockInfos = await getStockList(stocks);
@@ -132,7 +125,7 @@ export async function sortStocks(onUpdate: UpdateCallback): Promise<void> {
   const selectedStock = await vscode.window.showQuickPick(currentOrder, {
     placeHolder: "选择要移动位置的股票",
   });
-  if (!selectedStock) return;
+  if (!selectedStock) return false;
 
   const targetOptions = currentOrder
     .filter((item) => item.code !== selectedStock.code)
@@ -145,7 +138,7 @@ export async function sortStocks(onUpdate: UpdateCallback): Promise<void> {
   const targetPosition = await vscode.window.showQuickPick(targetOptions, {
     placeHolder: `选择 "${selectedStock.label}" 的目标位置`,
   });
-  if (!targetPosition) return;
+  if (!targetPosition) return false;
 
   let toIndex = targetPosition.targetIndex;
   const fromIndex = selectedStock.index;
@@ -158,5 +151,5 @@ export async function sortStocks(onUpdate: UpdateCallback): Promise<void> {
   const stockName = stockInfo ? stockInfo.name : selectedStock.code;
   sendMsg(`已调整 "${stockName}" 的显示顺序`);
 
-  onUpdate();
+  return true;
 }
