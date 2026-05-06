@@ -10,9 +10,9 @@ function parseSinaStockData(code: string, data: string): Stock | null {
   if (parts.length < 32) return null;
 
   const name = parts[0]?.trim() || "";
-  const close = parseFloat(parts[2]) || 0;
-  let current = parseFloat(parts[3]) || 0;
-  const amount = parseFloat(parts[9]) || 0;
+  const close = safeNumber(parts[2]);
+  let current = safeNumber(parts[3]);
+  const amount = safeNumber(parts[9]);
 
   if (!name || close <= 0 || !parts[30] || !parts[31]) return null;
 
@@ -34,10 +34,10 @@ function parseSinaStockData(code: string, data: string): Stock | null {
     isETF,
     dateTime: `${parts[30]} ${parts[31]}`,
     close,
-    buy1Volume: Math.round(parseFloat(parts[10]) / 100) || 0,
-    sell1Volume: Math.round(parseFloat(parts[20]) / 100) || 0,
-    buy1Price: parseFloat(parts[6]) || 0,
-    sell1Price: parseFloat(parts[7]) || 0,
+    buy1Volume: Math.round(safeNumber(parts[10]) / 100),
+    sell1Volume: Math.round(safeNumber(parts[20]) / 100),
+    buy1Price: safeNumber(parts[6]),
+    sell1Price: safeNumber(parts[7]),
   };
 }
 
@@ -185,9 +185,9 @@ export async function getStockMinute(code: string): Promise<MinutePoint[]> {
       const time = `${date} ${item[0].slice(0, 2)}:${item[0].slice(2, 4)}`;
       dataMap.set(time, {
         time,
-        price: parseFloat(item[1]) || 0,
-        volume: parseFloat(item[2]) || 0,
-        amount: parseFloat(item[3]) || 0,
+        price: safeNumber(item[1]),
+        volume: safeNumber(item[2]),
+        amount: safeNumber(item[3]),
       });
     }
 

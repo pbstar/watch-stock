@@ -19,7 +19,7 @@ export interface Stock {
   sell1Volume?: number;
   buy1Price?: number;
   sell1Price?: number;
-  // calculateLockInfo 后注入
+  // 以下 calculateLockInfo 后注入
   priceType?: PriceType;
   lockAmount?: number;
 }

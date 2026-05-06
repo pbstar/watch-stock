@@ -41,9 +41,10 @@ function showVscodeMessage(
 export function sendMsg(text: string, options: SendMsgOptions = {}): void {
   const { rateLimit = false, type = "info", showConfirm = false } = options;
   const buttons = showConfirm ? ["知道了"] : [];
+  const newText = `[${formatTime()}] ${text}`;
 
   if (!rateLimit) {
-    showVscodeMessage(text, type, buttons);
+    showVscodeMessage(newText, type, buttons);
     return;
   }
 
@@ -52,15 +53,15 @@ export function sendMsg(text: string, options: SendMsgOptions = {}): void {
 
   if (canNotify) {
     // 可以发送，带上之前被缓存的消息
-    let finalText = text;
+    let finalText = newText;
     if (pendingMessages.length > 0) {
-      finalText = `${pendingMessages.join(" --- ")} --- [${formatTime()}] ${text}`;
+      finalText = `${pendingMessages.join(" --- ")} --- ${newText}`;
       pendingMessages = [];
     }
     lastNotifyTime = now;
     showVscodeMessage(finalText, type, buttons);
   } else {
     // 被限流，缓存消息等下次一起发
-    pendingMessages.push(`[${formatTime()}] ${text}`);
+    pendingMessages.push(newText);
   }
 }

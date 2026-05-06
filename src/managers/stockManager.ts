@@ -10,7 +10,7 @@ import { removeAlarmsByStock, clearAllAlarms } from "./alarmManager";
 type UpdateCallback = () => void;
 
 // 添加股票
-export async function addStock(onUpdate?: UpdateCallback): Promise<void> {
+export async function addStock(onUpdate: UpdateCallback): Promise<void> {
   const input = await vscode.window.showInputBox({
     prompt: "请输入股票代码或名称",
     placeHolder: "例如: sh600519 或 sz000001 或 贵州茅台",
@@ -52,11 +52,11 @@ export async function addStock(onUpdate?: UpdateCallback): Promise<void> {
   await config.saveStocks(stocks);
   sendMsg(`已添加: ${stockInfo[0].name}(${stockInfo[0].code})`);
 
-  onUpdate?.();
+  onUpdate();
 }
 
 // 移除股票
-export async function removeStock(onUpdate?: UpdateCallback): Promise<void> {
+export async function removeStock(onUpdate: UpdateCallback): Promise<void> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
     sendMsg("当前没有添加任何股票", { type: "warning" });
@@ -84,11 +84,11 @@ export async function removeStock(onUpdate?: UpdateCallback): Promise<void> {
   await removeAlarmsByStock(selected.code);
 
   sendMsg(`已移除: ${selected.label}`);
-  onUpdate?.();
+  onUpdate();
 }
 
 // 清空所有股票
-export async function clearStocks(onUpdate?: UpdateCallback): Promise<void> {
+export async function clearStocks(onUpdate: UpdateCallback): Promise<void> {
   const stocks = config.getStocks();
   if (stocks.length === 0) return;
 
@@ -103,11 +103,11 @@ export async function clearStocks(onUpdate?: UpdateCallback): Promise<void> {
 
   await config.saveStocks([]);
   sendMsg("已清空所有股票");
-  onUpdate?.();
+  onUpdate();
 }
 
 // 排序股票
-export async function sortStocks(onUpdate?: UpdateCallback): Promise<void> {
+export async function sortStocks(onUpdate: UpdateCallback): Promise<void> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
     sendMsg("当前没有添加任何股票", { type: "warning" });
@@ -158,5 +158,5 @@ export async function sortStocks(onUpdate?: UpdateCallback): Promise<void> {
   const stockName = stockInfo ? stockInfo.name : selectedStock.code;
   sendMsg(`已调整 "${stockName}" 的显示顺序`);
 
-  onUpdate?.();
+  onUpdate();
 }

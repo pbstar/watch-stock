@@ -10,7 +10,7 @@ function isPriceUp(changeValue: string): boolean {
 }
 
 // 判断是否处于涨跌停状态
-function isLockState(priceType?: string): priceType is "up" | "down" {
+function isLockState(priceType?: string): boolean {
   return priceType === "up" || priceType === "down";
 }
 
