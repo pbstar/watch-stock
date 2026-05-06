@@ -8,7 +8,7 @@ import {
   clearStocks,
   sortStocks,
 } from "./managers/stockManager";
-import { AlarmManager } from "./managers/alarmManager";
+import { manageAlarms, checkAlarms } from "./managers/alarmManager";
 import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
 import { sendMsg } from "./utils/msg";
 import { config } from "./config";
@@ -22,15 +22,12 @@ import {
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
 
-interface AppState {
+export interface AppState {
   statusBar: StatusBarManager;
-  alarm: AlarmManager;
   userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
   refreshTimer: NodeJS.Timeout | null;
 }
 
-// 全局状态
-let appState: AppState | null = null;
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {
   add: "watch-stock.addStock",
@@ -63,7 +60,7 @@ async function updateDataAndCheckAlarms(state: AppState): Promise<void> {
   }
 
   if (stockInfos.length > 0) {
-    await state.alarm.checkAlarms(stockInfos);
+    await checkAlarms(stockInfos);
   }
 
   if (!isMorningAuction && !isAfternoonAuction && config.getEnableLockTip()) {
@@ -77,11 +74,10 @@ async function updateDataAndCheckAlarms(state: AppState): Promise<void> {
   }
 }
 
-// 注册全部命令
-export function registerCommands(context: vscode.ExtensionContext): void {
-  appState = {
+// 注册全部命令，返回应用状态
+export function registerCommands(context: vscode.ExtensionContext): AppState {
+  const appState: AppState = {
     statusBar: new StatusBarManager(),
-    alarm: new AlarmManager(),
     userForced: null,
     refreshTimer: null,
   };
@@ -89,33 +85,31 @@ export function registerCommands(context: vscode.ExtensionContext): void {
   appState.statusBar.initialize();
 
   const refresh = (): void => {
-    void updateDataAndCheckAlarms(appState!);
+    void updateDataAndCheckAlarms(appState);
   };
 
   const subs: vscode.Disposable[] = [
     appState.statusBar.getStatusBarItem()!,
     vscode.commands.registerCommand(COMMAND_MAP.add, () => addStock(refresh)),
     vscode.commands.registerCommand(COMMAND_MAP.remove, () =>
-      removeStock(refresh, appState!.alarm),
+      removeStock(refresh),
     ),
     vscode.commands.registerCommand(COMMAND_MAP.clear, () =>
-      clearStocks(refresh, appState!.alarm),
+      clearStocks(refresh),
     ),
     vscode.commands.registerCommand(COMMAND_MAP.sort, () =>
       sortStocks(refresh),
     ),
-    vscode.commands.registerCommand(COMMAND_MAP.alarm, () =>
-      appState!.alarm.manageAlarms(),
-    ),
+    vscode.commands.registerCommand(COMMAND_MAP.alarm, () => manageAlarms()),
     vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
-      manageStock(appState!),
+      manageStock(appState),
     ),
     vscode.commands.registerCommand(COMMAND_MAP.toggle, () => {
-      appState!.userForced = !getIsVisible(appState!);
-      if (appState!.userForced) {
+      appState.userForced = !getIsVisible(appState);
+      if (appState.userForced) {
         refresh();
       } else {
-        appState!.statusBar.setHidden();
+        appState.statusBar.setHidden();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, () => {
@@ -135,27 +129,25 @@ export function registerCommands(context: vscode.ExtensionContext): void {
     }),
   ];
   context.subscriptions.push(...subs);
-  if (appState.refreshTimer) clearInterval(appState.refreshTimer);
   void updateDataAndCheckAlarms(appState);
   appState.refreshTimer = setInterval(() => {
-    if (!appState) return;
     if (isTradingTime()) {
       void updateDataAndCheckAlarms(appState);
     } else if (config.getAutoHideByMarket() && appState.userForced === null) {
       appState.statusBar.setHidden();
     }
   }, REFRESH_INTERVAL);
+
+  return appState;
 }
 
 // 销毁命令及相关资源
-export function disposeCommands(): void {
-  if (!appState) return;
-  if (appState.refreshTimer) {
-    clearInterval(appState.refreshTimer);
-    appState.refreshTimer = null;
+export function disposeCommands(state: AppState): void {
+  if (state.refreshTimer) {
+    clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
   }
-  appState.statusBar.dispose();
-  appState = null;
+  state.statusBar.dispose();
 }
 
 // 管理股票主菜单

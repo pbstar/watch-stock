@@ -5,7 +5,7 @@ import { isValidStockCode } from "../utils/stock";
 import { searchStockCode } from "../services/stockSearch";
 import { getStockList } from "../services/stockService";
 import { config, moveStock } from "../config";
-import type { AlarmManager } from "./alarmManager";
+import { removeAlarmsByStock, clearAllAlarms } from "./alarmManager";
 
 type UpdateCallback = () => void;
 
@@ -56,10 +56,7 @@ export async function addStock(onUpdate?: UpdateCallback): Promise<void> {
 }
 
 // 移除股票
-export async function removeStock(
-  onUpdate?: UpdateCallback,
-  alarmManager?: AlarmManager,
-): Promise<void> {
+export async function removeStock(onUpdate?: UpdateCallback): Promise<void> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
     sendMsg("当前没有添加任何股票", { type: "warning" });
@@ -84,17 +81,14 @@ export async function removeStock(
   const newStocks = stocks.filter((s) => s !== selected.code);
   await config.saveStocks(newStocks);
 
-  if (alarmManager) await alarmManager.removeAlarmsByStock(selected.code);
+  await removeAlarmsByStock(selected.code);
 
   sendMsg(`已移除: ${selected.label}`);
   onUpdate?.();
 }
 
 // 清空所有股票
-export async function clearStocks(
-  onUpdate?: UpdateCallback,
-  alarmManager?: AlarmManager,
-): Promise<void> {
+export async function clearStocks(onUpdate?: UpdateCallback): Promise<void> {
   const stocks = config.getStocks();
   if (stocks.length === 0) return;
 
@@ -105,7 +99,7 @@ export async function clearStocks(
   );
   if (confirm !== "确定") return;
 
-  if (alarmManager) await alarmManager.clearAllAlarms();
+  await clearAllAlarms();
 
   await config.saveStocks([]);
   sendMsg("已清空所有股票");
