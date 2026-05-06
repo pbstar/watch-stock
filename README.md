@@ -96,10 +96,10 @@ cd watch-stock
 ### 打包发布
 
 ```bash
-# 安装打包工具
-npm install -g @vscode/vsce
+# 安装依赖
+npm install
 # 打包插件
-vsce package
+npm run build
 # 发布到 VS Code 市场
 vsce publish
 # 发布到 Open VSX
