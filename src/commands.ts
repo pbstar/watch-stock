@@ -1,4 +1,4 @@
-// 命令注册与定时刷新
+// 命令注册
 import * as vscode from "vscode";
 import { StatusBarManager } from "./ui/statusBar";
 import { StockHomePanel } from "./ui/stockHome";
@@ -8,19 +8,10 @@ import {
   clearStocks,
   sortStocks,
 } from "./managers/stockManager";
-import { manageAlarms, checkAlarms } from "./managers/alarmManager";
-import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
+import { manageAlarms } from "./managers/alarmManager";
 import { sendMsg } from "./utils/msg";
 import { config } from "./config";
-import { getStockList } from "./services/stockService";
-import {
-  isTradingTime,
-  isMorningAuctionTime,
-  isAfternoonAuctionTime,
-} from "./utils/time";
-
-// 刷新间隔 5 秒
-const REFRESH_INTERVAL = 5000;
+import { getIsVisible, refreshData } from "./refresher";
 
 export interface AppState {
   statusBar: StatusBarManager;
@@ -41,51 +32,13 @@ const COMMAND_MAP: Record<string, string> = {
   manage: "watch-stock.manageStock",
 };
 
-function getIsVisible(state: AppState): boolean {
-  if (state.userForced !== null) return state.userForced;
-  return config.getAutoHideByMarket() ? isTradingTime() : true;
-}
-
-// 拉取数据 -> 计算封单 -> 触发闹钟/异动 -> 渲染状态栏
-async function updateDataAndCheckAlarms(state: AppState): Promise<void> {
-  const stocks = config.getStocks();
-  const isMorningAuction = isMorningAuctionTime();
-  const isAfternoonAuction = isAfternoonAuctionTime();
-  const stockInfos =
-    stocks.length > 0 ? await getStockList(stocks, !isMorningAuction) : [];
-
-  for (const stock of stockInfos) {
-    const lockInfo = calculateLockInfo(stock);
-    Object.assign(stock, lockInfo);
-  }
-
-  if (stockInfos.length > 0) {
-    await checkAlarms(stockInfos);
-  }
-
-  if (!isMorningAuction && !isAfternoonAuction && config.getEnableLockTip()) {
-    checkLockTip(stockInfos);
-  }
-
-  if (getIsVisible(state)) {
-    state.statusBar.render(stocks, stockInfos);
-  } else {
-    state.statusBar.setHidden();
-  }
-}
-
-// 注册全部命令，返回应用状态
-export function registerCommands(context: vscode.ExtensionContext): AppState {
-  const appState: AppState = {
-    statusBar: new StatusBarManager(),
-    userForced: null,
-    refreshTimer: null,
-  };
-
-  appState.statusBar.initialize();
-
+// 注册全部命令
+export function registerCommands(
+  context: vscode.ExtensionContext,
+  appState: AppState,
+): void {
   const refresh = (): void => {
-    void updateDataAndCheckAlarms(appState);
+    void refreshData(appState);
   };
 
   const subs: vscode.Disposable[] = [
@@ -129,25 +82,6 @@ export function registerCommands(context: vscode.ExtensionContext): AppState {
     }),
   ];
   context.subscriptions.push(...subs);
-  void updateDataAndCheckAlarms(appState);
-  appState.refreshTimer = setInterval(() => {
-    if (isTradingTime()) {
-      void updateDataAndCheckAlarms(appState);
-    } else if (config.getAutoHideByMarket() && appState.userForced === null) {
-      appState.statusBar.setHidden();
-    }
-  }, REFRESH_INTERVAL);
-
-  return appState;
-}
-
-// 销毁命令及相关资源
-export function disposeCommands(state: AppState): void {
-  if (state.refreshTimer) {
-    clearInterval(state.refreshTimer);
-    state.refreshTimer = null;
-  }
-  state.statusBar.dispose();
 }
 
 // 管理股票主菜单
