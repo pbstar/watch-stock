@@ -34,7 +34,12 @@ interface IndustryItem {
 }
 
 interface InboundMessage {
-  type: "switchStock" | "refresh" | "refreshIndex" | "refreshIndustry";
+  type:
+    | "ready"
+    | "switchStock"
+    | "refresh"
+    | "refreshIndex"
+    | "refreshIndustry";
   code?: string;
 }
 
@@ -60,6 +65,9 @@ export class StockHomePanel {
   private activeCode: string | null = null;
   private quoteMap = new Map<string, StockQuote>();
   private minuteCache = new Map<string, MinuteCacheEntry>();
+  // webview 就绪握手：每次重新设置 html 时重置
+  private readyPromise: Promise<void> = Promise.resolve();
+  private readyResolve: (() => void) | null = null;
 
   private constructor(panel: vscode.WebviewPanel) {
     this.panel = panel;
@@ -110,6 +118,9 @@ export class StockHomePanel {
 
   private async handleMessage(msg: InboundMessage): Promise<void> {
     switch (msg.type) {
+      case "ready":
+        this.readyResolve?.();
+        break;
       case "switchStock":
         if (msg.code) {
           this.activeCode = msg.code;
@@ -184,10 +195,12 @@ export class StockHomePanel {
 
     this.activeCode = null;
     this.panel.title = "查看股票";
+    // 重置 ready 握手，等 webview 加载完成后会回发 "ready" 消息
+    this.readyPromise = new Promise((r) => {
+      this.readyResolve = r;
+    });
     this.panel.webview.html = this.buildHtml();
-
-    // 等待 webview 初始化完成后再发送数据，避免消息丢失
-    await new Promise((r) => setTimeout(r, 100));
+    await this.readyPromise;
 
     this.panel.webview.postMessage({
       type: "init",
@@ -203,7 +216,6 @@ export class StockHomePanel {
     code: string,
     forceRefresh = false,
   ): Promise<void> {
-    this.panel.webview.postMessage({ type: "loading", code });
     const stockInfo = this.stocks.find((s) => s.code === code) || null;
     const quoteInfo = this.quoteMap.get(code) || null;
 
@@ -221,6 +233,7 @@ export class StockHomePanel {
       return;
     }
 
+    this.panel.webview.postMessage({ type: "loading", code });
     const data = await getStockMinute(code);
     this.minuteCache.set(code, { data, timestamp: now });
     this.panel.webview.postMessage({

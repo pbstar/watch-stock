@@ -145,17 +145,12 @@
       /* ---- DOM 缓存 ---- */
       const $ = (id) => document.getElementById(id);
       const tabBar = $("tab-bar");
-      const sHeader = $("s-header");
-      const chartWrap = $("chart-wrap");
-      const chartSvg = $("chart-svg");
-      const placeholder = $("placeholder");
-      const tooltipEl = $("tooltip");
-      const volWrap = $("vol-wrap");
-      const volSvg = $("vol-svg");
       const content = $("content");
       const overviewContainer = $("overview-container");
       const detailContainer = $("detail-container");
-      const overviewCards = $("overview-cards");
+
+      /* ---- 通知 TS 端 webview 已就绪 ---- */
+      vscode.postMessage({ type: "ready" });
 
       /* ---- 格式化工具函数 ---- */
       function fmtNum(n, d = 2) {
@@ -247,6 +242,9 @@
             indexStocks = msg.indexStocks || [];
             industryStocks = msg.industryStocks || [];
             activeCode = "__overview__";
+            // 清空旧数据避免状态污染
+            Object.keys(stocksMap).forEach((k) => delete stocksMap[k]);
+            Object.keys(quoteDataMap).forEach((k) => delete quoteDataMap[k]);
             Object.assign(quoteDataMap, msg.quoteData || {});
             for (const s of stocks) stocksMap[s.code] = s;
             activeInfo = null;
