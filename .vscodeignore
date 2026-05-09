@@ -1,4 +1,11 @@
 .gitignore
+.vscodeignore
+.git/
+node_modules/
+src/
 versions/
 package-lock.json
-.git/
+tsconfig.json
+esbuild.config.mjs
+**/*.ts
+**/*.map

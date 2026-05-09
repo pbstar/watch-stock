@@ -144,6 +144,15 @@
 </div>
 
 <script>
+  /* ---- DOM 缓存（本片段相关元素） ---- */
+  const sHeader = $("s-header");
+  const chartWrap = $("chart-wrap");
+  const chartSvg = $("chart-svg");
+  const placeholder = $("placeholder");
+  const tooltipEl = $("tooltip");
+  const volWrap = $("vol-wrap");
+  const volSvg = $("vol-svg");
+
   /* ---- 渲染个股头部 ---- */
   sHeader.addEventListener("click", (e) => {
     if (e.target.closest(".btn-refresh"))
