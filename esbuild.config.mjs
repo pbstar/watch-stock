@@ -48,9 +48,7 @@ const buildOptions = {
   external: ["vscode"],
   sourcemap: false,
   legalComments: "none",
-  loader: { ".txt": "text" },
   plugins: [htmlMinifyPlugin],
-  logLevel: "info",
 };
 
 await build(buildOptions);
