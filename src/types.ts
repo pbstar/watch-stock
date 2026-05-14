@@ -107,7 +107,6 @@ export interface IndustryConfig {
 
 // sendMsg 选项
 export interface SendMsgOptions {
-  rateLimit?: boolean; // 是否限流，限流时type和showConfirm无效
   type?: "info" | "warning" | "error"; // 消息类型
   showConfirm?: boolean; // 是否显示确认按钮
 }

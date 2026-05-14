@@ -1,5 +1,5 @@
 // 涨跌停封单计算与异动通知
-import { sendMsg } from "../utils/msg";
+import { sendRateLimitMsg } from "../utils/msg";
 import { getLimitPercent, formatAmount } from "../utils/stock";
 import type { Stock, LockInfo, PriceType } from "../types";
 
@@ -85,7 +85,7 @@ export function checkLockTip(stockInfos: Stock[]): void {
     const prev = lockTipCache.get(stock.code);
     if (prev) {
       const message = getLockChangeMessage(prev, stock);
-      if (message) sendMsg(message, { rateLimit: true });
+      if (message) sendRateLimitMsg(message);
     }
     lockTipCache.set(stock.code, {
       priceType: stock.priceType ?? "none",

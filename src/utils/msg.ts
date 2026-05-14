@@ -46,20 +46,18 @@ function sendPendingMessages(): void {
   showVscodeMessage(finalText);
 }
 
-// 发送统一消息
+// 发送普通消息
 export function sendMsg(text: string, options: SendMsgOptions = {}): void {
-  const { rateLimit = false, type = "info", showConfirm = false } = options;
+  const { type = "info", showConfirm = false } = options;
   const newText = `[${formatTime()}] ${text}`;
+  showVscodeMessage(newText, type, showConfirm ? ["知道了"] : []);
+}
 
-  if (!rateLimit) {
-    showVscodeMessage(newText, type, showConfirm ? ["知道了"] : []);
-    return;
-  }
-
-  // 放入消息队列
+// 发送限流消息：60秒内合并消息
+export function sendRateLimitMsg(text: string): void {
+  const newText = `[${formatTime()}] ${text}`;
   pendingMessages.push(newText);
 
-  // 检查是否可以发送
   const now = Date.now();
   const canNotify = now - lastNotifyTime >= RATE_LIMIT_COOLDOWN;
 
