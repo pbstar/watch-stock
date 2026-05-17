@@ -16,7 +16,11 @@ import type { AppState } from "./types";
 const REFRESH_INTERVAL = 5000;
 
 // 拉取数据 -> 计算封单 -> 触发闹钟 -> 渲染状态栏
-export async function refreshData(state: AppState, now?: Date): Promise<void> {
+export async function refreshData(
+  state: AppState,
+  now?: Date,
+  isAuto?: boolean,
+): Promise<void> {
   if (!now) now = new Date();
   const stocks = config.getStocks();
   const isMorningAuction = isMorningAuctionTime(now);
@@ -33,7 +37,7 @@ export async function refreshData(state: AppState, now?: Date): Promise<void> {
     await checkAlarms(stockInfos);
   }
 
-  if (!isMorningAuction && !isAfternoonAuction) {
+  if (isAuto && !isMorningAuction && !isAfternoonAuction) {
     if (config.getEnableLockTip()) checkLockTip(stockInfos);
     if (config.getEnableLargeTip() && isStableTradeTime(now))
       checkLargeTip(stockInfos);
@@ -52,7 +56,7 @@ export function startRefreshTimer(state: AppState): void {
   state.refreshTimer = setInterval(() => {
     const now = new Date();
     if (isTradingTime(now)) {
-      void refreshData(state, now);
+      void refreshData(state, now, true);
     } else if (config.getAutoHideByMarket() && state.userForced === null) {
       state.statusBar.setHidden();
     }
