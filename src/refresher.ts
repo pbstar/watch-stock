@@ -1,5 +1,5 @@
 // 行情数据刷新与定时器调度
-import { config } from "./config";
+import { config, getIsVisible } from "./config";
 import { getStockList } from "./services/stockService";
 import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
 import { checkLargeTip } from "./managers/largeManager";
@@ -8,23 +8,19 @@ import {
   isTradingTime,
   isMorningAuctionTime,
   isAfternoonAuctionTime,
+  isStableTradeTime,
 } from "./utils/time";
 import type { AppState } from "./types";
 
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
 
-// 状态栏是否应该显示
-export function getIsVisible(state: AppState): boolean {
-  if (state.userForced !== null) return state.userForced;
-  return config.getAutoHideByMarket() ? isTradingTime() : true;
-}
-
 // 拉取数据 -> 计算封单 -> 触发闹钟 -> 渲染状态栏
-export async function refreshData(state: AppState): Promise<void> {
+export async function refreshData(state: AppState, now?: Date): Promise<void> {
+  if (!now) now = new Date();
   const stocks = config.getStocks();
-  const isMorningAuction = isMorningAuctionTime();
-  const isAfternoonAuction = isAfternoonAuctionTime();
+  const isMorningAuction = isMorningAuctionTime(now);
+  const isAfternoonAuction = isAfternoonAuctionTime(now);
   const stockInfos =
     stocks.length > 0 ? await getStockList(stocks, !isMorningAuction) : [];
 
@@ -39,10 +35,11 @@ export async function refreshData(state: AppState): Promise<void> {
 
   if (!isMorningAuction && !isAfternoonAuction) {
     if (config.getEnableLockTip()) checkLockTip(stockInfos);
-    if (config.getEnableLargeTip()) checkLargeTip(stockInfos);
+    if (config.getEnableLargeTip() && isStableTradeTime(now))
+      checkLargeTip(stockInfos);
   }
 
-  if (getIsVisible(state)) {
+  if (getIsVisible(state, now)) {
     state.statusBar.render(stocks, stockInfos);
   } else {
     state.statusBar.setHidden();
@@ -53,8 +50,9 @@ export async function refreshData(state: AppState): Promise<void> {
 export function startRefreshTimer(state: AppState): void {
   void refreshData(state);
   state.refreshTimer = setInterval(() => {
-    if (isTradingTime()) {
-      void refreshData(state);
+    const now = new Date();
+    if (isTradingTime(now)) {
+      void refreshData(state, now);
     } else if (config.getAutoHideByMarket() && state.userForced === null) {
       state.statusBar.setHidden();
     }

@@ -13,8 +13,8 @@ import {
   clearAllAlarms,
 } from "./managers/alarmManager";
 import { sendMsg } from "./utils/msg";
-import { config } from "./config";
-import { getIsVisible, refreshData } from "./refresher";
+import { config, getIsVisible } from "./config";
+import { refreshData } from "./refresher";
 import type { AppState } from "./types";
 
 // 命令 ID 映射
