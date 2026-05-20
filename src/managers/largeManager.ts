@@ -21,7 +21,7 @@ function toTimestamp(text: string): number {
 // 保留最近 N 次行情快照，用于对比近期均值识别异动
 const HISTORY_SIZE = 7;
 const largeTipCache = new Map<string, LargeSnapshot[]>();
-const MIN_LARGE_AMOUNT = 5000000; // 区间成交额绝对阈值：500万
+const MIN_LARGE_AMOUNT = 1000000; // 区间成交额绝对阈值：100万
 
 // 根据快照历史生成大单异动通知文案
 function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
@@ -33,8 +33,9 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   )
     return "";
   const lastAmount = history[6].amount - history[5].amount;
+
   // 未达到绝对金额门槛则不视为大单
-  if (lastAmount < MIN_LARGE_AMOUNT * 1.6) return "";
+  if (lastAmount < MIN_LARGE_AMOUNT * 2) return "";
 
   // 计算前5天成交额之和
   const sumAmount = history[5].amount - history[0].amount;
@@ -43,12 +44,14 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   // 均量差值
   const deltaAmount = lastAmount - avgAmount;
   // 放量倍率
-  const ratio = deltaAmount / avgAmount;
+  const ratio = Number((deltaAmount / avgAmount).toFixed(2));
   // 价格变化方向：最近一次间隔内的涨跌判断买卖意图
-  const priceDiff = history[6].current - history[5].current;
-  // 排除缩量/放量<1.6倍/价格无变化
-  if (deltaAmount < MIN_LARGE_AMOUNT || ratio < 1.6 || priceDiff === 0)
-    return "";
+  const priceDiff = Number(
+    (history[6].current - history[5].current).toFixed(3),
+  );
+
+  // 排除缩量/放量<2倍/价格无变化
+  if (deltaAmount < MIN_LARGE_AMOUNT || ratio < 2 || priceDiff === 0) return "";
 
   const emoji = priceDiff > 0 ? "💰" : "💸";
   const direction = priceDiff > 0 ? "买入" : "卖出";
