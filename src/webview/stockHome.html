@@ -9,12 +9,19 @@
     <title>查看股票</title>
     <style>
       :root {
+        /* 基础颜色 */
         --c-up: #c94c4c;
         --c-dn: #2d8a2d;
         --c-grid: rgba(128, 128, 128, 0.18);
         --c-bdr: rgba(128, 128, 128, 0.3);
         --c-axis: var(--vscode-descriptionForeground, #888);
         --c-ch: rgba(140, 140, 140, 0.5);
+
+        /* 透明度语义化：用于成交量柱状图和面积图 */
+        --op-vol-up: 1; /* 彩色模式下直接用颜色区分涨跌，不加透明度 */
+        --op-vol-dn: 1;
+        --op-area: 0.25; /* 面积图渐变起始透明度 */
+        --op-area-end: 0.02; /* 面积图渐变结束透明度 */
       }
 
       *,
@@ -40,6 +47,8 @@
       body.mono {
         --c-up: var(--vscode-editor-foreground);
         --c-dn: var(--vscode-editor-foreground);
+        --op-vol-up: 0.9; /* 黑白模式下凭明暗区分涨跌：涨柱深，跌柱浅 */
+        --op-vol-dn: 0.4;
       }
 
       /* tab 栏 */

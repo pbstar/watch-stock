@@ -6,15 +6,14 @@
 <!-- StockChart.hide() 隐藏十字线 -->
 <script>
   const StockChart = (() => {
-    /* ---- 颜色常量 ---- */
-    /* IS_COLORFUL 由 stockHome.html 注入：false 时涨跌统一用编辑器默认前景色 */
-    const C_FG = "var(--vscode-editor-foreground)";
-    const C_UP = IS_COLORFUL ? "#c94c4c" : C_FG;
-    const C_DN = IS_COLORFUL ? "#2d8a2d" : C_FG;
-    const C_GRID = "rgba(128,128,128,0.18)";
-    const C_BDR = "rgba(128,128,128,0.3)";
-    const C_AXIS = "var(--vscode-descriptionForeground,#888)";
+    /* ---- 直接使用 CSS 变量，无需 JS 常量 ---- */
+    /* 颜色由 stockHome.html 的 CSS 变量统一管理 */
+    /* body.mono 模式下 --c-up/--c-dn 自动切换为编辑器前景色 */
     const NS = "http://www.w3.org/2000/svg";
+
+    /* 获取 CSS 变量的辅助函数 */
+    const cssVar = (name) =>
+      getComputedStyle(document.body).getPropertyValue(name).trim();
 
     /* ---- 十字线私有状态 ---- */
     let chEls = null;
@@ -86,7 +85,7 @@
         -1,
       );
       const lastPrice = minuteData[lastValidIdx].price;
-      const lc = lastPrice >= preClose ? C_UP : C_DN;
+      const lc = lastPrice >= preClose ? cssVar("--c-up") : cssVar("--c-dn");
 
       const maxDev =
         Math.max(
@@ -149,7 +148,12 @@
           y: yOf(p),
           price: p.toFixed(dec),
           pct: (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%",
-          color: pct > 0.01 ? C_UP : pct < -0.01 ? C_DN : C_AXIS,
+          color:
+            pct > 0.01
+              ? cssVar("--c-up")
+              : pct < -0.01
+                ? cssVar("--c-dn")
+                : cssVar("--c-axis"),
         };
       });
       const tMarks = [
@@ -177,20 +181,20 @@
       <defs>
         <clipPath id="cc"><rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}"/></clipPath>
         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${lc}" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="${lc}" stop-opacity="0.02"/>
+          <stop offset="0%" stop-color="${lc}" stop-opacity="var(--op-area)"/>
+          <stop offset="100%" stop-color="${lc}" stop-opacity="var(--op-area-end)"/>
         </linearGradient>
       </defs>
-      ${yTicks.map((tk) => `<line x1="${PAD.l}" y1="${tk.y.toFixed(1)}" x2="${PAD.l + cW}" y2="${tk.y.toFixed(1)}" stroke="${C_GRID}" stroke-width="1"/>`).join("")}
-      ${xTicks.map((tk) => `<line x1="${tk.x.toFixed(1)}" y1="${PAD.t}" x2="${tk.x.toFixed(1)}" y2="${PAD.t + cH}" stroke="${C_GRID}" stroke-width="1"/>`).join("")}
-      <line x1="${PAD.l}" y1="${pcY.toFixed(1)}" x2="${PAD.l + cW}" y2="${pcY.toFixed(1)}" stroke="${C_AXIS}" stroke-opacity="0.5" stroke-dasharray="4,3" stroke-width="1"/>
+      ${yTicks.map((tk) => `<line x1="${PAD.l}" y1="${tk.y.toFixed(1)}" x2="${PAD.l + cW}" y2="${tk.y.toFixed(1)}" stroke="var(--c-grid)" stroke-width="1"/>`).join("")}
+      ${xTicks.map((tk) => `<line x1="${tk.x.toFixed(1)}" y1="${PAD.t}" x2="${tk.x.toFixed(1)}" y2="${PAD.t + cH}" stroke="var(--c-grid)" stroke-width="1"/>`).join("")}
+      <line x1="${PAD.l}" y1="${pcY.toFixed(1)}" x2="${PAD.l + cW}" y2="${pcY.toFixed(1)}" stroke="var(--c-axis)" stroke-opacity="0.5" stroke-dasharray="4,3" stroke-width="1"/>
       <path d="${fp}" fill="url(#areaGrad)" clip-path="url(#cc)"/>
       <path d="${lp}" fill="none" stroke="${lc}" stroke-width="1.3" clip-path="url(#cc)"/>
       <circle cx="${xOf(lastValidIdx).toFixed(1)}" cy="${yOf(lastPrice).toFixed(1)}" r="3" fill="${lc}"/>
-      ${yTicks.map((tk) => `<text x="${PAD.l - 5}" y="${(tk.y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="${C_AXIS}">${tk.price}</text>`).join("")}
+      ${yTicks.map((tk) => `<text x="${PAD.l - 5}" y="${(tk.y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--c-axis)">${tk.price}</text>`).join("")}
       ${yTicks.map((tk) => `<text x="${PAD.l + cW + 5}" y="${(tk.y + 4).toFixed(1)}" text-anchor="start" font-size="11" fill="${tk.color}">${tk.pct}</text>`).join("")}
-      ${xTicks.map((tk) => `<text x="${tk.x.toFixed(1)}" y="${(PAD.t + cH + 17).toFixed(1)}" text-anchor="middle" font-size="11" fill="${C_AXIS}">${tk.label}</text>`).join("")}
-      <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="none" stroke="${C_BDR}" stroke-width="1"/>
+      ${xTicks.map((tk) => `<text x="${tk.x.toFixed(1)}" y="${(PAD.t + cH + 17).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--c-axis)">${tk.label}</text>`).join("")}
+      <rect x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="none" stroke="var(--c-bdr)" stroke-width="1"/>
       <rect id="hit" x="${PAD.l}" y="${PAD.t}" width="${cW}" height="${cH}" fill="transparent" style="cursor:crosshair"/>
     `;
 
@@ -228,9 +232,8 @@
             : minuteData[i].price;
         const isUp =
           minuteData[i].price != null && minuteData[i].price >= prevPrice;
-        const c = isUp ? C_UP : C_DN;
-        // 涨柱深、跌柱浅，便于黑白模式下凭明暗区分涨跌
-        const op = isUp ? 0.9 : 0.4;
+        const c = isUp ? cssVar("--c-up") : cssVar("--c-dn");
+        const op = isUp ? cssVar("--op-vol-up") : cssVar("--op-vol-dn");
         bars += `<rect x="${(xOf(i) - barW / 2).toFixed(1)}" y="${(vt + vH - bH).toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="${op}"/>`;
       }
       volSvg.setAttribute("width", W);
@@ -238,8 +241,8 @@
       volSvg.innerHTML = `
       <defs><clipPath id="vcc"><rect x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}"/></clipPath></defs>
       <g clip-path="url(#vcc)">${bars}</g>
-      <text x="${PAD.l - 5}" y="${vt + 9}" text-anchor="end" font-size="10" fill="${C_AXIS}">${fmtVol(maxVol)}</text>
-      <rect x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}" fill="none" stroke="${C_BDR}" stroke-width="1"/>
+      <text x="${PAD.l - 5}" y="${vt + 9}" text-anchor="end" font-size="10" fill="var(--c-axis)">${fmtVol(maxVol)}</text>
+      <rect x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}" fill="none" stroke="var(--c-bdr)" stroke-width="1"/>
       <rect id="vol-hit" x="${PAD.l}" y="${vt}" width="${cW}" height="${vH}" fill="transparent" style="cursor:crosshair"/>
     `;
     }
