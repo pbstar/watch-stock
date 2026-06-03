@@ -39,8 +39,11 @@ export async function addStock(): Promise<boolean> {
     return false;
   }
 
+  // 统一转为小写，后续比较和存储均使用标准化代码
+  stockCode = stockCode.toLowerCase();
+
   const stocks = config.getStocks();
-  if (stocks.includes(stockCode.toLowerCase())) {
+  if (stocks.includes(stockCode)) {
     sendMsg("该股票已存在", { type: "warning" });
     return false;
   }
@@ -51,7 +54,7 @@ export async function addStock(): Promise<boolean> {
     return false;
   }
 
-  stocks.push(stockCode.toLowerCase());
+  stocks.push(stockCode);
   await config.saveStocks(stocks);
   sendMsg(`已添加: ${stockInfo[0].name}(${stockInfo[0].code})`);
 
@@ -118,8 +121,9 @@ export async function sortStocks(): Promise<boolean> {
   }
 
   const stockInfos = await getStockList(stocks);
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
   const currentOrder = stocks.map((code, index) => {
-    const info = stockInfos.find((s) => s.code === code);
+    const info = infoMap.get(code);
     return {
       label: `${index + 1}. ${info ? `${info.name}(${info.code})` : code}`,
       description: "点击选择要移动的股票",
@@ -153,8 +157,8 @@ export async function sortStocks(): Promise<boolean> {
   const newStocks = moveStock(stocks, fromIndex, toIndex);
   await config.saveStocks(newStocks);
 
-  const stockInfo = stockInfos.find((s) => s.code === selectedStock.code);
-  const stockName = stockInfo ? stockInfo.name : selectedStock.code;
+  const info = infoMap.get(selectedStock.code);
+  const stockName = info ? info.name : selectedStock.code;
   sendMsg(`已调整 "${stockName}" 的显示顺序`);
 
   return true;

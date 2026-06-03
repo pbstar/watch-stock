@@ -28,12 +28,20 @@ function buildOptions(url: string, extraHeaders: Headers = {}): RequestInit {
   }
 }
 
+// 通用 fetch 请求，返回 Response 对象
+async function request(
+  url: string,
+  extraHeaders: Headers = {},
+): Promise<Response> {
+  return fetch(url, buildOptions(url, extraHeaders));
+}
+
 // GET 请求，返回文本
 export async function get(
   url: string,
   extraHeaders: Headers = {},
 ): Promise<string> {
-  const res = await fetch(url, buildOptions(url, extraHeaders));
+  const res = await request(url, extraHeaders);
   return res.text();
 }
 
@@ -42,7 +50,7 @@ export async function getGbk(
   url: string,
   extraHeaders: Headers = {},
 ): Promise<string> {
-  const res = await fetch(url, buildOptions(url, extraHeaders));
+  const res = await request(url, extraHeaders);
   const buf = await res.arrayBuffer();
   return new TextDecoder("gbk").decode(buf);
 }

@@ -53,6 +53,14 @@ export function sendMsg(text: string, options: SendMsgOptions = {}): void {
   showVscodeMessage(newText, type, showConfirm ? ["知道了"] : []);
 }
 
+// 清除限流定时器，扩展停用时调用，防止泄漏
+export function disposeRateLimit(): void {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+}
+
 // 发送限流消息：60秒内合并消息
 export function sendRateLimitMsg(text: string): void {
   const newText = `[${formatTime()}] ${text}`;
