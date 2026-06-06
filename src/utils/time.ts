@@ -51,15 +51,21 @@ export function isAfternoonAuctionTime(now: Date): boolean {
   );
 }
 
+// 格式化分钟数为 HH:MM
+function formatMinute(minutes: number): string {
+  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const m = String(minutes % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 // 生成 A 股完整交易时间槽（242 个）
 export function buildTimeSlots(date: string): string[] {
   const slots: string[] = [];
-  const push = (t: number): void => {
-    const h = String(Math.floor(t / 60)).padStart(2, "0");
-    const m = String(t % 60).padStart(2, "0");
-    slots.push(`${date} ${h}:${m}`);
-  };
-  for (let t = TIME_MORNING_START; t <= TIME_MORNING_END; t++) push(t);
-  for (let t = TIME_AFTERNOON_START; t <= TIME_AFTERNOON_END; t++) push(t);
+  for (let t = TIME_MORNING_START; t <= TIME_MORNING_END; t++) {
+    slots.push(`${date} ${formatMinute(t)}`);
+  }
+  for (let t = TIME_AFTERNOON_START; t <= TIME_AFTERNOON_END; t++) {
+    slots.push(`${date} ${formatMinute(t)}`);
+  }
   return slots;
 }

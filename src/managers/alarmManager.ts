@@ -208,11 +208,14 @@ export async function checkAlarms(stockInfos: Stock[]): Promise<void> {
   const alarms = config.getAlarms();
   if (alarms.length === 0) return;
 
+  // 用 Map 建立 code → Stock 索引，将 O(n×m) 降为 O(n+m)
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
+
   const remaining: Alarm[] = [];
   const triggered: { alarm: Alarm; name: string; price: number }[] = [];
 
   for (const alarm of alarms) {
-    const info = stockInfos.find((s) => s.code === alarm.stockCode);
+    const info = infoMap.get(alarm.stockCode);
     if (!info) {
       remaining.push(alarm);
       continue;

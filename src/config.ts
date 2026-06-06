@@ -80,6 +80,7 @@ export interface ConfigShape {
   enableLockTip: boolean;
   enableLargeTip: boolean;
   showLockCount: boolean;
+  enableColorful: boolean;
 }
 
 const DEFAULTS: ConfigShape = {
@@ -93,6 +94,7 @@ const DEFAULTS: ConfigShape = {
   enableLockTip: false,
   enableLargeTip: false,
   showLockCount: false,
+  enableColorful: false,
 };
 
 function raw(): vscode.WorkspaceConfiguration {
@@ -130,6 +132,7 @@ export const config = {
   getEnableLockTip: () => read("enableLockTip"),
   getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
+  getEnableColorful: () => read("enableColorful"),
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {
     await raw().update(

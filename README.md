@@ -55,6 +55,7 @@
 | `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                        |
 | `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                          |
 | `enableLargeTip`   | boolean | `false`        | 是否开启大单异动通知                          |
+| `enableColorful`   | boolean | `false`        | 是否开启彩色视图                              |
 
 ## 🛠️ 常见问题
 
