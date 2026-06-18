@@ -108,7 +108,7 @@ export async function clearStocks(): Promise<boolean> {
   return true;
 }
 
-// 排序股票：先选择排序方式，再执行对应操作
+// 手动排序股票（仅在自定义排序模式下可用）
 export async function sortStocks(): Promise<boolean> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {
@@ -120,35 +120,6 @@ export async function sortStocks(): Promise<boolean> {
     return false;
   }
 
-  const currentType = config.getStockSortType();
-  const modeLabels: Record<string, string> = {
-    custom: "自定义排序",
-    changeDesc: "按涨幅降序（涨最多在前）",
-    changeAsc: "按涨幅升序（跌最多在前）",
-  };
-
-  const selected = await vscode.window.showQuickPick(
-    Object.entries(modeLabels).map(([value, label]) => ({
-      label,
-      description: currentType === value ? "当前" : "",
-      value,
-    })),
-    { placeHolder: "选择排序方式" },
-  );
-  if (!selected) return false;
-
-  if (selected.value === "custom") {
-    return customSortStocks(stocks);
-  }
-
-  await config.setStockSortType(selected.value as "changeAsc" | "changeDesc");
-  // 配置变更会触发 onDidChangeConfiguration 自动刷新
-  sendMsg(`已切换为${selected.label}`);
-  return true;
-}
-
-// 自定义排序股票
-async function customSortStocks(stocks: string[]): Promise<boolean> {
   const stockInfos = await getStockList(stocks);
   const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
   const currentOrder = stocks.map((code, index) => {
@@ -185,9 +156,6 @@ async function customSortStocks(stocks: string[]): Promise<boolean> {
 
   const newStocks = moveStock(stocks, fromIndex, toIndex);
   await config.saveStocks(newStocks);
-
-  // 自定义排序后自动切回自定义模式
-  await config.setStockSortType("custom");
 
   const info = infoMap.get(selectedStock.code);
   const stockName = info ? info.name : selectedStock.code;
