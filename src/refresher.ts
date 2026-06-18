@@ -33,6 +33,16 @@ export async function refreshData(
     Object.assign(stock, lockInfo);
   }
 
+  // 按涨跌幅排序（自定义模式跳过）
+  const sortType = config.getStockSortType();
+  if (sortType !== "custom") {
+    const dir = sortType === "changeAsc" ? 1 : -1;
+    stockInfos.sort(
+      (a, b) =>
+        (parseFloat(a.changePercent) - parseFloat(b.changePercent)) * dir,
+    );
+  }
+
   if (stockInfos.length > 0) {
     await checkAlarms(stockInfos);
   }

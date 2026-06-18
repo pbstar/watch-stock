@@ -124,6 +124,16 @@
           "type": "boolean",
           "default": false,
           "description": "是否开启彩色视图"
+        },
+        "watch-stock.stockSortType": {
+          "type": "string",
+          "default": "custom",
+          "enum": [
+            "custom",
+            "changeAsc",
+            "changeDesc"
+          ],
+          "description": "股票排序方式：custom 自定义排序，changeAsc 按涨幅升序，changeDesc 按涨幅降序"
         }
       }
     },

@@ -57,12 +57,24 @@
         background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
         border-bottom: 1px solid var(--vscode-panel-border, #454545);
         overflow-x: auto;
-        scrollbar-width: none;
+        scrollbar-width: thin;
+        scrollbar-color: var(--vscode-scrollbarSlider-background, #555)
+          transparent;
         flex-shrink: 0;
+        min-width: 632px;
       }
 
       .tab-bar::-webkit-scrollbar {
-        display: none;
+        height: 3px;
+      }
+
+      .tab-bar::-webkit-scrollbar-thumb {
+        background: var(--vscode-scrollbarSlider-background, #555);
+        border-radius: 2px;
+      }
+
+      .tab-bar::-webkit-scrollbar-track {
+        background: transparent;
       }
 
       .tab {

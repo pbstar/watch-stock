@@ -68,6 +68,9 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
 // 行业板块代码列表（由 INDUSTRY_CODES 派生的纯代码数组）
 export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
 
+// 排序方式类型
+export type SortType = "custom" | "changeAsc" | "changeDesc";
+
 // 配置项类型
 export interface ConfigShape {
   stocks: string[];
@@ -81,6 +84,7 @@ export interface ConfigShape {
   enableLargeTip: boolean;
   showLockCount: boolean;
   enableColorful: boolean;
+  stockSortType: SortType;
 }
 
 const DEFAULTS: ConfigShape = {
@@ -95,6 +99,7 @@ const DEFAULTS: ConfigShape = {
   enableLargeTip: false,
   showLockCount: false,
   enableColorful: false,
+  stockSortType: "custom",
 };
 
 function raw(): vscode.WorkspaceConfiguration {
@@ -133,6 +138,14 @@ export const config = {
   getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
   getEnableColorful: () => read("enableColorful"),
+  getStockSortType: () => read("stockSortType"),
+  async setStockSortType(type: SortType): Promise<void> {
+    await raw().update(
+      "stockSortType",
+      type,
+      vscode.ConfigurationTarget.Global,
+    );
+  },
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {
     await raw().update(
