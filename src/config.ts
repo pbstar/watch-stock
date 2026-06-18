@@ -139,13 +139,6 @@ export const config = {
   getShowLockCount: () => read("showLockCount"),
   getEnableColorful: () => read("enableColorful"),
   getStockSortType: () => read("stockSortType"),
-  async setStockSortType(type: SortType): Promise<void> {
-    await raw().update(
-      "stockSortType",
-      type,
-      vscode.ConfigurationTarget.Global,
-    );
-  },
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {
     await raw().update(
