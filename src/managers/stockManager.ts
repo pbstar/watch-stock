@@ -108,7 +108,7 @@ export async function clearStocks(): Promise<boolean> {
   return true;
 }
 
-// 排序股票，成功返回 true
+// 手动排序股票（仅在自定义排序模式下可用）
 export async function sortStocks(): Promise<boolean> {
   const stocks = config.getStocks();
   if (stocks.length === 0) {

@@ -94,6 +94,7 @@ export function registerCommands(
 // 管理股票主菜单
 async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
+  const isSortTypeCustom = config.getStockSortType() === "custom";
   const visible = getIsVisible(state);
   const options = [
     {
@@ -115,11 +116,15 @@ async function manageStock(state: AppState): Promise<void> {
         description: "从已添加的股票中选择移除",
         action: "remove",
       },
-      {
-        label: "$(arrow-swap) 排序股票",
-        description: "调整股票的显示顺序",
-        action: "sort",
-      },
+      ...(isSortTypeCustom
+        ? [
+            {
+              label: "$(arrow-swap) 排序股票",
+              description: "调整股票的显示顺序",
+              action: "sort",
+            },
+          ]
+        : []),
       {
         label: "$(trash) 清空股票",
         description: "清空所有已添加的股票",
