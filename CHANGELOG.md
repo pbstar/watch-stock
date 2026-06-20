@@ -1,5 +1,10 @@
 # Change Log 更新日志
 
+## 2.3.0 2026-06-20
+
+- **排序方式**：新增 `stockSortType` 配置项，默认 custom 自定义排序，支持 changeAsc 按涨幅升序、changeDesc 按涨幅降序
+- 优化查看股票页面顶部 tab 样式
+
 ## 2.2.0 2026-06-06
 
 - **彩色视图**：新增 `enableColorful` 配置项，默认关闭
