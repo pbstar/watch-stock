@@ -4,9 +4,21 @@ import { config } from "../config";
 import { formatAmount } from "../utils/stock";
 import type { Stock, StatusBar } from "../types";
 
-// 判断涨跌方向：涨/平返回 true
-function isPriceUp(changeValue: string): boolean {
-  return parseFloat(changeValue) >= 0;
+// 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
+function priceDirection(changeValue: string): number {
+  const v = parseFloat(changeValue);
+  if (isNaN(v)) return 0;
+  if (v > 0) return 1;
+  if (v < 0) return -1;
+  return 0;
+}
+
+// 涨跌符号
+function getPriceSymbol(changeValue: string): string {
+  const d = priceDirection(changeValue);
+  if (d > 0) return "↗";
+  if (d < 0) return "↘";
+  return "";
 }
 
 // 判断是否处于涨跌停状态
@@ -53,7 +65,7 @@ export class StatusBarManager implements StatusBar {
     const showLockCount = config.getShowLockCount();
 
     const stockTexts = displayStocks.map((stock) => {
-      const symbol = isPriceUp(stock.changeValue) ? "↗" : "↘";
+      const symbol = getPriceSymbol(stock.changeValue);
       const displayName = showMiniName
         ? stockMiniNames[stock.code] ||
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
@@ -77,8 +89,7 @@ export class StatusBarManager implements StatusBar {
 
     let tooltip = stockInfos
       .map((stock) => {
-        const sign = isPriceUp(stock.changeValue) ? "+" : "";
-        let line = `${stock.name}(${stock.code}): ${stock.current} ${sign}${stock.changePercent}%(${stock.changeValue})`;
+        let line = `${stock.name}(${stock.code}): ${stock.current} ${stock.changePercent}%(${stock.changeValue})`;
         if (isLockState(stock.priceType)) {
           const type = stock.priceType === "up" ? "涨停" : "跌停";
           line += ` ${type}封单: ${formatAmount(stock.lockAmount ?? 0)}`;

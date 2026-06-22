@@ -12,6 +12,8 @@ import {
   removeAlarmsByStock,
   clearAllAlarms,
 } from "./managers/alarmManager";
+import { clearLockTipCache } from "./managers/lockManager";
+import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible } from "./config";
 import { refreshData } from "./refresher";
@@ -48,12 +50,16 @@ export function registerCommands(
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
+        clearLockTipCache(removed);
+        clearLargeTipCache(removed);
         refresh();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
       if (await clearStocks()) {
         await clearAllAlarms();
+        clearLockTipCache();
+        clearLargeTipCache();
         refresh();
       }
     }),

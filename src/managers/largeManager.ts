@@ -59,6 +59,15 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   return `${emoji} ${stock.name} ${size}单${direction}${formatAmount(deltaAmount)}`;
 }
 
+// 清除指定股票的大单缓存，不传 code 则清空全部
+export function clearLargeTipCache(code?: string): void {
+  if (code) {
+    largeTipCache.delete(code);
+  } else {
+    largeTipCache.clear();
+  }
+}
+
 // 检查并通知大单异动
 export function checkLargeTip(stockInfos: Stock[]): void {
   for (const stock of stockInfos) {
