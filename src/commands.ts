@@ -82,14 +82,7 @@ export function registerCommands(
       refresh();
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.home, async () => {
-      const stocks = config.getStocks();
-      if (stocks.length === 0) {
-        sendMsg("请先添加股票", { type: "warning" });
-        return;
-      }
-      await StockHomePanel.show();
-    }),
+    vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("watch-stock")) refresh();
     }),

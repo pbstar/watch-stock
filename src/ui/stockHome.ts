@@ -65,8 +65,6 @@ export class StockHomePanel {
   private activeCode: string | null = null;
   private quoteMap = new Map<string, StockQuote>();
   private minuteCache = new Map<string, MinuteCacheEntry>();
-  // webview 就绪握手：每次重新设置 html 时重置
-  private readyPromise: Promise<void> = Promise.resolve();
   private readyResolve: (() => void) | null = null;
 
   private constructor(panel: vscode.WebviewPanel) {
@@ -100,20 +98,20 @@ export class StockHomePanel {
     }
 
     const col = vscode.ViewColumn.One;
-    const existing = StockHomePanel.current?.panel;
-    if (existing) {
-      existing.reveal(col);
-      await StockHomePanel.current!.load(quotes, indexData, industryData);
+    let current = StockHomePanel.current;
+    if (current) {
+      current.panel.reveal(col);
     } else {
-      const newPanel = vscode.window.createWebviewPanel(
-        "stockHome",
-        "查看股票",
-        col,
-        { enableScripts: true, retainContextWhenHidden: true },
+      current = new StockHomePanel(
+        vscode.window.createWebviewPanel("stockHome", "查看股票", col, {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+        }),
       );
-      StockHomePanel.current = new StockHomePanel(newPanel);
-      await StockHomePanel.current.load(quotes, indexData, industryData);
+      StockHomePanel.current = current;
     }
+
+    await current.load(quotes, indexData, industryData);
   }
 
   private async handleMessage(msg: InboundMessage): Promise<void> {
@@ -140,7 +138,7 @@ export class StockHomePanel {
   }
 
   private mapIndustryData(industryData: Stock[]): IndustryItem[] {
-    return (industryData || []).map((item) => {
+    return industryData.map((item) => {
       const cfg = INDUSTRY_CODES.find((c) => c.code === item.code);
       return {
         code: item.code,
@@ -151,7 +149,7 @@ export class StockHomePanel {
   }
 
   private async refreshIndexData(): Promise<void> {
-    this.indexStocks = (await getStockList(INDEX_CODES)) || [];
+    this.indexStocks = await getStockList(INDEX_CODES);
     this.panel.webview.postMessage({
       type: "indexData",
       indexStocks: this.indexStocks,
@@ -190,17 +188,17 @@ export class StockHomePanel {
       this.quoteMap.set(q.code, q);
       return this.convertToStockInfo(q);
     });
-    this.indexStocks = indexData || [];
+    this.indexStocks = indexData;
     this.industryStocks = this.mapIndustryData(industryData);
 
     this.activeCode = null;
     this.panel.title = "查看股票";
     // 重置 ready 握手，等 webview 加载完成后会回发 "ready" 消息
-    this.readyPromise = new Promise((r) => {
+    const readyPromise = new Promise<void>((r) => {
       this.readyResolve = r;
     });
     this.panel.webview.html = this.buildHtml();
-    await this.readyPromise;
+    await readyPromise;
 
     this.panel.webview.postMessage({
       type: "init",
