@@ -12,6 +12,8 @@ import {
   removeAlarmsByStock,
   clearAllAlarms,
 } from "./managers/alarmManager";
+import { clearLockTipCache } from "./managers/lockManager";
+import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible } from "./config";
 import { refreshData } from "./refresher";
@@ -48,12 +50,16 @@ export function registerCommands(
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
+        clearLockTipCache(removed);
+        clearLargeTipCache(removed);
         refresh();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
       if (await clearStocks()) {
         await clearAllAlarms();
+        clearLockTipCache();
+        clearLargeTipCache();
         refresh();
       }
     }),
@@ -76,14 +82,7 @@ export function registerCommands(
       refresh();
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.home, async () => {
-      const stocks = config.getStocks();
-      if (stocks.length === 0) {
-        sendMsg("请先添加股票", { type: "warning" });
-        return;
-      }
-      await StockHomePanel.show();
-    }),
+    vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("watch-stock")) refresh();
     }),

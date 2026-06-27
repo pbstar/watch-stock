@@ -4,9 +4,21 @@ import { config } from "../config";
 import { formatAmount } from "../utils/stock";
 import type { Stock, StatusBar } from "../types";
 
-// 判断涨跌方向：涨/平返回 true
-function isPriceUp(changeValue: string): boolean {
-  return parseFloat(changeValue) >= 0;
+// 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
+function priceDirection(changeValue: string): number {
+  const v = parseFloat(changeValue);
+  if (isNaN(v)) return 0;
+  if (v > 0) return 1;
+  if (v < 0) return -1;
+  return 0;
+}
+
+// 涨跌符号
+function getPriceSymbol(changeValue: string): string {
+  const d = priceDirection(changeValue);
+  if (d > 0) return "↗";
+  if (d < 0) return "↘";
+  return "";
 }
 
 // 判断是否处于涨跌停状态
@@ -46,53 +58,51 @@ export class StatusBarManager implements StatusBar {
     }
 
     const maxDisplayCount = config.getMaxDisplayCount();
-    const displayStocks = stockInfos.slice(0, maxDisplayCount);
     const showMiniName = config.getShowMiniName();
     const stockMiniNames = config.getStockMiniNames();
     const showChangeValue = config.getShowChangeValue();
     const showLockCount = config.getShowLockCount();
 
-    const stockTexts = displayStocks.map((stock) => {
-      const symbol = isPriceUp(stock.changeValue) ? "↗" : "↘";
+    const stockTexts: string[] = [];
+    const tooltipLines: string[] = [];
+
+    stockInfos.forEach((stock, i) => {
+      const symbol = getPriceSymbol(stock.changeValue);
+      // tooltip 行（所有股票）
+      const lockType = isLockState(stock.priceType)
+        ? ` ${stock.priceType === "up" ? "涨停" : "跌停"}封单: ${formatAmount(stock.lockAmount ?? 0)}`
+        : "";
+      tooltipLines.push(
+        `${stock.name}(${stock.code}): ${stock.current} ${symbol}${stock.changePercent}%(${stock.changeValue})${lockType}`,
+      );
+      // 状态栏文本（仅前 maxDisplayCount 只）
+      if (i >= maxDisplayCount) return;
       const displayName = showMiniName
         ? stockMiniNames[stock.code] ||
           (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
         : stock.name;
-      let text = `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}`;
-      if (
+      const lockText =
         showLockCount &&
         (stock.lockAmount ?? 0) > 0 &&
         isLockState(stock.priceType)
-      ) {
-        text += ` 封${formatAmount(stock.lockAmount ?? 0)}`;
-      }
-      return text;
+          ? ` 封${formatAmount(stock.lockAmount ?? 0)}`
+          : "";
+      stockTexts.push(
+        `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}${lockText}`,
+      );
     });
 
-    const text = stockTexts.join(" | ");
+    const statusText = stockTexts.join(" | ");
     this.statusBarItem.text =
       stockInfos.length > maxDisplayCount
-        ? `${text} ...(${stockInfos.length - maxDisplayCount}+)`
-        : text;
+        ? `${statusText} ...(${stockInfos.length - maxDisplayCount}+)`
+        : statusText;
 
-    let tooltip = stockInfos
-      .map((stock) => {
-        const sign = isPriceUp(stock.changeValue) ? "+" : "";
-        let line = `${stock.name}(${stock.code}): ${stock.current} ${sign}${stock.changePercent}%(${stock.changeValue})`;
-        if (isLockState(stock.priceType)) {
-          const type = stock.priceType === "up" ? "涨停" : "跌停";
-          line += ` ${type}封单: ${formatAmount(stock.lockAmount ?? 0)}`;
-        }
-        return line;
-      })
-      .join("\n");
-
-    if (stocks.length > stockInfos.length) {
-      const failedCount = stocks.length - stockInfos.length;
-      tooltip += `\n\n$(warning) ${failedCount}只股票获取失败`;
-    }
-
-    this.statusBarItem.tooltip = tooltip;
+    const failedInfo =
+      stocks.length > stockInfos.length
+        ? `\n\n$(warning) ${stocks.length - stockInfos.length}只股票获取失败`
+        : "";
+    this.statusBarItem.tooltip = tooltipLines.join("\n") + failedInfo;
   }
 
   // 显示隐藏图标（已隐藏时跳过）

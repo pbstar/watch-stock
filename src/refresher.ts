@@ -60,16 +60,32 @@ export async function refreshData(
   }
 }
 
+// 判断是否有监控需求（闹钟/封单/大单），有则即使状态栏隐藏也要拉数据
+function hasMonitoringNeeds(): boolean {
+  return (
+    config.getAlarms().length > 0 ||
+    config.getEnableLockTip() ||
+    config.getEnableLargeTip()
+  );
+}
+
 // 立即刷新一次并启动定时器
 export function startRefreshTimer(state: AppState): void {
   void refreshData(state);
   state.refreshTimer = setInterval(() => {
     const now = new Date();
-    if (isTradingTime(now)) {
-      void refreshData(state, now, true);
-    } else if (config.getAutoHideByMarket() && state.userForced === null) {
-      state.statusBar.setHidden();
+    if (!isTradingTime(now)) {
+      if (config.getAutoHideByMarket() && state.userForced === null) {
+        state.statusBar.setHidden();
+      }
+      return;
     }
+    // 状态栏隐藏且无监控需求时，跳过本次数据拉取
+    if (!getIsVisible(state, now) && !hasMonitoringNeeds()) {
+      state.statusBar.setHidden();
+      return;
+    }
+    void refreshData(state, now, true);
   }, REFRESH_INTERVAL);
 }
 

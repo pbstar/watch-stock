@@ -70,8 +70,9 @@ export async function removeStock(): Promise<string | null> {
   }
 
   const stockInfos = await getStockList(stocks);
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
   const options = stocks.map((code) => {
-    const info = stockInfos.find((s) => s.code === code);
+    const info = infoMap.get(code);
     return {
       label: info ? `${info.name}(${info.code})` : code,
       description: "点击移除",

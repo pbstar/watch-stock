@@ -78,6 +78,15 @@ function getLockChangeMessage(prev: LockSnapshot, stock: Stock): string {
   return "";
 }
 
+// 清除指定股票的封单缓存，不传 code 则清空全部
+export function clearLockTipCache(code?: string): void {
+  if (code) {
+    lockTipCache.delete(code);
+  } else {
+    lockTipCache.clear();
+  }
+}
+
 // 检查并通知异动
 export function checkLockTip(stockInfos: Stock[]): void {
   for (const stock of stockInfos) {
