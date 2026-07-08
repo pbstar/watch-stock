@@ -1,14 +1,13 @@
 // 大单异动监控：基于最近多次刷新的成交额变化
 import { sendRateLimitMsg } from "../utils/msg";
 import { formatAmount } from "../utils/stock";
-import type { Stock, PriceType } from "../types";
+import type { Stock } from "../types";
 
 // 单次行情快照，仅保留大单分析所需字段
 interface LargeSnapshot {
   amount: number; // 累计成交额
   current: number; // 当前价
   timestamp: number; // 行情时间戳（秒）
-  priceType: PriceType; // 价格类型
 }
 
 // 将行情时间字符串解析为时间戳，无效时返回0
@@ -81,7 +80,6 @@ export function checkLargeTip(stockInfos: Stock[]): void {
       amount: stock.amount,
       current,
       timestamp,
-      priceType: stock.priceType,
     });
     if (history.length > HISTORY_SIZE) history.shift();
     largeTipCache.set(stock.code, history);
