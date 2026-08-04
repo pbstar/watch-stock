@@ -68,8 +68,9 @@ async function addAlarm(): Promise<void> {
 
   const stockInfos = await getStockList(stocks);
 
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
   const stockOptions = stocks.map((code) => {
-    const info = stockInfos.find((s) => s.code === code);
+    const info = infoMap.get(code);
     return {
       label: info ? `${info.name}(${info.code})` : code,
       description: info ? `当前价格: ${info.current}` : "",
