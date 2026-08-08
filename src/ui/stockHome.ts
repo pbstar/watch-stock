@@ -22,6 +22,9 @@ import stockChartHtml from "../webview/stockChart.html";
 // 分时数据缓存有效期：10秒
 const MINUTE_CACHE_TTL = 10000;
 
+// 行业代码 → 名称索引，避免 mapIndustryData 中循环内 find
+const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
+
 interface MinuteCacheEntry {
   data: MinutePoint[];
   timestamp: number;
@@ -138,14 +141,11 @@ export class StockHomePanel {
   }
 
   private mapIndustryData(industryData: Stock[]): IndustryItem[] {
-    return industryData.map((item) => {
-      const cfg = INDUSTRY_CODES.find((c) => c.code === item.code);
-      return {
-        code: item.code,
-        name: cfg?.name || item.name,
-        changePercent: item.changePercent,
-      };
-    });
+    return industryData.map((item) => ({
+      code: item.code,
+      name: INDUSTRY_NAME_MAP.get(item.code) || item.name,
+      changePercent: item.changePercent,
+    }));
   }
 
   private async refreshIndexData(): Promise<void> {
