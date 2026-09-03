@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { config } from "../config";
 import { formatAmount } from "../utils/stock";
-import type { Stock, StatusBar } from "../types";
+import type { PriceType, Stock, StatusBar } from "../types";
 
 // 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
 function priceDirection(changeValue: string): number {
@@ -22,7 +22,7 @@ function getPriceSymbol(changeValue: string): string {
 }
 
 // 判断是否处于涨跌停状态
-function isLockState(priceType?: string): boolean {
+function isLockState(priceType?: PriceType): boolean {
   return priceType === "up" || priceType === "down";
 }
 

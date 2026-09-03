@@ -20,41 +20,43 @@ function toTimestamp(text: string): number {
 // 保留最近 N 次行情快照，用于对比近期均值识别异动
 const HISTORY_SIZE = 7;
 const largeTipCache = new Map<string, LargeSnapshot[]>();
-const MIN_LARGE_AMOUNT = 1000000; // 区间成交额绝对阈值：100万
+const BASE_AMOUNT = 1000000; // 区间成交额绝对阈值：100万
+const LARGE_RATIO = 2; // 放量倍数
+const PRICE_MOVE_RATIO = 0.001; // 价格干扰
 
 // 根据快照历史生成大单异动通知文案
 function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   if (history.length < HISTORY_SIZE) return "";
+  const first = history[0];
+  const prev = history[HISTORY_SIZE - 2];
+  const cur = history[HISTORY_SIZE - 1];
   // 处理时间异常
-  if (
-    history[6].timestamp - history[0].timestamp > 35 ||
-    history[6].timestamp - history[0].timestamp < 25
-  )
-    return "";
-  const lastAmount = history[6].amount - history[5].amount;
-
+  const span = cur.timestamp - first.timestamp;
+  if (span > 35 || span < 25) return "";
+  // 最后一段金额
+  const lastAmount = cur.amount - prev.amount;
   // 未达到绝对金额门槛则不视为大单
-  if (lastAmount < MIN_LARGE_AMOUNT * 2) return "";
-
-  // 计算前5次成交额之和
-  const sumAmount = history[5].amount - history[0].amount;
-  // 计算前5次成交额平均值
-  const avgAmount = sumAmount / 5;
-  // 均量差值
+  if (lastAmount < BASE_AMOUNT * LARGE_RATIO) return "";
+  // 成交额均值
+  const avgAmount = (prev.amount - first.amount) / (HISTORY_SIZE - 2);
+  // 异动增量
   const deltaAmount = lastAmount - avgAmount;
-  // 放量倍率
-  const ratio = Number((deltaAmount / avgAmount).toFixed(2));
+  const deltaFloor = Math.max(BASE_AMOUNT, avgAmount);
+  // 增量小于门槛/均值不视为大单
+  if (deltaAmount < deltaFloor) return "";
+  // 放量倍率（用于超大单分级）
+  const ratio = Number((lastAmount / avgAmount).toFixed(2));
   // 价格变化方向：最近一次间隔内的涨跌判断买卖意图
-  const priceDiff = Number(
-    (history[6].current - history[5].current).toFixed(3),
-  );
-
-  // 排除缩量/放量<2倍/价格无变化
-  if (deltaAmount < MIN_LARGE_AMOUNT || ratio < 2 || priceDiff === 0) return "";
+  const priceDiff = Number((cur.current - prev.current).toFixed(3));
+  // 价格推动不显著（tick 级波动不算买卖意图）
+  if (Math.abs(priceDiff) < prev.current * PRICE_MOVE_RATIO) return "";
 
   const emoji = priceDiff > 0 ? "💰" : "💸";
   const direction = priceDiff > 0 ? "买入" : "卖出";
-  const size = ratio > 5 && deltaAmount > MIN_LARGE_AMOUNT * 5 ? "超大" : "大";
+  // 超大单条件
+  const sb1 = ratio > 5 && deltaAmount > BASE_AMOUNT * 7;
+  const sb2 = ratio > 9 && deltaAmount > BASE_AMOUNT * 3;
+  const size = sb1 || sb2 ? "超大" : "大";
   return `${emoji} ${stock.name} ${size}单${direction}${formatAmount(deltaAmount)}`;
 }
 

@@ -1,10 +1,15 @@
 // 行情数据刷新与定时器调度
 import { config, getIsVisible } from "./config";
 import { getStockList } from "./services/stockService";
-import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
-import { checkLargeTip } from "./managers/largeManager";
+import {
+  calculateLockInfo,
+  checkLockTip,
+  clearLockTipCache,
+} from "./managers/lockManager";
+import { checkLargeTip, clearLargeTipCache } from "./managers/largeManager";
 import { checkAlarms } from "./managers/alarmManager";
 import {
+  formatDateKey,
   isTradingTime,
   isMorningAuctionTime,
   isAfternoonAuctionTime,
@@ -15,13 +20,36 @@ import type { AppState } from "./types";
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
 
-// 拉取数据 -> 计算封单 -> 触发闹钟 -> 渲染状态栏
+// 上次刷新日期（YYYY-MM-DD），用于跨交易日清理监控缓存
+let lastTradeDate = "";
+
+// 刷新链路入口：兜底所有异常，避免 unhandled rejection、避免单次失败中断后续轮询
 export async function refreshData(
   state: AppState,
   now?: Date,
   isAuto?: boolean,
 ): Promise<void> {
-  if (!now) now = new Date();
+  try {
+    await doRefreshData(state, now ?? new Date(), isAuto);
+  } catch (e) {
+    console.error("[watch-stock] 刷新行情数据失败:", e);
+  }
+}
+
+// 拉取数据 -> 计算封单 -> 触发闹钟 -> 渲染状态栏
+async function doRefreshData(
+  state: AppState,
+  now: Date,
+  isAuto?: boolean,
+): Promise<void> {
+  // 跨交易日时清空封单/大单监控缓存，避免隔日首帧用昨日快照误报异动
+  const tradeDate = formatDateKey(now);
+  if (tradeDate !== lastTradeDate) {
+    lastTradeDate = tradeDate;
+    clearLockTipCache();
+    clearLargeTipCache();
+  }
+
   const stocks = config.getStocks();
   const isMorningAuction = isMorningAuctionTime(now);
   const isAfternoonAuction = isAfternoonAuctionTime(now);

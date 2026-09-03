@@ -78,8 +78,9 @@ export function registerCommands(
         appState.statusBar.setHidden();
       }
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.refresh, () => {
-      refresh();
+    vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
+      // 等刷新完成再提示，避免数据未回来就报"完成"
+      await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),
     vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),

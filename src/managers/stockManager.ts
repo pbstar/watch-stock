@@ -4,7 +4,7 @@ import { sendMsg } from "../utils/msg";
 import { isValidStockCode, isFundCode } from "../utils/stock";
 import { searchStockCode } from "../services/stockSearch";
 import { getStockList } from "../services/stockService";
-import { config, moveStock } from "../config";
+import { config } from "../config";
 
 // 添加股票，成功返回 true
 export async function addStock(): Promise<boolean> {
@@ -155,7 +155,10 @@ export async function sortStocks(): Promise<boolean> {
   const fromIndex = selectedStock.index;
   if (toIndex > fromIndex) toIndex--;
 
-  const newStocks = moveStock(stocks, fromIndex, toIndex);
+  // 移除后再插入目标位置（向后移动时目标索引前移一位已修正）
+  const newStocks = [...stocks];
+  const [moved] = newStocks.splice(fromIndex, 1);
+  newStocks.splice(toIndex, 0, moved);
   await config.saveStocks(newStocks);
 
   const info = infoMap.get(selectedStock.code);

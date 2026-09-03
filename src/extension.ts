@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { registerCommands } from "./commands";
 import { startRefreshTimer, stopRefreshTimer } from "./refresher";
 import { StatusBarManager } from "./ui/statusBar";
+import { StockHomePanel } from "./ui/stockHome";
 import { disposeRateLimit } from "./utils/msg";
 import type { AppState } from "./types";
 
@@ -25,6 +26,7 @@ export function deactivate(): void {
     stopRefreshTimer(appState);
     appState.statusBar.dispose();
   }
+  StockHomePanel.current?.dispose();
   disposeRateLimit();
   appState = null;
 }
