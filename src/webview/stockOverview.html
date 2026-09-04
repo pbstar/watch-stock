@@ -1,66 +1,41 @@
-<!-- A股全览片段：样式、HTML、JS 均在此文件，由 stockHome.js 提取注入 -->
+<!-- 全览片段：样式、HTML、JS 均在此文件，由 stockHome.js 提取注入 -->
 <style>
   .overview-wrap {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-  }
-  .overview-title {
-    font-size: 13px;
-    color: var(--vscode-descriptionForeground, #888);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--vscode-panel-border, #454545);
-  }
-  .overview-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 8px;
-  }
-  .ov-card {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 10px 12px;
-    border: 1px solid var(--vscode-panel-border, #454545);
-    border-radius: 3px;
-  }
-  .ov-card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-  }
-  .ov-name {
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ov-code {
-    font-size: 11px;
-    color: var(--vscode-descriptionForeground, #888);
-    flex-shrink: 0;
-  }
-  .ov-price {
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.3px;
-  }
-  .ov-chg {
-    font-size: 11px;
   }
   .overview-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 6px;
+    padding-bottom: 4px;
     border-bottom: 1px solid var(--vscode-panel-border, #454545);
   }
-  .overview-header .overview-title {
-    border-bottom: none;
-    padding-bottom: 0;
+  .overview-title {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground, #888);
+  }
+  /* chip 流：每条一段内联文本，自动换行，信息密度接近日志汇总 */
+  .ov-rows {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 18px;
+    padding: 2px 4px;
+  }
+  .ov-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .ov-name {
+    font-weight: 500;
+  }
+  .ov-chg {
+    font-size: 11px;
   }
 </style>
 <div class="overview-wrap" id="overview-wrap">
@@ -68,28 +43,32 @@
     <div class="overview-title">大盘指数</div>
     <button class="btn-refresh" id="refresh-btn">↻ 刷新</button>
   </div>
-  <div class="overview-cards" id="index-cards"></div>
+  <div class="ov-rows" id="index-rows"></div>
 
-  <div class="overview-header" style="margin-top: 16px">
+  <div class="overview-header">
     <div class="overview-title">行业板块</div>
     <button class="btn-refresh" id="refresh-industry-btn">↻ 刷新</button>
   </div>
-  <div class="overview-cards" id="industry-cards"></div>
+  <div class="ov-rows" id="industry-rows"></div>
 </div>
 
 <script>
   /**
-   * 通用卡片渲染
+   * chip 流渲染：无涨跌配色，涨跌仅靠 +/- 符号表达
    * @param {HTMLElement} container - 容器元素
    * @param {Array} list - 数据列表
-   * @param {Object} options - 渲染选项
+   * @param {Object} options - showPrice 是否显示价格，sorted 是否按涨跌幅降序
    */
-  function renderCards(
+  function renderRows(
     container,
     list,
     { showPrice = true, sorted = false } = {},
   ) {
-    if (!container || !list?.length) return;
+    if (!container) return;
+    if (!list?.length) {
+      container.innerHTML = "";
+      return;
+    }
 
     const items = sorted
       ? [...list].sort(
@@ -100,25 +79,20 @@
     container.innerHTML = items
       .map((s) => {
         const v = parseFloat(s.changePercent);
-        const cls = v > 0 ? "up" : v < 0 ? "dn" : "";
         const sign = v > 0 ? "+" : "";
-        const priceHtml = showPrice
-          ? `<span class="ov-price ${cls}">${s.current}</span>\n          <span class="ov-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>`
-          : `<span class="ov-chg ${cls}" style="font-size: 14px; font-weight: 600;">${sign}${s.changePercent}%</span>`;
-        return `<div class="ov-card" data-code="${s.code}">
-          <div class="ov-card-top">
-            <span class="ov-name">${escHtml(s.name)}</span>
-            <span class="ov-code">${escHtml(s.code).toUpperCase()}</span>
-          </div>
-          ${priceHtml}
-        </div>`;
+        const price = showPrice ? `<span>${s.current}</span>` : "";
+        return `<span class="ov-chip" data-code="${s.code}">
+          <span class="ov-name">${escHtml(s.name)}</span>
+          ${price}
+          <span class="ov-chg">${sign}${s.changePercent}%</span>
+        </span>`;
       })
       .join("");
   }
 
   function renderOverviewCards() {
-    renderCards($("index-cards"), indexStocks, { showPrice: true });
-    renderCards($("industry-cards"), industryStocks, {
+    renderRows($("index-rows"), indexStocks, { showPrice: true });
+    renderRows($("industry-rows"), industryStocks, {
       showPrice: false,
       sorted: true,
     });
@@ -128,16 +102,16 @@
     const el = $(elementId);
     if (el) {
       el.innerHTML =
-        '<div style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground, #888);">正在获取数据...</div>';
+        '<div style="padding: 12px; text-align: center; color: var(--vscode-descriptionForeground, #888);">正在获取数据...</div>';
     }
   }
 
   overviewContainer.addEventListener("click", (e) => {
     if (e.target.closest("#refresh-btn")) {
-      showSectionLoading("index-cards");
+      showSectionLoading("index-rows");
       vscode.postMessage({ type: "refreshIndex" });
     } else if (e.target.closest("#refresh-industry-btn")) {
-      showSectionLoading("industry-cards");
+      showSectionLoading("industry-rows");
       vscode.postMessage({ type: "refreshIndustry" });
     }
   });

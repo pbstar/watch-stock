@@ -127,9 +127,9 @@ export class StatusBarManager implements StatusBar {
     if (this.hidden || !this.statusBarItem) return;
     this.hidden = true;
     this.lastText = "$(eye-closed)";
-    this.lastTooltip = "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
+    this.lastTooltip = "状态栏股票信息已隐藏\n点击后选择'恢复显示'";
     this.statusBarItem.text = "$(eye-closed)";
-    this.statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择'显示状态栏'";
+    this.statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择'恢复显示'";
   }
 
   getStatusBarItem(): vscode.StatusBarItem | null {

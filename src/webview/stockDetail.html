@@ -4,9 +4,9 @@
   .s-header {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     flex-shrink: 0;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--vscode-panel-border, #454545);
   }
   .s-header-top {
@@ -25,11 +25,9 @@
     color: var(--vscode-descriptionForeground, #888);
   }
   .s-price {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     margin-left: 4px;
-    line-height: 1;
-    letter-spacing: -0.3px;
   }
   .s-chg {
     font-size: 13px;
@@ -53,14 +51,14 @@
     background: var(--vscode-list-hoverBackground, #2a2d2e);
   }
 
-  /* 详情指标表格 */
+  /* 详情指标：6 列紧凑网格 */
   .s-details {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px 16px;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px 14px;
     font-size: 12px;
-    padding-bottom: 10px;
+    padding-bottom: 6px;
   }
   .s-detail-item {
     display: flex;
@@ -79,9 +77,22 @@
     text-overflow: ellipsis;
   }
 
-  /* 分时图 */
+  /* sparkline 迷你走势行：默认代替完整图表，点击展开/收起 */
+  .spark-row {
+    position: relative;
+    height: 22px;
+    margin: 2px 0 6px;
+    cursor: pointer;
+  }
+  .spark-row svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 完整分时图：默认隐藏，点击 sparkline 行展开 */
   .chart-wrap {
-    height: 240px;
+    height: 180px;
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
@@ -94,7 +105,7 @@
 
   /* 成交量 */
   .vol-wrap {
-    height: 80px;
+    height: 60px;
     flex-shrink: 0;
     position: relative;
     overflow: hidden;
@@ -134,24 +145,50 @@
 </style>
 
 <div class="s-header" id="s-header"></div>
-<div class="chart-wrap" id="chart-wrap">
+<div class="spark-row" id="spark-row" title="点击展开/收起分时图">
+  <svg id="spark-svg"></svg>
+  <div class="placeholder" id="spark-placeholder">正在获取分时数据...</div>
+</div>
+<div class="chart-wrap" id="chart-wrap" style="display: none">
   <div class="placeholder" id="placeholder">正在获取分时数据...</div>
   <svg id="chart-svg"></svg>
   <div class="tooltip" id="tooltip"></div>
 </div>
-<div class="vol-wrap" id="vol-wrap">
+<div class="vol-wrap" id="vol-wrap" style="display: none">
   <svg id="vol-svg"></svg>
 </div>
 
 <script>
   /* ---- DOM 缓存（本片段相关元素） ---- */
   const sHeader = $("s-header");
+  const sparkRow = $("spark-row");
+  const sparkSvg = $("spark-svg");
+  const sparkPlaceholder = $("spark-placeholder");
   const chartWrap = $("chart-wrap");
   const chartSvg = $("chart-svg");
   const placeholder = $("placeholder");
   const tooltipEl = $("tooltip");
   const volWrap = $("vol-wrap");
   const volSvg = $("vol-svg");
+
+  /* 点击 sparkline 行切换完整分时图展开/收起 */
+  sparkRow.addEventListener("click", () => {
+    chartExpanded = !chartExpanded;
+    chartWrap.style.display = chartExpanded ? "" : "none";
+    volWrap.style.display = chartExpanded ? "" : "none";
+    if (chartExpanded && minuteData) {
+      StockChart.render(minuteData, activeInfo);
+    } else {
+      // 收起时隐藏十字线；展开但暂无数据时恢复占位提示
+      StockChart.hide();
+      if (chartExpanded) {
+        chartSvg.innerHTML = "";
+        volSvg.innerHTML = "";
+        placeholder.style.display = "flex";
+        placeholder.textContent = "正在获取分时数据...";
+      }
+    }
+  });
 
   /* ---- 渲染个股头部 ---- */
   sHeader.addEventListener("click", (e) => {
@@ -201,8 +238,8 @@
     }
     sHeader.innerHTML = `
       <div class="s-header-top">
-        <span class="s-name">${escHtml(s.name)}</span>
-        <span class="s-code">${escHtml(s.code).toUpperCase()}</span>
+        <span class="s-name">${escHtml(displayName(s))}</span>
+        <span class="s-code">${escHtml(s.code)}</span>
         <span class="s-price ${cls}">${s.current}</span>
         <span class="s-chg ${cls}">${sign}${s.changePercent}%&nbsp;${sign}${s.changeValue}</span>
         <span class="s-time">${s.dateTime || ""}</span>
@@ -216,6 +253,8 @@
   function showLoading() {
     showDetail();
     minuteData = null;
+    sparkSvg.innerHTML = "";
+    sparkPlaceholder.style.display = "flex";
     chartSvg.innerHTML = "";
     volSvg.innerHTML = "";
     placeholder.style.display = "flex";

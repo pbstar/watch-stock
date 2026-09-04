@@ -45,7 +45,7 @@
       },
       {
         "command": "watch-stock.toggleVisibility",
-        "title": "显示/隐藏状态栏"
+        "title": "一键隐藏/恢复"
       },
       {
         "command": "watch-stock.priceAlarm",
@@ -119,11 +119,6 @@
           "type": "boolean",
           "default": false,
           "description": "状态栏是否显示封单数量"
-        },
-        "watch-stock.enableColorful": {
-          "type": "boolean",
-          "default": false,
-          "description": "是否开启彩色视图"
         },
         "watch-stock.stockSortType": {
           "type": "string",

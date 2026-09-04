@@ -75,7 +75,9 @@ export function registerCommands(
       if (appState.userForced) {
         refresh();
       } else {
+        // 老板键：隐藏时同步关闭股票面板，一次按键清除所有看盘痕迹
         appState.statusBar.setHidden();
+        StockHomePanel.current?.dispose();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
@@ -140,8 +142,10 @@ async function manageStock(state: AppState): Promise<void> {
 
   options.push(
     {
-      label: visible ? "$(eye-closed) 隐藏状态栏" : "$(eye) 显示状态栏",
-      description: visible ? "隐藏状态栏股票信息显示" : "显示状态栏股票信息",
+      label: visible ? "$(eye-closed) 一键隐藏" : "$(eye) 恢复显示",
+      description: visible
+        ? "隐藏状态栏并关闭股票面板"
+        : "恢复状态栏股票信息",
       action: "toggle",
     },
     {
