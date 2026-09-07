@@ -69,7 +69,6 @@ refresher.ts（交易时间每 5 秒一次，refreshData 统一 try/catch 兜底
 - **双数据源**：新浪用于批量行情（有买一/卖一，用于封单计算），腾讯用于完整行情（PE、PB、市值）和分时数据。早盘集合竞价期间（9:15-9:25）新浪无价格 → `getStockList(codes, isSina=false)` 回退到腾讯简版行情。腾讯响应按变量名中的代码键名匹配解析，勿改回按下标对齐（接口返回行数与请求不一致时数据会错位）。
 - **统一配置入口**：所有 VS Code 配置读取必须通过 `config.ts` 的 `config` 对象，禁止在业务代码中直接调用 `vscode.workspace.getConfiguration`。`config.getStocks()` 会自动校验股票代码格式、统一转为小写并回写。
 - **状态栏显隐三态**：`AppState.userForced` 为三态 —— `null` = 跟随市场（根据 `autoHideByMarket` 配置自动显隐），`true` = 强制显示，`false` = 强制隐藏。手动切换后脱离自动模式，需重启编辑器恢复。切换为强制隐藏（老板键）时会同时关闭股票面板，一次按键清除所有看盘痕迹。
-- **面板低调化**：面板标题固定为 `watch-stock`，勿改回中文标题；界面恒为黑白观感（涨跌统一编辑器前景色，`enableColorful` 彩色配置已移除）；tab 与个股头部名称跟随 `showMiniName` 配置显示简称/全称；全览页为 chip 流紧凑布局，详情页默认仅显示 22px 高的 sparkline 迷你走势（`StockChart.spark`），点击展开/收起弱化版完整分时图（无渐变、无外框、细线半透明、坐标标签恒灰），保持普通数据页观感。
 - **Webview 面板**：`StockHomePanel` 是单例，构建时将 4 个 HTML 模板通过 esbuild `text` loader 内联为字符串，运行时替换占位符（`{{NONCE}}`、`{{OVERVIEW_HTML}}` 等）并生成新的 CSP nonce。占位符替换必须用函数形式（`replace("{{X}}", () => value)`），避免片段中的 `$&`、`$'` 被当作特殊替换序列展开。修改 HTML 后无需手动构建，`npm run build` 自动压缩。
 - **命令注册**：命令统一在 `commands.ts` 注册，命令 ID 集中在 `COMMAND_MAP`，禁止在其他文件中注册命令。
 - **消息限流**：`msg.ts` 的 `sendRateLimitMsg()` 将封单/大单异动通知在 60 秒冷却窗口内合并，避免频繁弹窗打扰用户；通知频率统一由它控制，封单/大单判定逻辑内不再单独做冷却。

@@ -106,9 +106,8 @@ export class StockHomePanel {
     if (current) {
       current.panel.reveal(col);
     } else {
-      // 面板标题固定为插件 ID 风格的英文，避免编辑器标签页暴露看盘意图
       current = new StockHomePanel(
-        vscode.window.createWebviewPanel("stockHome", "watch-stock", col, {
+        vscode.window.createWebviewPanel("stockHome", "查看股票", col, {
           enableScripts: true,
           retainContextWhenHidden: true,
         }),
@@ -197,7 +196,7 @@ export class StockHomePanel {
     this.industryStocks = this.mapIndustryData(industryData);
 
     this.activeCode = null;
-    this.panel.title = "watch-stock";
+    this.panel.title = "查看股票";
     // 重置 ready 握手，等 webview 加载完成后会回发 "ready" 消息
     const readyPromise = new Promise<void>((r) => {
       this.readyResolve = r;
@@ -212,8 +211,6 @@ export class StockHomePanel {
       industryStocks: this.industryStocks,
       activeCode: null,
       quoteData: Object.fromEntries(this.quoteMap),
-      showMiniName: config.getShowMiniName(),
-      stockMiniNames: config.getStockMiniNames(),
     });
   }
 
@@ -258,8 +255,11 @@ export class StockHomePanel {
       extractScript(stockChartHtml),
     ].join("\n");
 
+    const enableColorful = config.getEnableColorful();
     return stockHomeHtml
       .replace(/\{\{NONCE\}\}/g, () => nonce)
+      .replace("{{COLORFUL}}", () => (enableColorful ? "true" : "false"))
+      .replace("{{BODY_CLASS}}", () => (enableColorful ? "" : "mono"))
       .replace("{{OVERVIEW_HTML}}", () => stripScript(stockOverviewHtml))
       .replace("{{DETAIL_HTML}}", () => stripScript(stockDetailHtml))
       .replace("/* {{FRAGMENT_SCRIPTS}} */", () => fragmentScripts);

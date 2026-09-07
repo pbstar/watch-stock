@@ -83,6 +83,7 @@ export interface ConfigShape {
   enableLockTip: boolean;
   enableLargeTip: boolean;
   showLockCount: boolean;
+  enableColorful: boolean;
   stockSortType: SortType;
 }
 
@@ -97,6 +98,7 @@ const DEFAULTS: ConfigShape = {
   enableLockTip: false,
   enableLargeTip: false,
   showLockCount: false,
+  enableColorful: false,
   stockSortType: "custom",
 };
 
@@ -137,6 +139,7 @@ export const config = {
   getEnableLockTip: () => read("enableLockTip"),
   getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
+  getEnableColorful: () => read("enableColorful"),
   getStockSortType: () => read("stockSortType"),
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {

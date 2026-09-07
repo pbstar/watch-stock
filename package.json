@@ -120,6 +120,11 @@
           "default": false,
           "description": "状态栏是否显示封单数量"
         },
+        "watch-stock.enableColorful": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否开启彩色视图"
+        },
         "watch-stock.stockSortType": {
           "type": "string",
           "default": "custom",
