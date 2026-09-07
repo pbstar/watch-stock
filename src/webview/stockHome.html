@@ -6,20 +6,22 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}';"
     />
-    <title>watch-stock</title>
+    <title>查看股票</title>
     <style>
       :root {
-        /* 涨跌恒用编辑器默认前景色（黑白观感），保持界面低调不显眼 */
-        --c-up: var(--vscode-editor-foreground);
-        --c-dn: var(--vscode-editor-foreground);
+        /* 基础颜色 */
+        --c-up: #c94c4c;
+        --c-dn: #2d8a2d;
         --c-grid: rgba(128, 128, 128, 0.18);
         --c-bdr: rgba(128, 128, 128, 0.3);
         --c-axis: var(--vscode-descriptionForeground, #888);
         --c-ch: rgba(140, 140, 140, 0.5);
 
-        /* 透明度语义化：用于成交量柱状图 */
-        --op-vol-up: 0.9; /* 凭明暗区分涨跌：涨柱深，跌柱浅 */
-        --op-vol-dn: 0.4;
+        /* 透明度语义化：用于成交量柱状图和面积图 */
+        --op-vol-up: 1; /* 彩色模式下直接用颜色区分涨跌，不加透明度 */
+        --op-vol-dn: 1;
+        --op-area: 0.25; /* 面积图渐变起始透明度 */
+        --op-area-end: 0.02; /* 面积图渐变结束透明度 */
       }
 
       *,
@@ -39,6 +41,14 @@
         display: flex;
         flex-direction: column;
         overflow: auto;
+      }
+
+      /* 黑白模式（未开启彩色视图）：涨跌统一使用编辑器默认前景色 */
+      body.mono {
+        --c-up: var(--vscode-editor-foreground);
+        --c-dn: var(--vscode-editor-foreground);
+        --op-vol-up: 0.9; /* 黑白模式下凭明暗区分涨跌：涨柱深，跌柱浅 */
+        --op-vol-dn: 0.4;
       }
 
       /* tab 栏 */
@@ -103,15 +113,15 @@
         padding: 14px 16px 12px;
       }
 
-      /* 统一宽度容器：600-720px 自适应，>720px 居中留白 */
+      /* 统一宽度容器：600-1000px 自适应，>1000px 居中留白 */
       .content {
         min-width: 600px;
-        max-width: 720px;
+        max-width: 1000px;
         width: 100%;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
       }
 
       /* 通用颜色 */
@@ -129,7 +139,7 @@
     </style>
   </head>
 
-  <body>
+  <body class="{{BODY_CLASS}}">
     <div class="tab-bar" id="tab-bar"></div>
     <div class="main">
       <div class="content" id="content">
@@ -148,21 +158,19 @@
     <script nonce="{{NONCE}}">
       const vscode = acquireVsCodeApi();
 
+      /* 是否开启彩色视图（false 时图表/文字均用编辑器默认前景色） */
+      const IS_COLORFUL = "{{COLORFUL}}" === "true";
+
       /* ---- 状态 ---- */
       let stocks = [];
       let indexStocks = [];
       let industryStocks = [];
-      let activeCode = "__overview__"; // __overview__ 代表全览固定 tab
+      let activeCode = "__overview__"; // __overview__ 代表 A股全览固定 tab
       const stocksMap = {};
       const quoteDataMap = {};
       let minuteData = null;
       let activeInfo = null;
       let activeQuote = null;
-      /* 详情页完整分时图是否展开（false=仅显示 sparkline 迷你走势） */
-      let chartExpanded = false;
-      /* tab 与个股头部是否显示简称（showMiniName=false 时显示全称） */
-      let showMiniName = false;
-      let stockMiniNames = {};
 
       /* ---- DOM 缓存 ---- */
       const $ = (id) => document.getElementById(id);
@@ -195,21 +203,6 @@
         const d = document.createElement("span");
         d.textContent = s;
         return d.innerHTML;
-      }
-
-      /* 显示名：showMiniName 开启时用自定义简称，未配置则截取名称前两位（与状态栏逻辑一致） */
-      function displayName(s) {
-        if (!showMiniName) return s.name;
-        return (
-          stockMiniNames[s.code] ||
-          (s.name.length > 2 ? s.name.substring(0, 2) : s.name)
-        );
-      }
-
-      /* sparkline 恒更新，完整图仅在展开时渲染；供消息处理与 ResizeObserver 复用 */
-      function renderChartArea() {
-        StockChart.spark(minuteData);
-        if (chartExpanded) StockChart.render(minuteData, activeInfo);
       }
 
       /* ---- 切换概览/详情容器 ---- */
@@ -253,14 +246,14 @@
       }
 
       function renderTabs() {
-        // 固定首个全览 tab，标题用无语义的 overview，避免中文股词语直接暴露看盘意图
+        // 固定首个 A股全览 tab
         const overviewActive = activeCode === "__overview__" ? " active" : "";
-        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">overview</span></div>`;
+        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
         const stockTabs = stocks
           .map((s) => {
             const active = s.code === activeCode ? " active" : "";
             return `<div class="tab${active}" data-code="${s.code}">
-            <span class="tab-name">${escHtml(displayName(s))}</span>
+            <span class="tab-name">${escHtml(s.name)}</span>
           </div>`;
           })
           .join("");
@@ -278,8 +271,6 @@
             stocks = msg.stocks;
             indexStocks = msg.indexStocks || [];
             industryStocks = msg.industryStocks || [];
-            showMiniName = !!msg.showMiniName;
-            stockMiniNames = msg.stockMiniNames || {};
             activeCode = "__overview__";
             // 清空旧数据避免状态污染
             Object.keys(stocksMap).forEach((k) => delete stocksMap[k]);
@@ -301,7 +292,7 @@
               activeQuote = msg.quoteInfo || quoteDataMap[msg.code] || null;
               if (activeInfo) stocksMap[msg.code] = activeInfo;
               renderHeader();
-              renderChartArea();
+              StockChart.render(minuteData, activeInfo);
             }
             break;
           case "indexData":
@@ -321,7 +312,7 @@
         if (rafId) return;
         rafId = requestAnimationFrame(() => {
           rafId = null;
-          if (minuteData) renderChartArea();
+          if (minuteData) StockChart.render(minuteData, activeInfo);
         });
       }).observe(content);
     </script>
