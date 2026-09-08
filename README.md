@@ -5,7 +5,7 @@
 ## ✨ 核心功能
 
 - 📈 **实时行情** 状态栏实时显示股票价格和涨跌幅
-- 📋 **查看股票** 查看指数、板块、分时图和成交量等
+- 📋 **查看股票** 以终端文本形式查看指数、板块与分时走势
 - ⏰ **价格闹钟** 设置价格提醒，价格达到目标自动通知
 - 🔒 **封单监控** 监控涨跌停股票封单数量，异动自动通知
 - 💰 **大单监控** 监控股票区间内成交额异动，自动通知大单买卖
@@ -28,8 +28,9 @@
 2. **管理股票**：点击状态栏股票信息，可添加、移除、排序、清空股票列表
 3. **排序股票**：点击状态栏股票信息 → 选择"排序股票"（仅自定义排序模式支持） → 选择要移动的股票 → 选择目标位置
 4. **查看股票**：点击状态栏股票信息 → 选择"查看股票"
-   - 默认展示 A股全览，可查看大盘指数和行业板块涨跌
-   - 点击股票标签切换到个股详情，查看分时图和详细指标
+   - 默认展示全览页，可查看大盘指数和行业板块涨跌
+   - 点击股票标签切换到个股详情，查看 ASCII 分时走势、成交量直方图与详细指标
+   - 面板整体为终端文本风格，旁人视角下如同日志输出
 5. **价格闹钟**：点击状态栏股票信息 → 选择"价格闹钟"
    - 设置新闹钟：选择股票 → 选择条件（高于/低于）→ 输入目标价格
    - 管理闹钟：在闹钟列表中点击即可删除，或选择"删除所有闹钟"
@@ -43,20 +44,21 @@
 
 点击插件的`扩展设置`或在设置中搜索 `@ext:pbstar.watch-stock`，可配置以下选项：
 
-| 配置项             | 类型    | 默认值         | 说明                                          |
-| ------------------ | ------- | -------------- | --------------------------------------------- |
-| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                  |
-| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                  |
-| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                        |
-| `showMiniName`     | boolean | `false`        | 状态栏是否显示简称，没有配置时截取名称前两位  |
-| `stockMiniNames`   | object  | `{}`           | 股票自定义简称映射，如 `{"sh601318": "平安"}` |
-| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                          |
-| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏             |
-| `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                        |
-| `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                          |
-| `enableLargeTip`   | boolean | `false`        | 是否开启大单异动通知                          |
-| `enableColorful`   | boolean | `false`        | 是否开启彩色视图                              |
-| `stockSortType`    | string  | `"custom"`     | 排序方式：custom、changeAsc、changeDesc       |
+| 配置项             | 类型    | 默认值         | 说明                                                       |
+| ------------------ | ------- | -------------- | ---------------------------------------------------------- |
+| `stocks`           | array   | `["sh000001"]` | 股票代码列表                                               |
+| `priceAlarms`      | array   | `[]`           | 价格闹钟列表                                               |
+| `maxDisplayCount`  | number  | `5`            | 状态栏最大显示股票数量                                     |
+| `enableMiniName`   | boolean | `false`        | 是否显示股票简称（状态栏与查看面板），无自定义简称时截前两位 |
+| `stockMiniNames`   | object  | `{}`           | 为每只股票配置简称，如 `{"sh601318": "平安"}`               |
+| `showChangeValue`  | boolean | `false`        | 状态栏是否显示涨跌值                                       |
+| `autoHideByMarket` | boolean | `false`        | 根据开休市时间自动显示/隐藏状态栏                          |
+| `showLockCount`    | boolean | `false`        | 状态栏是否显示封单数量                                     |
+| `enableLockTip`    | boolean | `false`        | 是否开启封单异动通知                                       |
+| `enableLargeTip`   | boolean | `false`        | 是否开启大单异动通知                                       |
+| `stockSortType`    | string  | `"custom"`     | 排序方式：custom、changeAsc、changeDesc                    |
+
+> 2.5.0 配置变更：`showMiniName` 更名为 `enableMiniName`（旧键仍会读取，建议迁移后删除）；`enableColorful` 已移除，存量 settings 中的该键会提示「未知配置项」，手动删除即可。
 
 ## 🛠️ 常见问题
 
@@ -77,7 +79,7 @@
 
 - **调整显示数量**：修改 `watch-stock.maxDisplayCount` 配置（建议 3-8 之间）
 - **使用自定义排序**：通过"排序股票"功能，将最重要的股票排在前面优先显示
-- **启用简称显示**：开启 `watch-stock.showMiniName`，显示股票简称（默认截取名称前两位），可通过 `watch-stock.stockMiniNames` 为每只股票配置自定义简称
+- **启用简称显示**：开启 `watch-stock.enableMiniName`，状态栏与查看面板均显示股票简称（默认截取名称前两位），可通过 `watch-stock.stockMiniNames` 为每只股票配置自定义简称
 
 ### 4.开启了根据开休市时间自动显示/隐藏状态栏，但是状态栏还是不显示怎么办❓
 

@@ -4,7 +4,7 @@
 
 ## 项目简介
 
-VS Code 扩展 "摸鱼看盘"（watch-stock）—— 在状态栏实时显示 A 股（沪/深/北）行情，支持价格闹钟、封单监控、大单异动检测。
+VS Code 扩展 "摸鱼看盘"（watch-stock）—— 在状态栏实时显示 A 股（沪/深/北）行情，支持价格闹钟、封单监控、大单异动检测。查看面板以终端文本风格呈现（ASCII 分时图 + 文本表格），旁人视角下如同日志输出。
 技术栈：TypeScript + VS Code Extension API + esbuild，数据来源：新浪财经、腾讯财经公开行情接口。
 
 ## 常用命令
@@ -46,7 +46,7 @@ src/
     ├── stockHome.html
     ├── stockOverview.html
     ├── stockDetail.html
-    └── stockChart.html
+    └── stockTerminalChart.html
 ```
 
 ## 核心架构
@@ -75,3 +75,8 @@ refresher.ts（交易时间每 5 秒一次，refreshData 统一 try/catch 兜底
 - **监控缓存跨日清理**：封单/大单监控快照缓存由 refresher 检测日期变化后统一清空（两个 manager 不自带跨日逻辑），避免隔日首帧用昨日快照误报异动。
 - **大单判定参数**：阈值集中在 `largeManager.ts` 顶部常量区（绝对门槛、增量门槛下限、价格推动幅度、超大单分级），调灵敏度只动常量，不改判定结构。
 - **分时数据缓存**：`StockHomePanel` 中分时数据有 10 秒 TTL 缓存，避免切换股票标签时重复请求。
+- **终端化渲染**：查看面板整体以纯文本呈现，旁人视角下如同日志输出。分时走势由 `stockTerminalChart.html` 用盒绘制线字符（`╭ ╮ ╰ ╯ ─ │`）绘制，成交量用块字符（`▁▂▃▄▅▆▇█`）直方图，极值以 `▲▼` 标注；涨跌一律靠 `+`/`-` 与数值表达，**不给涨跌着色**（着色本身就是看盘特征）。分桶降采样：约 240 个分时点按面板宽度折算列数，每列取末点价格（收盘语义）与桶内增量成交量；列数低于 60 时改为横向滚动，不挤压变形。曲线映射进内层行带 `[1, ROWS-2]`，首尾两行留给极值标记。
+- **Webview 文本对齐**：终端化文本全部放在 `<pre>` 内，等宽字体走 `var(--vscode-editor-font-family), monospace` 兜底。**中文字符占 2 显示列**，对齐必须用 `stockHome.html` 中的 `padW()`/`dispW()` 按显示宽度计算，禁止用 `String.length`。
+- **esbuild 压缩陷阱**：`esbuild.config.mjs` 的 `minifyHtml` 会把连续空白压成单个空格，**字符串字面量中的多空格同样会被压坏**。所有缩进/对齐空白必须用 `" ".repeat()`/`padW()` 运行时生成，模板中禁止写多空格字面量。
+- **面板低调化**：面板标题固定 `watch-stock`（`PANEL_TITLE` 常量），固定 tab 文案为 `overview`，容器宽度上限 720px，按 80/120 列文本布局设计。
+- **简称下发**：`enableMiniName` 开启时，`stockHome.ts` 在 `load()` 中一次性把简称算好写入 `StockOverview.displayName`，webview 端零配置直接消费（tab 与详情头部统一读 `displayName`），避免 webview 侧重复读配置。
