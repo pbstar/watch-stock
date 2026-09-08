@@ -53,3 +53,12 @@ export function formatAmount(amount: number): string {
   if (amount >= 10000) return (amount / 10000).toFixed(0) + "万";
   return Math.round(amount) + "元";
 }
+
+// 简称显示名：优先用用户配置的简称，未配置时截取名称前两位（状态栏与查看面板共用）
+export function miniName(
+  code: string,
+  name: string,
+  miniNames: Record<string, string>,
+): string {
+  return miniNames[code] || (name.length > 2 ? name.substring(0, 2) : name);
+}

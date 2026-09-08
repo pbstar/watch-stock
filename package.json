@@ -3,7 +3,7 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.96.0",
@@ -82,15 +82,15 @@
           "default": 5,
           "description": "状态栏最大显示股票数量"
         },
-        "watch-stock.showMiniName": {
+        "watch-stock.enableMiniName": {
           "type": "boolean",
           "default": false,
-          "description": "状态栏是否显示简称"
+          "description": "是否显示股票简称（状态栏与查看面板）"
         },
         "watch-stock.stockMiniNames": {
           "type": "object",
           "default": {},
-          "description": "股票简称映射，key 为股票代码，value 为自定义简称，例如 {\"sh601318\": \"平安\"}",
+          "description": "为每只股票配置简称，key 为股票代码，value 为自定义简称，例如 {\"sh601318\": \"平安\"}",
           "additionalProperties": {
             "type": "string"
           }
@@ -119,11 +119,6 @@
           "type": "boolean",
           "default": false,
           "description": "状态栏是否显示封单数量"
-        },
-        "watch-stock.enableColorful": {
-          "type": "boolean",
-          "default": false,
-          "description": "是否开启彩色视图"
         },
         "watch-stock.stockSortType": {
           "type": "string",

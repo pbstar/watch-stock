@@ -75,7 +75,7 @@ export type SortType = "custom" | "changeAsc" | "changeDesc";
 export interface ConfigShape {
   stocks: string[];
   maxDisplayCount: number;
-  showMiniName: boolean;
+  enableMiniName: boolean;
   stockMiniNames: Record<string, string>;
   showChangeValue: boolean;
   autoHideByMarket: boolean;
@@ -83,14 +83,13 @@ export interface ConfigShape {
   enableLockTip: boolean;
   enableLargeTip: boolean;
   showLockCount: boolean;
-  enableColorful: boolean;
   stockSortType: SortType;
 }
 
 const DEFAULTS: ConfigShape = {
   stocks: ["sh000001"],
   maxDisplayCount: 5,
-  showMiniName: false,
+  enableMiniName: false,
   stockMiniNames: {},
   showChangeValue: false,
   autoHideByMarket: false,
@@ -98,7 +97,6 @@ const DEFAULTS: ConfigShape = {
   enableLockTip: false,
   enableLargeTip: false,
   showLockCount: false,
-  enableColorful: false,
   stockSortType: "custom",
 };
 
@@ -132,14 +130,21 @@ export const config = {
     await raw().update("stocks", stocks, vscode.ConfigurationTarget.Global);
   },
   getMaxDisplayCount: () => read("maxDisplayCount"),
-  getShowMiniName: () => read("showMiniName"),
+  // 简称显示开关：旧 key showMiniName 未在 package.json 注册，has() 为 true 即用户显式设置过，
+  // 此时优先取旧 key 值保证存量用户无感迁移；用户迁移到新 key（删除旧键）后自动生效新配置
+  getEnableMiniName(): boolean {
+    const cfg = raw();
+    if (cfg.has("showMiniName")) {
+      return cfg.get<boolean>("showMiniName", DEFAULTS.enableMiniName);
+    }
+    return read("enableMiniName");
+  },
   getStockMiniNames: () => read("stockMiniNames"),
   getShowChangeValue: () => read("showChangeValue"),
   getAutoHideByMarket: () => read("autoHideByMarket"),
   getEnableLockTip: () => read("enableLockTip"),
   getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
-  getEnableColorful: () => read("enableColorful"),
   getStockSortType: () => read("stockSortType"),
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {
