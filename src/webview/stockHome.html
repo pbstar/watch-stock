@@ -9,19 +9,8 @@
     <title>查看股票</title>
     <style>
       :root {
-        /* 基础颜色（恒为编辑器前景色，涨跌靠 +/- 与数值表达） */
-        --c-up: var(--vscode-editor-foreground);
-        --c-dn: var(--vscode-editor-foreground);
-        --c-grid: rgba(128, 128, 128, 0.18);
-        --c-bdr: rgba(128, 128, 128, 0.3);
+        /* 终端化后仅保留灰阶辅助色：涨跌靠 +/- 与数值表达，不再着色 */
         --c-axis: var(--vscode-descriptionForeground, #888);
-        --c-ch: rgba(140, 140, 140, 0.5);
-
-        /* 透明度语义化：用于成交量柱状图和面积图 */
-        --op-vol-up: 0.9; /* 凭明暗区分涨跌：涨柱深，跌柱浅 */
-        --op-vol-dn: 0.4;
-        --op-area: 0.25; /* 面积图渐变起始透明度 */
-        --op-area-end: 0.02; /* 面积图渐变结束透明度 */
       }
 
       *,
@@ -95,8 +84,9 @@
       }
 
       .tab-name {
-        font-weight: 500;
-        font-size: 13px;
+        font-weight: 400;
+        font-size: 12px;
+        font-family: var(--vscode-editor-font-family), monospace;
       }
 
       /* 主内容区 */
@@ -105,10 +95,10 @@
         padding: 14px 16px 12px;
       }
 
-      /* 统一宽度容器：600-1000px 自适应，>1000px 居中留白 */
+      /* 统一宽度容器：按 80/120 列文本设计，宽屏留白更像终端窗口（方案 §4.5） */
       .content {
         min-width: 600px;
-        max-width: 1000px;
+        max-width: 720px;
         width: 100%;
         margin: 0 auto;
         display: flex;
@@ -116,15 +106,7 @@
         gap: 10px;
       }
 
-      /* 通用颜色 */
-      .up {
-        color: var(--c-up);
-      }
-
-      .dn {
-        color: var(--c-dn);
-      }
-
+      /* 灰阶辅助文字（副信息、占位文案） */
       .gray {
         color: var(--c-axis);
       }
@@ -258,14 +240,14 @@
       }
 
       function renderTabs() {
-        // 固定首个 A股全览 tab
+        // 固定首个全览 tab（文案低调化为 overview）
         const overviewActive = activeCode === "__overview__" ? " active" : "";
-        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
+        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">overview</span></div>`;
         const stockTabs = stocks
           .map((s) => {
             const active = s.code === activeCode ? " active" : "";
             return `<div class="tab${active}" data-code="${s.code}">
-            <span class="tab-name">${escHtml(s.name)}</span>
+            <span class="tab-name">${escHtml(s.displayName || s.name)}</span>
           </div>`;
           })
           .join("");

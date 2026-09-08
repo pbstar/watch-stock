@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import * as crypto from "crypto";
 import { sendMsg } from "../utils/msg";
+import { miniName } from "../utils/stock";
 import {
   getStockMinute,
   getStockQuoteList,
@@ -21,6 +22,9 @@ import stockTerminalChartHtml from "../webview/stockTerminalChart.html";
 
 // 分时数据缓存有效期：10秒
 const MINUTE_CACHE_TTL = 10000;
+
+// 面板标题固定为插件名，编辑器 tab 页不暴露「查看股票」字样（低调化，方案 §4.5）
+const PANEL_TITLE = "watch-stock";
 
 // 行业代码 → 名称索引，避免 mapIndustryData 中循环内 find
 const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
@@ -107,7 +111,7 @@ export class StockHomePanel {
       current.panel.reveal(col);
     } else {
       current = new StockHomePanel(
-        vscode.window.createWebviewPanel("stockHome", "查看股票", col, {
+        vscode.window.createWebviewPanel("stockHome", PANEL_TITLE, col, {
           enableScripts: true,
           retainContextWhenHidden: true,
         }),
@@ -186,8 +190,14 @@ export class StockHomePanel {
   ): Promise<void> {
     this.quoteMap.clear();
     this.stockMap.clear();
+    // 简称开关只在此处读取一次，webview 端零配置直接消费 displayName
+    const enableMiniName = config.getEnableMiniName();
+    const miniNames = config.getStockMiniNames();
     this.stocks = quotes.map((q) => {
       const info = this.convertToStockInfo(q);
+      info.displayName = enableMiniName
+        ? miniName(q.code, q.name, miniNames)
+        : q.name;
       this.quoteMap.set(q.code, q);
       this.stockMap.set(q.code, info);
       return info;
@@ -196,7 +206,7 @@ export class StockHomePanel {
     this.industryStocks = this.mapIndustryData(industryData);
 
     this.activeCode = null;
-    this.panel.title = "查看股票";
+    this.panel.title = PANEL_TITLE;
     // 重置 ready 握手，等 webview 加载完成后会回发 "ready" 消息
     const readyPromise = new Promise<void>((r) => {
       this.readyResolve = r;

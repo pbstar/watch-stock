@@ -77,6 +77,8 @@ export interface StockOverview {
   preClose: string;
   isETF: boolean;
   dateTime: string;
+  // 面板 tab 与详情头部显示名：开启简称时取简称，否则等于 name
+  displayName?: string;
 }
 
 // 分时数据点（无数据时各字段为 null）
