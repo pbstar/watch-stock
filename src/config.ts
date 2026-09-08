@@ -130,15 +130,7 @@ export const config = {
     await raw().update("stocks", stocks, vscode.ConfigurationTarget.Global);
   },
   getMaxDisplayCount: () => read("maxDisplayCount"),
-  // 简称显示开关：旧 key showMiniName 未在 package.json 注册，has() 为 true 即用户显式设置过，
-  // 此时优先取旧 key 值保证存量用户无感迁移；用户迁移到新 key（删除旧键）后自动生效新配置
-  getEnableMiniName(): boolean {
-    const cfg = raw();
-    if (cfg.has("showMiniName")) {
-      return cfg.get<boolean>("showMiniName", DEFAULTS.enableMiniName);
-    }
-    return read("enableMiniName");
-  },
+  getEnableMiniName: () => read("enableMiniName"),
   getStockMiniNames: () => read("stockMiniNames"),
   getShowChangeValue: () => read("showChangeValue"),
   getAutoHideByMarket: () => read("autoHideByMarket"),

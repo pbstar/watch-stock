@@ -58,8 +58,6 @@
 | `enableLargeTip`   | boolean | `false`        | 是否开启大单异动通知                                       |
 | `stockSortType`    | string  | `"custom"`     | 排序方式：custom、changeAsc、changeDesc                    |
 
-> 2.5.0 配置变更：`showMiniName` 更名为 `enableMiniName`（旧键仍会读取，建议迁移后删除）；`enableColorful` 已移除，存量 settings 中的该键会提示「未知配置项」，手动删除即可。
-
 ## 🛠️ 常见问题
 
 ### 1.股票搜索失败怎么办❓
