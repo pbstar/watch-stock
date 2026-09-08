@@ -63,6 +63,7 @@ export class StockHomePanel {
   private panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
   private stocks: StockOverview[] = [];
+  private stockMap = new Map<string, StockOverview>();
   private indexStocks: Stock[] = [];
   private industryStocks: IndustryItem[] = [];
   private activeCode: string | null = null;
@@ -184,9 +185,12 @@ export class StockHomePanel {
     industryData: Stock[],
   ): Promise<void> {
     this.quoteMap.clear();
+    this.stockMap.clear();
     this.stocks = quotes.map((q) => {
+      const info = this.convertToStockInfo(q);
       this.quoteMap.set(q.code, q);
-      return this.convertToStockInfo(q);
+      this.stockMap.set(q.code, info);
+      return info;
     });
     this.indexStocks = indexData;
     this.industryStocks = this.mapIndustryData(industryData);
@@ -214,7 +218,7 @@ export class StockHomePanel {
     code: string,
     forceRefresh = false,
   ): Promise<void> {
-    const stockInfo = this.stocks.find((s) => s.code === code) || null;
+    const stockInfo = this.stockMap.get(code) || null;
     const quoteInfo = this.quoteMap.get(code) || null;
 
     const now = Date.now();
@@ -253,15 +257,15 @@ export class StockHomePanel {
 
     const enableColorful = config.getEnableColorful();
     return stockHomeHtml
-      .replace(/\{\{NONCE\}\}/g, nonce)
-      .replace("{{COLORFUL}}", enableColorful ? "true" : "false")
-      .replace("{{BODY_CLASS}}", enableColorful ? "" : "mono")
-      .replace("{{OVERVIEW_HTML}}", stripScript(stockOverviewHtml))
-      .replace("{{DETAIL_HTML}}", stripScript(stockDetailHtml))
-      .replace("/* {{FRAGMENT_SCRIPTS}} */", fragmentScripts);
+      .replace(/\{\{NONCE\}\}/g, () => nonce)
+      .replace("{{COLORFUL}}", () => (enableColorful ? "true" : "false"))
+      .replace("{{BODY_CLASS}}", () => (enableColorful ? "" : "mono"))
+      .replace("{{OVERVIEW_HTML}}", () => stripScript(stockOverviewHtml))
+      .replace("{{DETAIL_HTML}}", () => stripScript(stockDetailHtml))
+      .replace("/* {{FRAGMENT_SCRIPTS}} */", () => fragmentScripts);
   }
 
-  private dispose(): void {
+  dispose(): void {
     StockHomePanel.current = null;
     this.panel.dispose();
     for (const d of this.disposables) d.dispose();

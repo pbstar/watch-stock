@@ -58,6 +58,13 @@ function formatMinute(minutes: number): string {
   return `${h}:${m}`;
 }
 
+// 本地日期标识（YYYY-MM-DD），用于跨交易日检测
+export function formatDateKey(now: Date): string {
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${m}-${d}`;
+}
+
 // 生成 A 股完整交易时间槽（242 个）
 export function buildTimeSlots(date: string): string[] {
   const slots: string[] = [];

@@ -42,8 +42,11 @@ function parseSinaStockData(code: string, data: string): Stock | null {
 }
 
 // 腾讯源完整行情解析（含市值、PE、PB 等详细指标）
-function parseFullQuote(fields: string[], code: string): StockQuote {
-  const isETF = isFund(code, fields[1] ?? "", safeNumber(fields[3]));
+function parseFullQuote(fields: string[], code: string): StockQuote | null {
+  const name = fields[1] ?? "";
+  // 名称为空视为无效行（如接口对无效代码返回的空数据）
+  if (!name) return null;
+  const isETF = isFund(code, name, safeNumber(fields[3]));
   const dec = getDecimals(isETF);
 
   // 20260409114906 -> 2026-04-09 11:49
@@ -54,7 +57,7 @@ function parseFullQuote(fields: string[], code: string): StockQuote {
       : "";
 
   return {
-    name: fields[1] ?? "",
+    name,
     code,
     current: safeNumber(fields[3]).toFixed(dec),
     close: safeNumber(fields[4]).toFixed(dec),
@@ -80,12 +83,14 @@ function parseFullQuote(fields: string[], code: string): StockQuote {
 }
 
 // 腾讯源简版行情解析（无封单/时间字段）
-function parseSimpleQuote(fields: string[], code: string): Stock {
-  const isETF = isFund(code, fields[1] ?? "", safeNumber(fields[3]));
+function parseSimpleQuote(fields: string[], code: string): Stock | null {
+  const name = fields[1] ?? "";
+  if (!name) return null;
+  const isETF = isFund(code, name, safeNumber(fields[3]));
   const dec = getDecimals(isETF);
 
   return {
-    name: fields[1] ?? "",
+    name,
     code,
     current: safeNumber(fields[3]).toFixed(dec),
     changeValue: safeNumber(fields[4]).toFixed(dec),
@@ -96,23 +101,29 @@ function parseSimpleQuote(fields: string[], code: string): Stock {
   };
 }
 
-// 通用腾讯响应分行解析
+// 通用腾讯响应分行解析：按变量名中的代码匹配（v_s_sh600519 / v_sh600519），
+// 避免返回行数与请求数不一致时按下标对齐导致数据错位
 function parseTencentLines<T>(
   text: string,
   codes: string[],
-  parser: (fields: string[], code: string) => T,
+  parser: (fields: string[], code: string) => T | null,
 ): T[] {
+  const codeSet = new Set(codes.map((c) => c.toLowerCase()));
   return text
     .split(";")
     .map((l) => l.trim())
     .filter(Boolean)
-    .map((line, index) => {
+    .map((line) => {
       const eqIdx = line.indexOf("=");
       if (eqIdx < 0) return null;
+      const code = line
+        .slice(0, eqIdx)
+        .trim()
+        .replace(/^v_(s_)?/i, "")
+        .toLowerCase();
       let raw = line.slice(eqIdx + 1).trim();
       if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1);
-      const code = codes[index];
-      if (!code) return null;
+      if (!code || !raw || !codeSet.has(code)) return null;
       return parser(raw.split("~"), code);
     })
     .filter((v): v is T => v !== null);
@@ -125,6 +136,8 @@ export async function getStockList(
 ): Promise<Stock[]> {
   if (!codes?.length) return [];
 
+  // 行源返回的代码统一为小写，用 Set 匹配避免循环内线性查找
+  const codeSet = new Set(codes.map((c) => c.toLowerCase()));
   try {
     if (isSina) {
       const url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
@@ -133,8 +146,9 @@ export async function getStockList(
         .split("\n")
         .map((line) => {
           const m = line.match(/var hq_str_([^=]+)="([^"]+)"/);
-          if (m?.[1] && m[2] && codes.includes(m[1].toLowerCase())) {
-            return parseSinaStockData(m[1].toLowerCase(), m[2]);
+          const code = m?.[1]?.toLowerCase();
+          if (code && m?.[2] && codeSet.has(code)) {
+            return parseSinaStockData(code, m[2]);
           }
           return null;
         })

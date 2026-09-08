@@ -44,7 +44,7 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
   { code: "sz159516", name: "半导体设备" },
   { code: "sh515210", name: "钢铁" },
   { code: "sh512670", name: "国防" },
-  { code: "sh159625", name: "绿色电力" },
+  { code: "sz159625", name: "绿色电力" },
   { code: "sh562500", name: "机器人" },
   { code: "sz159611", name: "电力" },
   { code: "sh560080", name: "中药" },
@@ -117,11 +117,13 @@ function read<K extends keyof ConfigShape>(key: K): ConfigShape[K] {
 
 // 统一配置访问入口
 export const config = {
-  // 已校验过格式的股票代码列表，过滤掉非法值并自动回写
+  // 已校验过格式的股票代码列表，过滤非法值并统一转为小写（与行情源返回代码、闹钟存储代码保持一致），自动回写
   getStocks(): string[] {
     const codes = raw().get<string[]>("stocks", []);
-    const valid = codes.filter((c) => isValidStockCode(c));
-    if (valid.length !== codes.length) {
+    const valid = codes
+      .filter((c) => isValidStockCode(c))
+      .map((c) => c.toLowerCase());
+    if (valid.length !== codes.length || valid.some((c, i) => c !== codes[i])) {
       raw().update("stocks", valid, vscode.ConfigurationTarget.Global);
     }
     return valid;
@@ -153,16 +155,4 @@ export const config = {
 export function getIsVisible(state: AppState, now?: Date): boolean {
   if (state.userForced !== null) return state.userForced;
   return config.getAutoHideByMarket() ? isTradingTime(now || new Date()) : true;
-}
-
-// 列表元素移动
-export function moveStock(
-  stocks: string[],
-  fromIndex: number,
-  toIndex: number,
-): string[] {
-  const result = [...stocks];
-  const [removed] = result.splice(fromIndex, 1);
-  result.splice(toIndex, 0, removed);
-  return result;
 }
