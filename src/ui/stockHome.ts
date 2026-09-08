@@ -17,7 +17,7 @@ import type { Stock, StockQuote, StockOverview, MinutePoint } from "../types";
 import stockHomeHtml from "../webview/stockHome.html";
 import stockOverviewHtml from "../webview/stockOverview.html";
 import stockDetailHtml from "../webview/stockDetail.html";
-import stockChartHtml from "../webview/stockChart.html";
+import stockTerminalChartHtml from "../webview/stockTerminalChart.html";
 
 // 分时数据缓存有效期：10秒
 const MINUTE_CACHE_TTL = 10000;
@@ -252,7 +252,7 @@ export class StockHomePanel {
     const fragmentScripts = [
       extractScript(stockOverviewHtml),
       extractScript(stockDetailHtml),
-      extractScript(stockChartHtml),
+      extractScript(stockTerminalChartHtml),
     ].join("\n");
 
     return stockHomeHtml

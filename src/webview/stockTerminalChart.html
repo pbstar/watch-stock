@@ -1,0 +1,245 @@
+<!-- 分时图终端化渲染模块（IIFE 封装）-->
+<!-- 分时数据按面板宽度分桶降采样，以盒绘制线字符 + 块字符直方图输出纯文本， -->
+<!-- 取代旧 SVG 引擎（stockChart.html）。公共 API：StockChart.render(minuteData, activeInfo) -->
+<!-- 注意：本文件经 esbuild minifyHtml 压缩，源码中的连续多空格字面量会被压成一个（§6-4）， -->
+<!-- 故所有缩进/对齐空白必须用 " ".repeat()/padW() 运行时生成，字符串字面量中只允许单空格。 -->
+<script>
+  const StockChart = (() => {
+    const ROWS = 8; // 走势区行数
+    const MIN_BUCKETS = 60; // 列数下限：窄面板低于此值改横向滚动，不挤压变形（§6-1）
+    const BLOCKS = "▁▂▃▄▅▆▇█"; // 成交量块字符
+    const TIME_MARKS = ["10:00", "11:00", "13:30", "14:30"]; // 时间轴刻度
+    const IND = " ".repeat(2); // 与 kv 块一致的左缩进
+    const GRAY = (s) => '<span class="gray">' + s + "</span>"; // 灰字副信息
+
+    let data = [];
+
+    /* 测量等宽字体单字符宽度（px），列数 = 可用宽 / 字符宽 */
+    function charWidth() {
+      const s = document.createElement("span");
+      s.textContent = "0000000000";
+      s.style.cssText =
+        "position:absolute;visibility:hidden;white-space:pre;font:inherit";
+      ($("chart-term") || document.body).appendChild(s);
+      const w = s.getBoundingClientRect().width / 10;
+      s.remove();
+      return w || 8;
+    }
+
+    /* '10:30' → 全天连续分钟索引，与 buildTimeSlots 的 242 槽对齐
+       （上午 9:30-11:30 为 0-120，下午 13:00-15:00 为 121-241） */
+    function slotIndex(hhmm) {
+      const m = +hhmm.slice(0, 2) * 60 + +hhmm.slice(3, 5);
+      return m <= 690 ? m - 570 : 121 + m - 780;
+    }
+
+    /* ---- 分桶降采样：每桶取末点价格（收盘语义）+ 桶内增量成交量（§6-2） ---- */
+    function bucketize(nb) {
+      const out = [];
+      let prevCum = 0;
+      for (let b = 0; b < nb; b++) {
+        const from = Math.floor((b * data.length) / nb);
+        const to = Math.floor(((b + 1) * data.length) / nb) - 1;
+        let price = null,
+          mx = -Infinity,
+          mn = Infinity,
+          cum = prevCum,
+          time = null;
+        for (let i = from; i <= to; i++) {
+          const d = data[i];
+          if (d.price != null) {
+            price = d.price;
+            time = d.time;
+            if (d.price > mx) mx = d.price;
+            if (d.price < mn) mn = d.price;
+          }
+          if (d.volume != null) cum = d.volume;
+        }
+        out.push({ price, mx, mn, vol: Math.max(0, cum - prevCum), time });
+        prevCum = cum;
+      }
+      return out;
+    }
+
+    /* ---- 折线绘制：拐角依上下段方向选 ╭ ╮ ╰ ╯，跨行补 │ ---- */
+    /* 全部用 put 覆盖写入：昨收线是底稿，走势线经过处应盖住它 */
+    function drawPolyline(buf, buckets, nb, rowOf) {
+      const put = (r, c, ch) => {
+        if (r >= 0 && r < ROWS && c >= 0 && c < nb) buf[r][c] = ch;
+      };
+      let prev = -1;
+      let prevc = -1;
+      for (let c = 0; c < nb; c++) {
+        if (buckets[c].price == null) {
+          prev = -1;
+          continue;
+        }
+        const r = rowOf(buckets[c].price);
+        if (prev === -1) {
+          put(r, c, "─");
+        } else if (r === prev) {
+          for (let k = prevc; k <= c; k++) put(prev, k, "─");
+        } else if (r > prev) {
+          /* 下行：左╮ 右╯ */
+          put(prev, prevc, "╮");
+          put(r, c, "╯");
+          for (let k = prevc + 1; k < c; k++) put(r, k, "─");
+          for (let k = prev + 1; k < r; k++) put(k, c, "│");
+        } else {
+          /* 上行：左╰ 右╭ */
+          put(prev, prevc, "╰");
+          put(r, c, "╭");
+          for (let k = prevc + 1; k < c; k++) put(r, k, "─");
+          for (let k = r + 1; k < prev; k++) put(k, c, "│");
+        }
+        prev = r;
+        prevc = c;
+      }
+    }
+
+    /* ---- 主渲染 ---- */
+    function render(md, info) {
+      data = md || [];
+      const term = $("chart-term");
+      if (!term) return;
+      const preClose = info ? parseFloat(info.preClose) || 0 : 0;
+      const prices = data.map((d) => d.price).filter((p) => p != null);
+
+      if (!data.length || !prices.length || !preClose) {
+        term.innerHTML = GRAY(
+          IND + (data.length ? "今日暂无分时数据" : "等待分时数据…"),
+        );
+        return;
+      }
+
+      const f = (p) => p.toFixed(info.isETF ? 3 : 2);
+
+      /* 列数随容器宽度自适应（由主脚本 ResizeObserver 触发重绘） */
+      const wrapW = ($("chart-wrap").clientWidth || 640) - 24;
+      let nb = Math.floor((wrapW - 10) / charWidth());
+      const scroll = nb < MIN_BUCKETS;
+      nb = Math.max(nb, MIN_BUCKETS);
+      if (nb < 24) return; // 字体测量异常时跳过本帧
+      term.classList.toggle("scroll-x", scroll);
+
+      const buckets = bucketize(nb);
+      const hi = Math.max(...prices);
+      const lo = Math.min(...prices);
+      const maxDev = Math.max(hi - preClose, preClose - lo, preClose * 0.005);
+      const yMax = preClose + maxDev;
+      const yMin = preClose - maxDev;
+      /* 曲线映射进内层行带 [1, ROWS-2]，首尾两行留给 ▲▼ 极值标记 */
+      const TOP = 1,
+        BOT = ROWS - 2;
+      const rowOf = (p) =>
+        Math.max(
+          TOP,
+          Math.min(
+            BOT,
+            Math.round(TOP + ((yMax - p) / (yMax - yMin)) * (BOT - TOP)),
+          ),
+        );
+      const rowPre = rowOf(preClose);
+      const AX = Math.max(f(hi).length, f(lo).length); // 左轴标签宽度
+
+      /* 网格：昨收横线先铺底，走势线自然覆盖相交处 */
+      const buf = Array.from({ length: ROWS }, () => new Array(nb).fill(" "));
+      for (let c = 0; c < nb; c++) buf[rowPre][c] = "─";
+      drawPolyline(buf, buckets, nb, rowOf);
+
+      /* 全日极值 ▲▼ 字符标注（代替颜色语义，方案 §4.2）：
+         从极值所在行向外扫描最近的空白格，既不抹掉走势线，也不会因极值贴边而丢失标注 */
+      const extreme = (isHigh) => {
+        const valid = buckets
+          .map((b, c) => (b.price != null ? c : -1))
+          .filter((c) => c >= 0);
+        if (!valid.length) return;
+        let bi = valid[0];
+        for (const c of valid) {
+          const b = buckets[c];
+          if (isHigh ? b.mx > buckets[bi].mx : b.mn < buckets[bi].mn) bi = c;
+        }
+        const base = rowOf(isHigh ? hi : lo);
+        for (let d = 1; d < ROWS; d++) {
+          const r = isHigh ? base - d : base + d;
+          if (r < 0 || r >= ROWS) break;
+          if (buf[r][bi] === " ") {
+            buf[r][bi] = isHigh ? "▲" : "▼";
+            return;
+          }
+        }
+      };
+      extreme(true);
+      extreme(false);
+
+      /* 行文本：左轴在最高价/最低价实际所在行标注，昨收行右端标注昨收价 */
+      const lines = [];
+      const rowHi = rowOf(hi),
+        rowLo = rowOf(lo);
+      for (let r = 0; r < ROWS; r++) {
+        /* 窄幅横盘时最高/最低可能落在同一行，此时只标最高价避免串行 */
+        const lbl =
+          r === rowHi ? f(hi) : r === rowLo && rowLo !== rowHi ? f(lo) : "";
+        let line = IND + padW(lbl, AX) + "┤" + buf[r].join("");
+        if (r === rowPre && !scroll)
+          line += GRAY(" ".repeat(3) + "昨收 " + f(preClose));
+        lines.push(line);
+      }
+
+      /* 底轴：时间刻度按已产生数据的时段映射（盘中只画到当前时刻，不预留未来空区） */
+      const lastIdx = data.reduce((a, d, i) => (d.price != null ? i : a), 0);
+      const axis = new Array(nb + 2).fill("─");
+      axis[0] = "└";
+      axis[nb + 1] = "┘";
+      let used = 0;
+      for (const tm of TIME_MARKS) {
+        if (slotIndex(tm) > lastIdx) break; // 未走到的时段不标刻度
+        const col = Math.round((slotIndex(tm) / lastIdx) * (nb - 1));
+        const at = Math.max(1, Math.min(nb - 5, col - 2));
+        if (at <= used) continue;
+        for (let i = 0; i < tm.length; i++) axis[at + i] = tm[i];
+        used = at + tm.length;
+      }
+
+      /* 成交量块字符直方图 + 全天累计汇总（腾讯字段为累计值，回扫最后一个有值槽，
+         避免收盘前 data 尾部的空槽把累计量读成 null） */
+      const maxVol = Math.max(1, ...buckets.map((b) => b.vol));
+      const hist = buckets
+        .map((b) =>
+          b.vol > 0
+            ? BLOCKS[Math.min(7, Math.floor((b.vol / maxVol) * 8))]
+            : " ",
+        )
+        .join("");
+      const lastD = [...data].reverse().find((d) => d.volume != null) || {};
+      const lastB = buckets.filter((b) => b.price != null).pop();
+      const pct = ((lastB.price - preClose) / preClose) * 100;
+
+      lines.push(GRAY(IND + " ".repeat(AX + 1) + axis.join("")));
+      lines.push(
+        GRAY(
+          IND +
+            padW("成交", AX + 1) +
+            hist +
+            " ".repeat(3) +
+            "计 " + fmtVol(lastD.volume) +
+            " ".repeat(3) +
+            "额 " + fmtMoney(lastD.amount),
+        ),
+      );
+      /* 汇总行取代旧十字线 tooltip：当前时刻 + 最新价 + 涨跌幅（§4.2 不做悬停查价） */
+      lines.push(
+        GRAY(
+          IND +
+            (lastB.time ? lastB.time.slice(-5) : "") +
+            " " + f(lastB.price) +
+            " " + (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%",
+        ),
+      );
+
+      term.innerHTML = lines.join("\n");
+    }
+
+    return { render };
+  })();
+</script>

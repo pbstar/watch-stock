@@ -194,6 +194,29 @@
         return d.innerHTML;
       }
 
+      /* ---- 终端文本对齐工具：CJK 全角字符占 2 显示列，按显示宽度计算而非 length ---- */
+      function dispW(s) {
+        let w = 0;
+        for (const ch of String(s)) {
+          const c = ch.codePointAt(0);
+          w +=
+            (c >= 0x1100 && c <= 0x115f) ||
+            (c >= 0x2e80 && c <= 0xa4cf) ||
+            (c >= 0xac00 && c <= 0xd7a3) ||
+            (c >= 0xf900 && c <= 0xfaff) ||
+            (c >= 0xfe30 && c <= 0xfe6f) ||
+            (c >= 0xff00 && c <= 0xff60) ||
+            (c >= 0xffe0 && c <= 0xffe6)
+              ? 2
+              : 1;
+        }
+        return w;
+      }
+      function padW(s, w) {
+        s = String(s);
+        return s + " ".repeat(Math.max(0, w - dispW(s)));
+      }
+
       /* ---- 切换概览/详情容器 ---- */
       function showOverview() {
         overviewContainer.style.display = "";
