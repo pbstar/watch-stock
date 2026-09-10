@@ -89,6 +89,13 @@ export interface MinutePoint {
   amount: number | null;
 }
 
+// 全览页行业板块条目（扩展宿主与 webview 共用）
+export interface IndustryItem {
+  code: string;
+  name: string;
+  changePercent: string;
+}
+
 export interface Alarm {
   id: string;
   stockCode: string;

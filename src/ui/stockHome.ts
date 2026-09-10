@@ -1,32 +1,39 @@
-// 股票首页 WebviewPanel
-import * as vscode from "vscode";
+// 股票首页 WebviewPanel：宿主侧只负责取数、缓存与消息收发，渲染逻辑全在 src/webview/
 import * as crypto from "crypto";
+import * as vscode from "vscode";
+import {
+  INDUSTRY_CODES,
+  INDUSTRY_CODE_LIST,
+  INDEX_CODES,
+  config,
+} from "../config";
+import {
+  getStockList,
+  getStockMinute,
+  getStockQuoteList,
+} from "../services/stockService";
+import type {
+  IndustryItem,
+  MinutePoint,
+  Stock,
+  StockOverview,
+  StockQuote,
+} from "../types";
 import { sendMsg } from "../utils/msg";
 import { miniName } from "../utils/stock";
 import {
-  getStockMinute,
-  getStockQuoteList,
-  getStockList,
-} from "../services/stockService";
-import {
-  config,
-  INDEX_CODES,
-  INDUSTRY_CODES,
-  INDUSTRY_CODE_LIST,
-} from "../config";
-import type { Stock, StockQuote, StockOverview, MinutePoint } from "../types";
-import stockHomeHtml from "../webview/stockHome.html";
-import stockOverviewHtml from "../webview/stockOverview.html";
-import stockDetailHtml from "../webview/stockDetail.html";
-import stockTerminalChartHtml from "../webview/stockTerminalChart.html";
+  type HostMessage,
+  type WebviewRequest,
+} from "../webview/protocol";
+import panelHtml from "../webview/stockHome.html";
+import webviewScript from "webview-bundle:js";
+import webviewStyle from "webview-bundle:style";
 
-// 分时数据缓存有效期：10秒
-const MINUTE_CACHE_TTL = 10000;
-
-// 面板标题固定为插件名，编辑器 tab 页不暴露「查看股票」字样（低调化，方案 §4.5）
+// 分时数据缓存有效期：10 秒，避免切换 tab 时重复请求
+const MINUTE_CACHE_TTL = 10_000;
+// 面板标题固定为插件名，编辑器 tab 页不暴露「查看股票」字样
 const PANEL_TITLE = "watch-stock";
-
-// 行业代码 → 名称索引，避免 mapIndustryData 中循环内 find
+// 行业代码 → 名称索引
 const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
 
 interface MinuteCacheEntry {
@@ -34,114 +41,108 @@ interface MinuteCacheEntry {
   timestamp: number;
 }
 
-interface IndustryItem {
-  code: string;
-  name: string;
-  changePercent: string;
-}
-
-interface InboundMessage {
-  type:
-    | "ready"
-    | "switchStock"
-    | "refresh"
-    | "refreshIndex"
-    | "refreshIndustry";
-  code?: string;
-}
-
-// 提取 <script> 内容
-function extractScript(html: string): string {
-  const m = html.match(/<script>([\s\S]*?)<\/script>/);
-  return m ? m[1] : "";
-}
-
-// 移除 <script> 标签
-function stripScript(html: string): string {
-  return html.replace(/<script>[\s\S]*?<\/script>/, "").trim();
+// 组装 webview 的 HTML：占位符替换必须用函数形式，避免产物中的 $& / $' 被当成替换序列
+function buildHtml(): string {
+  const nonce = crypto.randomBytes(16).toString("base64url");
+  return panelHtml
+    .replace(/\{\{NONCE\}\}/g, () => nonce)
+    .replace("{{STYLE}}", () => webviewStyle)
+    .replace("{{SCRIPT}}", () => webviewScript);
 }
 
 export class StockHomePanel {
   static current: StockHomePanel | null = null;
 
-  private panel: vscode.WebviewPanel;
-  private disposables: vscode.Disposable[] = [];
-  private stocks: StockOverview[] = [];
+  private readonly panel: vscode.WebviewPanel;
+  private readonly disposables: vscode.Disposable[] = [];
+  private readonly minuteCache = new Map<string, MinuteCacheEntry>();
+  private readonly ready: Promise<void>;
+  private markReady: () => void = () => {};
+  private quoteMap = new Map<string, StockQuote>();
   private stockMap = new Map<string, StockOverview>();
+  private stocks: StockOverview[] = [];
   private indexStocks: Stock[] = [];
   private industryStocks: IndustryItem[] = [];
   private activeCode: string | null = null;
-  private quoteMap = new Map<string, StockQuote>();
-  private minuteCache = new Map<string, MinuteCacheEntry>();
-  private readyResolve: (() => void) | null = null;
+  private disposed = false;
 
   private constructor(panel: vscode.WebviewPanel) {
     this.panel = panel;
-
+    // ready 握手：HTML 只在构造时构建一次，之后 show() 不再复位 webview
+    this.ready = new Promise<void>((resolve) => {
+      this.markReady = resolve;
+    });
+    // 先挂消息监听再塞 HTML，避免 webview 抢先 postMessage("ready") 时没人接
     this.panel.webview.onDidReceiveMessage(
-      (msg: InboundMessage) => this.handleMessage(msg),
+      (message: WebviewRequest) => void this.handleMessage(message),
       null,
       this.disposables,
     );
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+    this.panel.webview.html = buildHtml();
   }
 
-  // 入口：打开或切换面板
+  // 入口：打开面板并推送最新数据
   static async show(): Promise<void> {
-    const configStocks = config.getStocks();
-    if (!configStocks.length) {
+    const codes = config.getStocks();
+    if (!codes.length) {
       sendMsg("请先添加股票", { type: "warning" });
       return;
     }
 
     const [quotes, indexData, industryData] = await Promise.all([
-      getStockQuoteList(configStocks),
+      getStockQuoteList(codes),
       getStockList(INDEX_CODES),
       getStockList(INDUSTRY_CODE_LIST),
     ]);
-
     if (!quotes.length) {
       sendMsg("获取股票数据失败，请检查网络连接", { type: "error" });
       return;
     }
 
-    const col = vscode.ViewColumn.One;
+    const column = vscode.ViewColumn.One;
     let current = StockHomePanel.current;
     if (current) {
-      current.panel.reveal(col);
+      current.panel.reveal(column);
     } else {
       current = new StockHomePanel(
-        vscode.window.createWebviewPanel("stockHome", PANEL_TITLE, col, {
+        vscode.window.createWebviewPanel("stockHome", PANEL_TITLE, column, {
           enableScripts: true,
           retainContextWhenHidden: true,
         }),
       );
       StockHomePanel.current = current;
     }
-
     await current.load(quotes, indexData, industryData);
   }
 
-  private async handleMessage(msg: InboundMessage): Promise<void> {
-    switch (msg.type) {
+  private post(message: HostMessage): void {
+    if (this.disposed) return;
+    void this.panel.webview.postMessage(message);
+  }
+
+  private async handleMessage(message: WebviewRequest): Promise<void> {
+    switch (message.type) {
       case "ready":
-        this.readyResolve?.();
+        this.markReady();
         break;
       case "switchStock":
-        if (msg.code) {
-          this.activeCode = msg.code;
-          await this.fetchAndSend(msg.code);
-        }
+        this.activeCode = message.code;
+        await this.fetchAndSend(message.code);
         break;
       case "refresh":
         if (this.activeCode) await this.fetchAndSend(this.activeCode, true);
         break;
       case "refreshIndex":
-        await this.refreshIndexData();
+        this.indexStocks = await getStockList(INDEX_CODES);
+        this.post({ type: "indexData", indexStocks: this.indexStocks });
         break;
-      case "refreshIndustry":
-        await this.refreshIndustryData();
+      case "refreshIndustry": {
+        const industryData = await getStockList(INDUSTRY_CODE_LIST);
+        this.industryStocks = this.mapIndustryData(industryData);
+        this.post({ type: "industryData", industryStocks: this.industryStocks });
         break;
+      }
     }
   }
 
@@ -153,24 +154,7 @@ export class StockHomePanel {
     }));
   }
 
-  private async refreshIndexData(): Promise<void> {
-    this.indexStocks = await getStockList(INDEX_CODES);
-    this.panel.webview.postMessage({
-      type: "indexData",
-      indexStocks: this.indexStocks,
-    });
-  }
-
-  private async refreshIndustryData(): Promise<void> {
-    const industryData = await getStockList(INDUSTRY_CODE_LIST);
-    this.industryStocks = this.mapIndustryData(industryData);
-    this.panel.webview.postMessage({
-      type: "industryData",
-      industryStocks: this.industryStocks,
-    });
-  }
-
-  private convertToStockInfo(quote: StockQuote): StockOverview {
+  private toOverview(quote: StockQuote): StockOverview {
     return {
       name: quote.name,
       code: quote.code,
@@ -188,38 +172,31 @@ export class StockHomePanel {
     indexData: Stock[],
     industryData: Stock[],
   ): Promise<void> {
-    this.quoteMap.clear();
-    this.stockMap.clear();
-    // 简称开关只在此处读取一次，webview 端零配置直接消费 displayName
+    if (this.disposed) return;
+    // 简称开关只在这里读一次，webview 端零配置直接消费 displayName
     const enableMiniName = config.getEnableMiniName();
     const miniNames = config.getStockMiniNames();
-    this.stocks = quotes.map((q) => {
-      const info = this.convertToStockInfo(q);
+    this.quoteMap = new Map();
+    this.stockMap = new Map();
+    this.stocks = quotes.map((quote) => {
+      const info = this.toOverview(quote);
       info.displayName = enableMiniName
-        ? miniName(q.code, q.name, miniNames)
-        : q.name;
-      this.quoteMap.set(q.code, q);
-      this.stockMap.set(q.code, info);
+        ? miniName(quote.code, quote.name, miniNames)
+        : quote.name;
+      this.quoteMap.set(quote.code, quote);
+      this.stockMap.set(quote.code, info);
       return info;
     });
     this.indexStocks = indexData;
     this.industryStocks = this.mapIndustryData(industryData);
-
     this.activeCode = null;
-    this.panel.title = PANEL_TITLE;
-    // 重置 ready 握手，等 webview 加载完成后会回发 "ready" 消息
-    const readyPromise = new Promise<void>((r) => {
-      this.readyResolve = r;
-    });
-    this.panel.webview.html = this.buildHtml();
-    await readyPromise;
 
-    this.panel.webview.postMessage({
+    await this.ready;
+    this.post({
       type: "init",
       stocks: this.stocks,
       indexStocks: this.indexStocks,
       industryStocks: this.industryStocks,
-      activeCode: null,
       quoteData: Object.fromEntries(this.quoteMap),
     });
   }
@@ -228,54 +205,39 @@ export class StockHomePanel {
     code: string,
     forceRefresh = false,
   ): Promise<void> {
-    const stockInfo = this.stockMap.get(code) || null;
-    const quoteInfo = this.quoteMap.get(code) || null;
-
     const now = Date.now();
     const cached = this.minuteCache.get(code);
     if (!forceRefresh && cached && now - cached.timestamp < MINUTE_CACHE_TTL) {
-      this.panel.webview.postMessage({
+      this.post({
         type: "minuteData",
         code,
         data: cached.data,
-        stockInfo,
-        quoteInfo,
+        stockInfo: this.stockMap.get(code) ?? null,
+        quoteInfo: this.quoteMap.get(code) ?? null,
         cached: true,
       });
       return;
     }
 
-    this.panel.webview.postMessage({ type: "loading", code });
+    this.post({ type: "loading", code });
     const data = await getStockMinute(code);
-    this.minuteCache.set(code, { data, timestamp: now });
-    this.panel.webview.postMessage({
+    if (this.disposed) return;
+    this.minuteCache.set(code, { data, timestamp: Date.now() });
+    this.post({
       type: "minuteData",
       code,
       data,
-      stockInfo,
-      quoteInfo,
+      stockInfo: this.stockMap.get(code) ?? null,
+      quoteInfo: this.quoteMap.get(code) ?? null,
     });
   }
 
-  private buildHtml(): string {
-    const nonce = crypto.randomBytes(16).toString("base64url");
-    const fragmentScripts = [
-      extractScript(stockOverviewHtml),
-      extractScript(stockDetailHtml),
-      extractScript(stockTerminalChartHtml),
-    ].join("\n");
-
-    return stockHomeHtml
-      .replace(/\{\{NONCE\}\}/g, () => nonce)
-      .replace("{{OVERVIEW_HTML}}", () => stripScript(stockOverviewHtml))
-      .replace("{{DETAIL_HTML}}", () => stripScript(stockDetailHtml))
-      .replace("/* {{FRAGMENT_SCRIPTS}} */", () => fragmentScripts);
-  }
-
   dispose(): void {
-    StockHomePanel.current = null;
+    if (this.disposed) return;
+    this.disposed = true;
+    if (StockHomePanel.current === this) StockHomePanel.current = null;
+    for (const disposable of this.disposables) disposable.dispose();
+    this.disposables.length = 0;
     this.panel.dispose();
-    for (const d of this.disposables) d.dispose();
-    this.disposables = [];
   }
 }

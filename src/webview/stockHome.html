@@ -2,313 +2,52 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <!-- 样式层保留 unsafe-inline：VS Code 会向 webview 文档注入默认样式；
+         脚本层用 nonce 收紧，面板文本全部经 textContent 写入，无 HTML 注入面 -->
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}';"
     />
-    <title>查看股票</title>
-    <style>
-      :root {
-        /* 终端化后仅保留灰阶辅助色：涨跌靠 +/- 与数值表达，不再着色 */
-        --c-axis: var(--vscode-descriptionForeground, #888);
-      }
-
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        background: var(--vscode-editor-background);
-        color: var(--vscode-editor-foreground);
-        font-family: var(--vscode-font-family, -apple-system);
-        font-size: 13px;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: auto;
-      }
-
-      /* tab 栏 */
-      .tab-bar {
-        display: flex;
-        background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
-        border-bottom: 1px solid var(--vscode-panel-border, #454545);
-        overflow-x: auto;
-        scrollbar-width: thin;
-        scrollbar-color: var(--vscode-scrollbarSlider-background, #555)
-          transparent;
-        flex-shrink: 0;
-        min-width: 632px;
-      }
-
-      .tab-bar::-webkit-scrollbar {
-        height: 3px;
-      }
-
-      .tab-bar::-webkit-scrollbar-thumb {
-        background: var(--vscode-scrollbarSlider-background, #555);
-        border-radius: 2px;
-      }
-
-      .tab-bar::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .tab {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 16px;
-        cursor: pointer;
-        border-right: 1px solid var(--vscode-panel-border, #454545);
-        white-space: nowrap;
-        color: var(--vscode-tab-inactiveForeground, #8c8c8c);
-        background: var(--vscode-tab-inactiveBackground, #2d2d2d);
-        border-top: 2px solid transparent;
-        transition: background 0.15s ease;
-        user-select: none;
-      }
-
-      .tab:hover {
-        background: var(--vscode-tab-hoverBackground, #2a2d2e);
-      }
-
-      .tab.active {
-        color: var(--vscode-tab-activeForeground, #ccc);
-        background: var(--vscode-tab-activeBackground, #1e1e1e);
-        border-top-color: var(--vscode-tab-activeBorderTop, #007acc);
-      }
-
-      .tab-name {
-        font-weight: 400;
-        font-size: 12px;
-        font-family: var(--vscode-editor-font-family), monospace;
-      }
-
-      /* 主内容区 */
-      .main {
-        flex: 1;
-        padding: 14px 16px 12px;
-      }
-
-      /* 统一宽度容器：按 80/120 列文本设计，宽屏留白更像终端窗口（方案 §4.5） */
-      .content {
-        min-width: 600px;
-        max-width: 720px;
-        width: 100%;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      /* 灰阶辅助文字（副信息、占位文案） */
-      .gray {
-        color: var(--c-axis);
-      }
+    <title>watch-stock</title>
+    <style nonce="{{NONCE}}">
+      {{STYLE}}
     </style>
   </head>
 
   <body>
     <div class="tab-bar" id="tab-bar"></div>
-    <div class="main">
-      <div class="content" id="content">
-        <!-- A股全览区域（由 stockOverview.html 注入） -->
-        <div id="overview-container">{{OVERVIEW_HTML}}</div>
-        <!-- 个股详情区域（由 stockDetail.html 注入） -->
-        <div
-          id="detail-container"
-          style="display: none; flex-direction: column; gap: 10px"
-        >
-          {{DETAIL_HTML}}
-        </div>
+    <main class="main">
+      <div class="content">
+        <section class="pane" id="overview-pane">
+          <div class="pane-head">
+            <span id="index-title"></span>
+            <button class="link-btn" id="refresh-index">[刷新]</button>
+          </div>
+          <pre class="term" id="index-table"></pre>
+          <div class="pane-head">
+            <span id="industry-title"></span>
+            <button class="link-btn" id="refresh-industry">[刷新]</button>
+          </div>
+          <pre class="term term-wrap" id="industry-flow"></pre>
+        </section>
+
+        <section class="pane" id="detail-pane" hidden>
+          <div class="detail-head">
+            <pre class="term" id="detail-text"></pre>
+            <button class="link-btn" id="refresh-detail">[刷新]</button>
+          </div>
+          <div class="chart" id="chart-wrap">
+            <pre class="term" id="chart-plot"></pre>
+            <pre class="term dim" id="chart-axis"></pre>
+            <pre class="term dim" id="chart-volume"></pre>
+            <pre class="term dim" id="chart-summary"></pre>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
 
     <script nonce="{{NONCE}}">
-      const vscode = acquireVsCodeApi();
-
-      /* ---- 状态 ---- */
-      let stocks = [];
-      let indexStocks = [];
-      let industryStocks = [];
-      let activeCode = "__overview__"; // __overview__ 代表 A股全览固定 tab
-      const stocksMap = {};
-      const quoteDataMap = {};
-      let minuteData = null;
-      let activeInfo = null;
-      let activeQuote = null;
-
-      /* ---- DOM 缓存 ---- */
-      const $ = (id) => document.getElementById(id);
-      const tabBar = $("tab-bar");
-      const content = $("content");
-      const overviewContainer = $("overview-container");
-      const detailContainer = $("detail-container");
-
-      /* ---- 通知 TS 端 webview 已就绪 ---- */
-      vscode.postMessage({ type: "ready" });
-
-      /* ---- 格式化工具函数 ---- */
-      function fmtNum(n, d = 2) {
-        return n == null || isNaN(n) ? "-" : Number(n).toFixed(d);
-      }
-      function fmtVol(n) {
-        if (n == null || isNaN(n)) return "-";
-        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
-        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
-        return String(Math.round(n));
-      }
-      function fmtMoney(n) {
-        if (n == null || isNaN(n)) return "-";
-        if (n >= 1e12) return (n / 1e12).toFixed(2) + "万亿";
-        if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
-        if (n >= 1e4) return (n / 1e4).toFixed(2) + "万";
-        return Number(n).toFixed(2);
-      }
-      function escHtml(s) {
-        const d = document.createElement("span");
-        d.textContent = s;
-        return d.innerHTML;
-      }
-
-      /* ---- 终端文本对齐工具：CJK 全角字符占 2 显示列，按显示宽度计算而非 length ---- */
-      function dispW(s) {
-        let w = 0;
-        for (const ch of String(s)) {
-          const c = ch.codePointAt(0);
-          w +=
-            (c >= 0x1100 && c <= 0x115f) ||
-            (c >= 0x2e80 && c <= 0xa4cf) ||
-            (c >= 0xac00 && c <= 0xd7a3) ||
-            (c >= 0xf900 && c <= 0xfaff) ||
-            (c >= 0xfe30 && c <= 0xfe6f) ||
-            (c >= 0xff00 && c <= 0xff60) ||
-            (c >= 0xffe0 && c <= 0xffe6)
-              ? 2
-              : 1;
-        }
-        return w;
-      }
-      function padW(s, w) {
-        s = String(s);
-        return s + " ".repeat(Math.max(0, w - dispW(s)));
-      }
-
-      /* ---- 切换概览/详情容器 ---- */
-      function showOverview() {
-        overviewContainer.style.display = "";
-        detailContainer.style.display = "none";
-        renderOverviewCards();
-      }
-      function showDetail() {
-        overviewContainer.style.display = "none";
-        detailContainer.style.display = "flex";
-      }
-
-      /* ---- 渲染 Tab ---- */
-      tabBar.addEventListener("click", (e) => {
-        const tab = e.target.closest(".tab");
-        if (!tab) return;
-        const c = tab.dataset.code;
-        if (!c || c === activeCode) return;
-        if (c === "__overview__") {
-          activeCode = "__overview__";
-          activeInfo = null;
-          activeQuote = null;
-          minuteData = null;
-          renderTabs();
-          showOverview();
-        } else {
-          switchToStock(c);
-        }
-      });
-
-      function switchToStock(code) {
-        activeCode = code;
-        minuteData = null;
-        activeInfo = stocksMap[code] || null;
-        activeQuote = quoteDataMap[code] || null;
-        renderTabs();
-        renderHeader();
-        showDetail();
-        vscode.postMessage({ type: "switchStock", code });
-      }
-
-      function renderTabs() {
-        // 固定首个全览 tab（文案低调化为 overview）
-        const overviewActive = activeCode === "__overview__" ? " active" : "";
-        const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">overview</span></div>`;
-        const stockTabs = stocks
-          .map((s) => {
-            const active = s.code === activeCode ? " active" : "";
-            return `<div class="tab${active}" data-code="${s.code}">
-            <span class="tab-name">${escHtml(s.displayName || s.name)}</span>
-          </div>`;
-          })
-          .join("");
-        tabBar.innerHTML = overviewTab + stockTabs;
-      }
-
-      /* ---- 各片段 JS（由 stockOverview.html / stockDetail.html 的 <script> 提取注入） ---- */
-      /* {{FRAGMENT_SCRIPTS}} */
-
-      /* ---- 消息处理 ---- */
-      window.addEventListener("message", (e) => {
-        const msg = e.data;
-        switch (msg.type) {
-          case "init":
-            stocks = msg.stocks;
-            indexStocks = msg.indexStocks || [];
-            industryStocks = msg.industryStocks || [];
-            activeCode = "__overview__";
-            // 清空旧数据避免状态污染
-            Object.keys(stocksMap).forEach((k) => delete stocksMap[k]);
-            Object.keys(quoteDataMap).forEach((k) => delete quoteDataMap[k]);
-            Object.assign(quoteDataMap, msg.quoteData || {});
-            for (const s of stocks) stocksMap[s.code] = s;
-            activeInfo = null;
-            activeQuote = null;
-            renderTabs();
-            showOverview();
-            break;
-          case "loading":
-            if (msg.code === activeCode) showLoading();
-            break;
-          case "minuteData":
-            if (msg.code === activeCode) {
-              minuteData = msg.data;
-              activeInfo = msg.stockInfo || stocksMap[msg.code] || null;
-              activeQuote = msg.quoteInfo || quoteDataMap[msg.code] || null;
-              if (activeInfo) stocksMap[msg.code] = activeInfo;
-              renderHeader();
-              StockChart.render(minuteData, activeInfo);
-            }
-            break;
-          case "indexData":
-            indexStocks = msg.indexStocks || [];
-            renderOverviewCards();
-            break;
-          case "industryData":
-            industryStocks = msg.industryStocks || [];
-            renderOverviewCards();
-            break;
-        }
-      });
-
-      /* ---- 响应式 ResizeObserver ---- */
-      let rafId = null;
-      new ResizeObserver(() => {
-        if (rafId) return;
-        rafId = requestAnimationFrame(() => {
-          rafId = null;
-          if (minuteData) StockChart.render(minuteData, activeInfo);
-        });
-      }).observe(content);
+      {{SCRIPT}}
     </script>
   </body>
 </html>

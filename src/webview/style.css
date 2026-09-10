@@ -1,0 +1,165 @@
+/* 查看面板（终端化）全部样式，构建时经 esbuild 压缩后内联进 HTML */
+:root {
+  /* 终端化后仅保留灰阶辅助色：涨跌靠 +/- 与数值表达，不再着色 */
+  --dim: var(--vscode-descriptionForeground, #888);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  /* 整块面板统一走编辑器等宽字体：❯ 标题行与下方表格列首才对得齐 */
+  font-family: var(--vscode-editor-font-family), monospace;
+  font-size: var(--vscode-editor-font-size, 13px);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* tab 栏：股票多时自己横向滚动 */
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  overflow-x: auto;
+  background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+  border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-scrollbarSlider-background, #555) transparent;
+}
+
+.tab-bar::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, #555);
+  border-radius: 2px;
+}
+
+.tab-bar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab {
+  flex: 0 0 auto;
+  padding: 6px 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  color: var(--vscode-tab-inactiveForeground, #8c8c8c);
+  background: var(--vscode-tab-inactiveBackground, #2d2d2d);
+  border-right: 1px solid var(--vscode-panel-border, #454545);
+  border-top: 2px solid transparent;
+}
+
+.tab:hover {
+  background: var(--vscode-tab-hoverBackground, #2a2d2e);
+}
+
+.tab.active {
+  color: var(--vscode-tab-activeForeground, #ccc);
+  background: var(--vscode-tab-activeBackground, #1e1e1e);
+  border-top-color: var(--vscode-tab-activeBorderTop, #007acc);
+}
+
+.main {
+  flex: 1;
+  padding: 14px 16px 12px;
+}
+
+/* 按 80/120 列文本设计；不设 min-width，窄面板由各区块自己横向滚动 */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.link-btn {
+  flex-shrink: 0;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  font: inherit;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* 终端文本块 */
+.term {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+/* 行业流：按空格自动折行 */
+.term-wrap {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+/* 分时图：四段文本左对齐叠放，整体横向滚动（列数触底时），保证列不错位 */
+.chart {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.chart > .term {
+  width: max-content;
+  min-width: 100%;
+  line-height: 1.15;
+}
+
+/* 详情头部：提示符摘要 + kv 块，右侧 [刷新] */
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--vscode-panel-border, #454545);
+}
+
+.detail-head > .term {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}

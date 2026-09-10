@@ -1,42 +1,47 @@
 import { build } from "esbuild";
-import { readFile } from "fs/promises";
 
-// 简单的 HTML 压缩：移除注释、多余空白和换行
-function minifyHtml(html) {
-  return (
-    html
-      // 移除 HTML 注释 <!-- ... -->
-      .replace(/<!--[\s\S]*?-->/g, "")
-      // 移除 CSS / JS 块注释 /* ... */（含 JSDoc）；保留含 {{...}} 占位符的注释
-      .replace(/\/\*[\s\S]*?\*\//g, (m) => (m.includes("{{") ? m : ""))
-      // 移除 JS 单行注释 // ...（前置必须为行首/空白/分号/逗号/右括号，避开字符串里的 http://）；保留含 {{...}} 占位符的注释
-      .replace(/(^|[\s;,)}\]])\/\/[^\n]*/gm, (m, p1) =>
-        m.includes("{{") ? m : p1,
-      )
-      // 移除标签间的空白
-      .replace(/>\s+</g, "><")
-      // 所有连续空白（含换行）压成单个空格
-      .replace(/\s+/g, " ")
-      // 移除首尾空白
-      .trim()
-  );
+const WEBVIEW_SCRIPT_ENTRY = "src/webview/main.ts";
+const WEBVIEW_STYLE_ENTRY = "src/webview/style.css";
+
+// 把 webview 源码打成浏览器可直接执行的产物（留在内存里，由扩展侧内联进 HTML）
+async function bundleForWebview(entryPoint, extraOptions = {}) {
+  const result = await build({
+    entryPoints: [entryPoint],
+    bundle: true,
+    write: false,
+    minify: true,
+    legalComments: "none",
+    logLevel: "silent",
+    ...extraOptions,
+  });
+  return result.outputFiles[0].text;
 }
 
-// esbuild 插件：压缩 HTML 文件
-const htmlMinifyPlugin = {
-  name: "html-minify",
+const webviewAssets = {
+  "webview-bundle:js": await bundleForWebview(WEBVIEW_SCRIPT_ENTRY, {
+    format: "iife",
+    platform: "browser",
+    target: "es2021",
+  }),
+  "webview-bundle:style": await bundleForWebview(WEBVIEW_STYLE_ENTRY),
+};
+
+// 让扩展侧能 import 到 webview 产物字符串；HTML 模板本身走 text loader
+const webviewAssetsPlugin = {
+  name: "webview-assets",
   setup(build) {
-    build.onLoad({ filter: /\.html$/ }, async (args) => {
-      const text = await readFile(args.path, "utf8");
-      return {
-        contents: minifyHtml(text),
-        loader: "text",
-      };
-    });
+    build.onResolve({ filter: /^webview-bundle:/ }, (args) => ({
+      path: args.path,
+      namespace: "webview-asset",
+    }));
+    build.onLoad({ filter: /.*/, namespace: "webview-asset" }, (args) => ({
+      contents: webviewAssets[args.path] ?? "",
+      loader: "text",
+    }));
   },
 };
 
-const buildOptions = {
+await build({
   entryPoints: ["src/extension.ts"],
   outfile: "dist/extension.js",
   bundle: true,
@@ -48,7 +53,6 @@ const buildOptions = {
   external: ["vscode"],
   sourcemap: false,
   legalComments: "none",
-  plugins: [htmlMinifyPlugin],
-};
-
-await build(buildOptions);
+  loader: { ".html": "text" },
+  plugins: [webviewAssetsPlugin],
+});
