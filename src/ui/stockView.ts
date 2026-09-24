@@ -12,7 +12,7 @@ import {
   getStockMinute,
   getStockQuoteList,
 } from "../services/stockService";
-import { formatAmount, getDisplayName } from "../utils/stock";
+import { formatAmount } from "../utils/stock";
 import { formatClock } from "../utils/time";
 import type { Stock, MinutePoint } from "../types";
 import type { RowItem, Tab, ToHost, ToView } from "../shared/protocol";
@@ -28,14 +28,14 @@ interface MinuteCacheEntry {
   timestamp: number;
 }
 
-// 行情 → 列表行，封单仅涨跌停时显示
-function toRow(stock: Stock, name = stock.name): RowItem {
+// 行情 → 列表行（面板空间充足，始终显示全称），封单仅涨跌停时显示
+function toRow(stock: Stock): RowItem {
   const locked =
     (stock.priceType === "up" || stock.priceType === "down") &&
     (stock.lockAmount ?? 0) > 0;
   return {
     code: stock.code,
-    name,
+    name: stock.name,
     current: stock.current,
     changePercent: stock.changePercent,
     changeValue: stock.changeValue,
@@ -97,15 +97,10 @@ export class StockViewProvider
     void this.view?.webview.postMessage(msg);
   }
 
-  // 自选名称与状态栏一致，跟随简称配置
   private postStocks(): void {
-    const showMiniName = config.getShowMiniName();
-    const miniNames = config.getStockMiniNames();
     this.post({
       type: "stocks",
-      items: this.stocks.map((s) =>
-        toRow(s, getDisplayName(s.code, s.name, showMiniName, miniNames)),
-      ),
+      items: this.stocks.map(toRow),
       time: this.time,
       colorful: config.getEnableColorful(),
     });
@@ -139,7 +134,7 @@ export class StockViewProvider
   private async pushTabData(): Promise<void> {
     if (this.tab === "index") {
       const list = await getStockList(INDEX_CODES);
-      this.post({ type: "index", items: list.map((s) => toRow(s)) });
+      this.post({ type: "index", items: list.map(toRow) });
     } else if (this.tab === "sector") {
       const list = await getStockList(INDUSTRY_CODE_LIST);
       this.post({

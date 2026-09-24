@@ -47,7 +47,7 @@ export function getLimitPercent(code: string, name: string): number {
   return 10;
 }
 
-// 显示名称：开启简称时优先用自定义简称，否则截取前两位（状态栏与股票面板共用）
+// 状态栏显示名称：开启简称时优先用自定义简称，否则截取前两位
 export function getDisplayName(
   code: string,
   name: string,

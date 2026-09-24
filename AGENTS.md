@@ -75,8 +75,8 @@ refresher.ts（交易时间每 5 秒一次，refreshData 统一 try/catch 兜底
 - **统一配置入口**：所有 VS Code 配置读取必须通过 `config.ts` 的 `config` 对象，禁止在业务代码中直接调用 `vscode.workspace.getConfiguration`。`config.getStocks()` 会自动校验股票代码格式、统一转为小写并回写。
 - **配置变更刷新**：写配置会触发 `onDidChangeConfiguration`，由 `scheduleRefresh()` 200ms 防抖统一刷新，命令内不要再手动调用刷新；仅 `priceAlarms` 变化不触发刷新（`affectsRefresh()`），避免 `checkAlarms` 刷新中写配置引起连锁刷新。
 - **状态栏显隐三态**：`AppState.userForced` 为三态 —— `null` = 跟随市场（根据 `autoHideByMarket` 配置自动显隐），`true` = 强制显示，`false` = 强制隐藏。手动切换后脱离自动模式，需重启编辑器恢复。
-- **一键隐藏联动面板**：视图 `when` 条件为上下文键 `watch-stock.show`，激活时设为 true，老板键隐藏时设为 false 使 `WATCH-STOCK` tab 从面板中消失（不执行 `closePanel`，避免误关终端）。`autoHideByMarket` 只作用于状态栏，不影响面板。用正向键而非 `!hidden`，是为了激活前视图不存在，防止启动时恢复面板直接弹出行情。
-- **股票面板**：`StockViewProvider`（`WebviewView`）注册在底部面板，界面为终端风格（等宽、默认单色，`enableColorful` 仅控制涨跌色）。webview 端为独立打包的 TS（`src/webview/` → `dist/webview.js` + `dist/webview-style.css`），通过 `asWebviewUri` 引用；CSP 不含 `'unsafe-inline'`，样式一律写在 `style.css` 用 class 控制，勿在 HTML/SVG 中写内联 `style`。两端消息类型定义在 `src/shared/protocol.ts`，该文件须保持环境无关（不依赖 vscode/DOM/node）。
+- **一键隐藏联动面板**：视图 `when` 条件为上下文键 `watch-stock.show`，激活时设为 true，老板键隐藏时设为 false 使「看盘」tab 从面板中消失（不执行 `closePanel`，避免误关终端）。`autoHideByMarket` 只作用于状态栏，不影响面板。用正向键而非 `!hidden`，是为了激活前视图不存在，防止启动时恢复面板直接弹出行情。
+- **股票面板**：`StockViewProvider`（`WebviewView`）注册在底部面板，界面为终端风格（等宽、默认单色，`enableColorful` 仅控制涨跌色；股票名始终显示全称，`showMiniName`/`stockMiniNames` 只作用于状态栏）。webview 端为独立打包的 TS（`src/webview/` → `dist/webview.js` + `dist/webview-style.css`），通过 `asWebviewUri` 引用；CSP 不含 `'unsafe-inline'`，样式一律写在 `style.css` 用 class 控制，勿在 HTML/SVG 中写内联 `style`。两端消息类型定义在 `src/shared/protocol.ts`，该文件须保持环境无关（不依赖 vscode/DOM/node）。
 - **面板数据流**：自选行情复用 refresher 主循环数据，不额外请求；指数/板块/展开详情仅在面板可见时按当前 tab 拉取。`retainContextWhenHidden` 关闭，面板重新可见时 webview 重新加载并发送 `ready`（携带 `getState` 恢复的 tab 与展开行），扩展端据此补发数据。面板可见时即使状态栏隐藏，定时器也不跳过刷新。
 - **命令注册**：命令统一在 `commands.ts` 注册，命令 ID 集中在 `COMMAND_MAP`，禁止在其他文件中注册命令。
 - **消息限流**：`msg.ts` 的 `sendRateLimitMsg()` 将封单/大单异动通知在 60 秒冷却窗口内合并，避免频繁弹窗打扰用户；通知频率统一由它控制，封单/大单判定逻辑内不再单独做冷却。

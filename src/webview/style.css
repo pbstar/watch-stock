@@ -109,11 +109,17 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 行内展开详情 */
-/* 详情行允许换行，宽度由上方行情列撑开，指标按需折成多行 */
+/* 行内展开详情：宽度只跟随上方行情列，指标按需折成多行 */
 .detail > td {
   padding: 2px 0 8px 1.2em;
   white-space: normal;
+}
+
+/* width:0 + min-width:100% 使详情内容不参与表格列宽计算，只填满所在单元格，
+   展开后行情列保持紧凑 */
+.detail > td > * {
+  width: 0;
+  min-width: 100%;
 }
 
 .metrics {
@@ -133,11 +139,8 @@ tr.row:hover {
   color: var(--fg);
 }
 
-/* 悬停读数独占指标下方一行，固定一行高度：有无读数都不撑宽表格、不挤动图表 */
+/* 悬停读数独占指标下方一行，固定一行高度：有无读数都不挤动图表 */
 .hover {
-  /* width:0 + min-width:100% 使其不参与表格列宽计算，只填满所在单元格 */
-  width: 0;
-  min-width: 100%;
   height: 1.6em;
   overflow: hidden;
   white-space: nowrap;
@@ -146,8 +149,6 @@ tr.row:hover {
 
 .chart {
   position: relative;
-  width: 100%;
-  min-width: 360px;
   margin-top: 4px;
   cursor: crosshair;
 }

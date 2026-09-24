@@ -60,7 +60,7 @@
       "panel": [
         {
           "id": "watch-stock",
-          "title": "WATCH-STOCK",
+          "title": "看盘",
           "icon": "images/panel.svg"
         }
       ]
@@ -70,7 +70,7 @@
         {
           "type": "webview",
           "id": "watch-stock.view",
-          "name": "WATCH-STOCK",
+          "name": "看盘",
           "icon": "images/panel.svg",
           "when": "watch-stock.show"
         }

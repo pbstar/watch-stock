@@ -34,8 +34,22 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
+// 图表宽度跟随表格宽度（行情数字位数变化也会改变），尺寸变化时重画
+let raf = 0;
+const resizeObserver = new ResizeObserver(() => {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(drawChart);
+});
+
 // 展开行的详情行：展开期间常驻，行情刷新只搬位置不重建
-let detailRow: HTMLTableRowElement | null = state.expanded ? createDetailRow() : null;
+let detailRow: HTMLTableRowElement | null = null;
+
+function setDetailRow(row: HTMLTableRowElement | null): void {
+  resizeObserver.disconnect();
+  detailRow = row;
+  if (row) resizeObserver.observe(row.querySelector(".chart")!);
+}
+setDetailRow(state.expanded ? createDetailRow() : null);
 
 function render(): void {
   document.querySelectorAll<HTMLElement>(".tab").forEach((el) => {
@@ -95,7 +109,7 @@ content.addEventListener("click", (e) => {
   const code = row.dataset.code === state.expanded ? null : row.dataset.code!;
   setState({ expanded: code });
   data.detail = undefined;
-  detailRow = code ? createDetailRow() : null;
+  setDetailRow(code ? createDetailRow() : null);
   vscode.postMessage({ type: "expand", code });
   render();
 });
@@ -111,7 +125,7 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
         msg.items.length > 0 && !msg.items.some((s) => s.code === state.expanded);
       if (state.expanded && gone) {
         setState({ expanded: null });
-        detailRow = null;
+        setDetailRow(null);
       }
       document.body.classList.toggle("colorful", msg.colorful);
       break;
@@ -129,12 +143,5 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
   }
   render();
 });
-
-// 宽度变化时重画分时图
-let raf = 0;
-new ResizeObserver(() => {
-  cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(drawChart);
-}).observe(content);
 
 vscode.postMessage({ type: "ready", ...state });
