@@ -11,4 +11,3 @@ esbuild.config.mjs
 **/*.map
 AGENTS.md
 CLAUDE.md
-docs/
