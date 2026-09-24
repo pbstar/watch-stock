@@ -123,6 +123,11 @@ tr.row:hover {
   color: var(--dim);
 }
 
+/* 指标容器不占布局，内部各项直接参与 flex 换行 */
+.metrics .info {
+  display: contents;
+}
+
 .metrics b {
   font-weight: normal;
   color: var(--fg);

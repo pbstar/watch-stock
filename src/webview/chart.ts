@@ -7,6 +7,9 @@ const VOL_H = 24;
 const GAP = 4;
 const HEIGHT = PRICE_H + GAP + VOL_H;
 
+// 各图表容器当前的鼠标横坐标（未悬停为 undefined），用于重画后恢复游标与读数
+const hoverX = new WeakMap<HTMLElement, number>();
+
 interface ChartCtx {
   data: MinutePoint[];
   preClose: number;
@@ -85,6 +88,9 @@ export function renderChart(
   const width = el.clientWidth;
   if (!data.some((d) => d.price != null) || !preClose || width < 10) {
     el.innerHTML = '<div class="dim">暂无分时</div>';
+    el.onmousemove = el.onmouseleave = null;
+    hoverX.delete(el);
+    onHover(null);
     return;
   }
   const ctx: ChartCtx = { data, preClose, dec, width };
@@ -106,16 +112,24 @@ function bindHover(
   onHover: (text: string | null) => void,
 ): void {
   const cursor = el.querySelector<HTMLElement>(".cursor")!;
-  el.onmousemove = (e) => {
-    const x = e.clientX - el.getBoundingClientRect().left;
+  const show = (x: number) => {
     const n = ctx.data.length;
     const i = Math.max(0, Math.min(n - 1, Math.round((x / ctx.width) * (n - 1))));
     cursor.style.left = `${xOf(ctx, i)}px`;
     cursor.style.display = "block";
     onHover(hoverText(ctx, i, vols));
   };
+  el.onmousemove = (e) => {
+    const x = e.clientX - el.getBoundingClientRect().left;
+    hoverX.set(el, x);
+    show(x);
+  };
   el.onmouseleave = () => {
+    hoverX.delete(el);
     cursor.style.display = "none";
     onHover(null);
   };
+  // 数据刷新重画时鼠标仍停在图上：按原位置恢复，读数随新数据更新
+  const x = hoverX.get(el);
+  if (x !== undefined) show(x);
 }
