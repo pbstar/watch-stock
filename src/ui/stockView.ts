@@ -46,7 +46,7 @@ function toRow(stock: Stock, name = stock.name): RowItem {
 export class StockViewProvider
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
-  static readonly viewId = "watchStock.view";
+  static readonly viewId = "watch-stock.view";
 
   private view: vscode.WebviewView | null = null;
   private disposables: vscode.Disposable[] = [];

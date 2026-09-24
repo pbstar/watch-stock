@@ -28,8 +28,8 @@ export function activate(context: vscode.ExtensionContext): void {
       state.stockView,
     ),
   );
-  // 视图 when 条件为 watchStock.show：激活前视图不存在，避免启动时恢复面板直接弹出行情
-  void vscode.commands.executeCommand("setContext", "watchStock.show", true);
+  // 视图 when 条件为 watch-stock.show：激活前视图不存在，避免启动时恢复面板直接弹出行情
+  void vscode.commands.executeCommand("setContext", "watch-stock.show", true);
   registerCommands(context, state);
   startRefreshTimer(state);
 }

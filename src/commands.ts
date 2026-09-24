@@ -21,7 +21,7 @@ import type { AppState } from "./types";
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {
   add: "watch-stock.addStock",
-  home: "watchStock.view.focus", // VS Code 为视图自动生成的聚焦命令
+  home: "watch-stock.view.focus", // VS Code 为视图自动生成的聚焦命令
   remove: "watch-stock.removeStock",
   sort: "watch-stock.sortStocks",
   clear: "watch-stock.clearStocks",
@@ -65,7 +65,7 @@ export function registerCommands(
       // 老板键同时控制股票面板：隐藏时视图 tab 从面板中消失，恢复时回来但不主动聚焦
       void vscode.commands.executeCommand(
         "setContext",
-        "watchStock.show",
+        "watch-stock.show",
         appState.userForced,
       );
       if (appState.userForced) {

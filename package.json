@@ -59,19 +59,19 @@
     "viewsContainers": {
       "panel": [
         {
-          "id": "watchStock",
+          "id": "watch-stock",
           "title": "WATCH-STOCK",
           "icon": "images/panel.svg"
         }
       ]
     },
     "views": {
-      "watchStock": [
+      "watch-stock": [
         {
           "type": "webview",
-          "id": "watchStock.view",
+          "id": "watch-stock.view",
           "name": "WATCH-STOCK",
-          "when": "watchStock.show"
+          "when": "watch-stock.show"
         }
       ]
     },
