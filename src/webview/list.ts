@@ -38,11 +38,11 @@ function metricsHtml(q: DetailQuote): string {
 // 保证图表、悬停读数与鼠标事件不随每 5 秒的行情刷新重建
 export function createDetailRow(): HTMLTableRowElement {
   const tbody = document.createElement("tbody");
-  tbody.innerHTML = `<tr class="detail"><td colspan="7">
+  tbody.innerHTML = `<tr class="detail"><td colspan="7"><div class="detail-body">
     <div class="metrics"><span class="info">加载中</span></div>
     <div class="hover"></div>
     <div class="chart"></div>
-  </td></tr>`;
+  </div></td></tr>`;
   return tbody.firstElementChild as HTMLTableRowElement;
 }
 

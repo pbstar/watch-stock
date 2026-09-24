@@ -109,23 +109,21 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 行内展开详情：宽度只跟随上方行情列，指标按需折成多行 */
+/* 行内展开详情 */
 .detail > td {
   padding: 2px 0 8px 1.2em;
-  white-space: normal;
 }
 
-/* width:0 + min-width:100% 使详情内容不参与表格列宽计算，只填满所在单元格，
-   展开后行情列保持紧凑 */
-.detail > td > * {
+/* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑），内容按自身宽度溢出显示 */
+.detail-body {
   width: 0;
-  min-width: 100%;
 }
 
+/* 指标一行展示，宽度随内容自适应 */
 .metrics {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 16px;
+  gap: 16px;
+  width: max-content;
   color: var(--dim);
 }
 
@@ -142,20 +140,20 @@ tr.row:hover {
 /* 悬停读数独占指标下方一行，固定一行高度：有无读数都不挤动图表 */
 .hover {
   height: 1.6em;
-  overflow: hidden;
-  white-space: nowrap;
+  width: max-content;
   color: var(--dim);
 }
 
+/* 图表宽度由 chart.ts 的 CHART_WIDTH 固定，容器包住 svg 即可 */
 .chart {
   position: relative;
+  width: max-content;
   margin-top: 4px;
   cursor: crosshair;
 }
 
 .chart svg {
   display: block;
-  width: 100%;
 }
 
 .pre-close {

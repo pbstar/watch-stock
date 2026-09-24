@@ -2,6 +2,8 @@
 import type { MinutePoint } from "../shared/protocol";
 import { fmtVol } from "./format";
 
+// 图表固定宽度（约为此前随表格自适应宽度的 1.5 倍），不随面板或表格宽度变化
+const CHART_WIDTH = 500;
 const PRICE_H = 64;
 const VOL_H = 24;
 const GAP = 4;
@@ -85,8 +87,8 @@ export function renderChart(
   dec: number,
   onHover: (text: string | null) => void,
 ): void {
-  const width = el.clientWidth;
-  if (!data.some((d) => d.price != null) || !preClose || width < 10) {
+  const width = CHART_WIDTH;
+  if (!data.some((d) => d.price != null) || !preClose) {
     el.innerHTML = '<div class="dim">暂无分时</div>';
     el.onmousemove = el.onmouseleave = null;
     hoverX.delete(el);
@@ -97,7 +99,7 @@ export function renderChart(
   const vols = minuteVolumes(data);
   const pcY = PRICE_H / 2;
   const last = [...data].reverse().find((d) => d.price != null)!.price!;
-  el.innerHTML = `<svg height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}" preserveAspectRatio="none">
+  el.innerHTML = `<svg width="${width}" height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}">
     <line class="pre-close" x1="0" y1="${pcY}" x2="${width}" y2="${pcY}"/>
     <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${pricePath(ctx)}"/>
     ${volumeBars(ctx, vols)}
