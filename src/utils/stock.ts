@@ -47,6 +47,17 @@ export function getLimitPercent(code: string, name: string): number {
   return 10;
 }
 
+// 显示名称：开启简称时优先用自定义简称，否则截取前两位（状态栏与股票面板共用）
+export function getDisplayName(
+  code: string,
+  name: string,
+  showMiniName: boolean,
+  miniNames: Record<string, string>,
+): string {
+  if (!showMiniName) return name;
+  return miniNames[code] || (name.length > 2 ? name.substring(0, 2) : name);
+}
+
 // 金额格式化
 export function formatAmount(amount: number): string {
   if (amount >= 100000000) return (amount / 100000000).toFixed(1) + "亿";

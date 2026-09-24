@@ -1,7 +1,7 @@
 // 状态栏渲染
 import * as vscode from "vscode";
 import { config } from "../config";
-import { formatAmount } from "../utils/stock";
+import { formatAmount, getDisplayName } from "../utils/stock";
 import type { PriceType, Stock } from "../types";
 
 // 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
@@ -93,10 +93,12 @@ export class StatusBarManager implements vscode.Disposable {
       );
       // 状态栏文本（仅前 maxDisplayCount 只）
       if (i >= maxDisplayCount) return;
-      const displayName = showMiniName
-        ? stockMiniNames[stock.code] ||
-          (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
-        : stock.name;
+      const displayName = getDisplayName(
+        stock.code,
+        stock.name,
+        showMiniName,
+        stockMiniNames,
+      );
       const lockText =
         showLockCount &&
         (stock.lockAmount ?? 0) > 0 &&

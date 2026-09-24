@@ -40,7 +40,7 @@ export async function refreshData(
   }
 }
 
-// 拉取数据 -> 计算封单 -> 触发闹钟 -> 渲染状态栏
+// 拉取数据 -> 计算封单 -> 触发闹钟 -> 推送股票面板 -> 渲染状态栏
 async function doRefreshData(
   state: AppState,
   now: Date,
@@ -84,6 +84,8 @@ async function doRefreshData(
     if (config.getEnableLargeTip() && isStableTradeTime(now))
       checkLargeTip(stockInfos);
   }
+
+  state.stockView.update(stockInfos, now);
 
   if (getIsVisible(state, now)) {
     state.statusBar.render(stocks, stockInfos);

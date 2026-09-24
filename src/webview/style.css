@@ -110,8 +110,10 @@ tr.row:hover {
 }
 
 /* 行内展开详情 */
+/* 详情行允许换行，宽度由上方行情列撑开，指标按需折成多行 */
 .detail > td {
   padding: 2px 0 8px 1.2em;
+  white-space: normal;
 }
 
 .metrics {

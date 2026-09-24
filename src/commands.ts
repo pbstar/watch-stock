@@ -1,6 +1,5 @@
 // 命令注册
 import * as vscode from "vscode";
-import { StockHomePanel } from "./ui/stockHome";
 import {
   addStock,
   removeStock,
@@ -22,7 +21,7 @@ import type { AppState } from "./types";
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {
   add: "watch-stock.addStock",
-  home: "watch-stock.viewHome",
+  home: "watchStock.view.focus", // VS Code 为视图自动生成的聚焦命令
   remove: "watch-stock.removeStock",
   sort: "watch-stock.sortStocks",
   clear: "watch-stock.clearStocks",
@@ -66,9 +65,7 @@ export function registerCommands(
       if (appState.userForced) {
         void refreshData(appState);
       } else {
-        // 老板键：隐藏时同步关闭股票面板，一次按键清除所有看盘痕迹
         appState.statusBar.setHidden();
-        StockHomePanel.current?.dispose();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
@@ -76,7 +73,6 @@ export function registerCommands(
       await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (affectsRefresh(e)) scheduleRefresh(appState);
     }),

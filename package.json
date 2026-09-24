@@ -56,6 +56,25 @@
         "title": "刷新行情数据"
       }
     ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "watchStock",
+          "title": "WATCH-STOCK",
+          "icon": "images/panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "watchStock": [
+        {
+          "type": "webview",
+          "id": "watchStock.view",
+          "name": "WATCH-STOCK",
+          "when": "watchStock.show"
+        }
+      ]
+    },
     "configuration": {
       "title": "摸鱼看盘",
       "properties": {
@@ -123,7 +142,7 @@
         "watch-stock.enableColorful": {
           "type": "boolean",
           "default": false,
-          "description": "是否开启彩色视图"
+          "description": "查看股票面板中涨跌以红绿色显示（状态栏不受影响）"
         },
         "watch-stock.stockSortType": {
           "type": "string",
