@@ -10,7 +10,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p src/webview --noEmit",
     "build": "npm run typecheck && node esbuild.config.mjs && vsce package"
   },
   "categories": [

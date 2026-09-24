@@ -51,4 +51,20 @@ const buildOptions = {
   plugins: [htmlMinifyPlugin],
 };
 
-await build(buildOptions);
+// webview 浏览器端脚本与样式，运行时通过 asWebviewUri 引用
+const webviewOptions = {
+  entryPoints: {
+    webview: "src/webview/main.ts",
+    "webview-style": "src/webview/style.css",
+  },
+  outdir: "dist",
+  bundle: true,
+  minify: true,
+  platform: "browser",
+  target: "es2022",
+  format: "iife",
+  sourcemap: false,
+  legalComments: "none",
+};
+
+await Promise.all([build(buildOptions), build(webviewOptions)]);
