@@ -123,8 +123,12 @@ export function startRefreshTimer(state: AppState): void {
       }
       return;
     }
-    // 状态栏隐藏且无监控需求时，跳过本次数据拉取
-    if (!getIsVisible(state, now) && !hasMonitoringNeeds()) {
+    // 状态栏隐藏、股票面板不可见且无监控需求时，跳过本次数据拉取
+    if (
+      !getIsVisible(state, now) &&
+      !state.stockView.visible &&
+      !hasMonitoringNeeds()
+    ) {
       state.statusBar.setHidden();
       return;
     }

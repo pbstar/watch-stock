@@ -75,6 +75,11 @@ export class StockViewProvider
     );
   }
 
+  // 面板当前是否可见（切到其他 tab、面板收起或一键隐藏时为 false）
+  get visible(): boolean {
+    return this.view?.visible ?? false;
+  }
+
   // refresher 每次刷新后调用，面板不可见时只缓存不推送
   update(stocks: Stock[], now: Date): void {
     this.stocks = stocks;

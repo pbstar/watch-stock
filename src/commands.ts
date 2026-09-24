@@ -62,6 +62,12 @@ export function registerCommands(
     ),
     vscode.commands.registerCommand(COMMAND_MAP.toggle, () => {
       appState.userForced = !getIsVisible(appState);
+      // 老板键同时控制股票面板：隐藏时视图 tab 从面板中消失，恢复时回来但不主动聚焦
+      void vscode.commands.executeCommand(
+        "setContext",
+        "watchStock.show",
+        appState.userForced,
+      );
       if (appState.userForced) {
         void refreshData(appState);
       } else {
@@ -85,6 +91,8 @@ async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
   const isSortTypeCustom = config.getStockSortType() === "custom";
   const visible = getIsVisible(state);
+  // 一键隐藏后股票面板不存在，不提供「查看股票」
+  const viewAvailable = state.userForced !== false;
   const options = [
     {
       label: "$(add) 添加股票",
@@ -95,11 +103,15 @@ async function manageStock(state: AppState): Promise<void> {
 
   if (stocks.length > 0) {
     options.push(
-      {
-        label: "$(list-flat) 查看股票",
-        description: "查看股票详细数据",
-        action: "home",
-      },
+      ...(viewAvailable
+        ? [
+            {
+              label: "$(list-flat) 查看股票",
+              description: "在底部面板查看行情、指数与板块",
+              action: "home",
+            },
+          ]
+        : []),
       {
         label: "$(remove) 移除股票",
         description: "从已添加的股票中选择移除",
@@ -131,7 +143,7 @@ async function manageStock(state: AppState): Promise<void> {
     {
       label: visible ? "$(eye-closed) 一键隐藏" : "$(eye) 恢复显示",
       description: visible
-        ? "隐藏状态栏并关闭股票面板"
+        ? "隐藏状态栏与股票面板"
         : "恢复状态栏股票信息",
       action: "toggle",
     },
