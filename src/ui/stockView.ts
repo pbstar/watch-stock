@@ -84,6 +84,10 @@ export class StockViewProvider
   update(stocks: Stock[], now: Date): void {
     this.stocks = stocks;
     this.time = formatClock(now);
+    // 展开的股票已从自选移除时收起，避免继续为它拉详情（以配置为准，行情拉取失败不误收）
+    if (this.expanded && !config.getStocks().includes(this.expanded)) {
+      this.expanded = null;
+    }
     if (!this.view?.visible) return;
     this.postStocks();
     void this.pushTabData();

@@ -88,6 +88,12 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
     case "stocks":
       data.stocks = msg.items;
       data.time = msg.time;
+      // 行情为空多为拉取失败，不据此收起展开行
+      const gone =
+        msg.items.length > 0 && !msg.items.some((s) => s.code === state.expanded);
+      if (state.expanded && gone) {
+        setState({ expanded: null });
+      }
       document.body.classList.toggle("colorful", msg.colorful);
       break;
     case "index":
