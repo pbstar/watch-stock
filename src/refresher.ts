@@ -19,6 +19,10 @@ import type { AppState } from "./types";
 
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
+// 配置变更刷新防抖：一次操作连续写多个配置项只刷新一次
+const SCHEDULE_DELAY = 200;
+
+let scheduleTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 上次刷新日期（YYYY-MM-DD），用于跨交易日清理监控缓存
 let lastTradeDate = "";
@@ -97,6 +101,15 @@ function hasMonitoringNeeds(): boolean {
   );
 }
 
+// 防抖刷新，配置变更等非紧急场景使用
+export function scheduleRefresh(state: AppState): void {
+  if (scheduleTimer) clearTimeout(scheduleTimer);
+  scheduleTimer = setTimeout(() => {
+    scheduleTimer = null;
+    void refreshData(state);
+  }, SCHEDULE_DELAY);
+}
+
 // 立即刷新一次并启动定时器
 export function startRefreshTimer(state: AppState): void {
   void refreshData(state);
@@ -117,10 +130,14 @@ export function startRefreshTimer(state: AppState): void {
   }, REFRESH_INTERVAL);
 }
 
-// 停止定时器
+// 停止定时器（含防抖定时器）
 export function stopRefreshTimer(state: AppState): void {
   if (state.refreshTimer) {
     clearInterval(state.refreshTimer);
     state.refreshTimer = null;
+  }
+  if (scheduleTimer) {
+    clearTimeout(scheduleTimer);
+    scheduleTimer = null;
   }
 }

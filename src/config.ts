@@ -89,6 +89,14 @@ export const config = {
   },
 };
 
+// 配置变更是否需要触发刷新：仅闹钟列表变化时不刷新（闹钟增删不影响显示，
+// 下个轮询周期自然检查；也避免 checkAlarms 在刷新中写配置引起连锁刷新）
+export function affectsRefresh(e: vscode.ConfigurationChangeEvent): boolean {
+  return (Object.keys(DEFAULTS) as (keyof ConfigShape)[])
+    .filter((key) => key !== "priceAlarms")
+    .some((key) => e.affectsConfiguration(`${SECTION}.${key}`));
+}
+
 // 状态栏是否应该显示
 export function getIsVisible(state: AppState, now?: Date): boolean {
   if (state.userForced !== null) return state.userForced;

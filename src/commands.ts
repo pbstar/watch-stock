@@ -15,8 +15,8 @@ import {
 import { clearLockTipCache } from "./managers/lockManager";
 import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
-import { config, getIsVisible } from "./config";
-import { refreshData } from "./refresher";
+import { config, getIsVisible, affectsRefresh } from "./config";
+import { refreshData, scheduleRefresh } from "./refresher";
 import type { AppState } from "./types";
 
 // 命令 ID 映射
@@ -37,22 +37,16 @@ export function registerCommands(
   context: vscode.ExtensionContext,
   appState: AppState,
 ): void {
-  const refresh = (): void => {
-    void refreshData(appState);
-  };
-
+  // 增删排序写入 stocks 配置后，统一由 onDidChangeConfiguration 防抖刷新，命令内不再重复刷新
   const subs: vscode.Disposable[] = [
     appState.statusBar,
-    vscode.commands.registerCommand(COMMAND_MAP.add, async () => {
-      if (await addStock()) refresh();
-    }),
+    vscode.commands.registerCommand(COMMAND_MAP.add, () => addStock()),
     vscode.commands.registerCommand(COMMAND_MAP.remove, async () => {
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
         clearLockTipCache(removed);
         clearLargeTipCache(removed);
-        refresh();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
@@ -60,12 +54,9 @@ export function registerCommands(
         await clearAllAlarms();
         clearLockTipCache();
         clearLargeTipCache();
-        refresh();
       }
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.sort, async () => {
-      if (await sortStocks()) refresh();
-    }),
+    vscode.commands.registerCommand(COMMAND_MAP.sort, () => sortStocks()),
     vscode.commands.registerCommand(COMMAND_MAP.alarm, () => manageAlarms()),
     vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
       manageStock(appState),
@@ -73,7 +64,7 @@ export function registerCommands(
     vscode.commands.registerCommand(COMMAND_MAP.toggle, () => {
       appState.userForced = !getIsVisible(appState);
       if (appState.userForced) {
-        refresh();
+        void refreshData(appState);
       } else {
         // 老板键：隐藏时同步关闭股票面板，一次按键清除所有看盘痕迹
         appState.statusBar.setHidden();
@@ -87,7 +78,7 @@ export function registerCommands(
     }),
     vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("watch-stock")) refresh();
+      if (affectsRefresh(e)) scheduleRefresh(appState);
     }),
   ];
   context.subscriptions.push(...subs);
