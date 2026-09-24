@@ -39,7 +39,8 @@ function metricsHtml(q: DetailQuote): string {
 export function createDetailRow(): HTMLTableRowElement {
   const tbody = document.createElement("tbody");
   tbody.innerHTML = `<tr class="detail"><td colspan="7">
-    <div class="metrics"><span class="info">加载中</span><span class="hover"></span></div>
+    <div class="metrics"><span class="info">加载中</span></div>
+    <div class="hover"></div>
     <div class="chart"></div>
   </td></tr>`;
   return tbody.firstElementChild as HTMLTableRowElement;

@@ -133,6 +133,17 @@ tr.row:hover {
   color: var(--fg);
 }
 
+/* 悬停读数独占指标下方一行，固定一行高度：有无读数都不撑宽表格、不挤动图表 */
+.hover {
+  /* width:0 + min-width:100% 使其不参与表格列宽计算，只填满所在单元格 */
+  width: 0;
+  min-width: 100%;
+  height: 1.6em;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--dim);
+}
+
 .chart {
   position: relative;
   width: 100%;
