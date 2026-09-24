@@ -71,6 +71,7 @@
           "type": "webview",
           "id": "watch-stock.view",
           "name": "WATCH-STOCK",
+          "icon": "images/panel.svg",
           "when": "watch-stock.show"
         }
       ]
