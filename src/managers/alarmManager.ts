@@ -89,7 +89,7 @@ async function addAlarm(): Promise<void> {
   );
   if (!selectedCondition) return;
 
-  const stockInfo = stockInfos.find((s) => s.code === selectedStock.code);
+  const stockInfo = infoMap.get(selectedStock.code);
   const currentPrice = stockInfo ? parseFloat(stockInfo.current) : 0;
   const targetPrice = await inputTargetPrice(
     selectedCondition.value,
@@ -135,6 +135,7 @@ export async function manageAlarms(): Promise<void> {
   if (alarms.length > 0) {
     const stockCodes = [...new Set(alarms.map((a) => a.stockCode))];
     const stockInfos = await getStockList(stockCodes);
+    const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
 
     if (options.length > 0) {
       options.push({
@@ -145,7 +146,7 @@ export async function manageAlarms(): Promise<void> {
     }
 
     for (const alarm of alarms) {
-      const info = stockInfos.find((s) => s.code === alarm.stockCode);
+      const info = infoMap.get(alarm.stockCode);
       const price = alarm.targetPrice.toFixed(2);
       options.push({
         label: `${info ? info.name : alarm.stockCode} 价格${CONDITION_TEXT[alarm.condition]} ${price} 时提醒`,

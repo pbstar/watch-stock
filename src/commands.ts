@@ -1,6 +1,5 @@
 // 命令注册
 import * as vscode from "vscode";
-import { StockHomePanel } from "./ui/stockHome";
 import {
   addStock,
   removeStock,
@@ -15,14 +14,14 @@ import {
 import { clearLockTipCache } from "./managers/lockManager";
 import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
-import { config, getIsVisible } from "./config";
-import { refreshData } from "./refresher";
+import { config, getIsVisible, affectsRefresh } from "./config";
+import { refreshData, scheduleRefresh } from "./refresher";
 import type { AppState } from "./types";
 
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {
   add: "watch-stock.addStock",
-  home: "watch-stock.viewHome",
+  home: "watch-stock.view.focus", // VS Code 为视图自动生成的聚焦命令
   remove: "watch-stock.removeStock",
   sort: "watch-stock.sortStocks",
   clear: "watch-stock.clearStocks",
@@ -37,22 +36,16 @@ export function registerCommands(
   context: vscode.ExtensionContext,
   appState: AppState,
 ): void {
-  const refresh = (): void => {
-    void refreshData(appState);
-  };
-
+  // 增删排序写入 stocks 配置后，统一由 onDidChangeConfiguration 防抖刷新，命令内不再重复刷新
   const subs: vscode.Disposable[] = [
-    appState.statusBar.getStatusBarItem()!,
-    vscode.commands.registerCommand(COMMAND_MAP.add, async () => {
-      if (await addStock()) refresh();
-    }),
+    appState.statusBar,
+    vscode.commands.registerCommand(COMMAND_MAP.add, () => addStock()),
     vscode.commands.registerCommand(COMMAND_MAP.remove, async () => {
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
         clearLockTipCache(removed);
         clearLargeTipCache(removed);
-        refresh();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
@@ -60,24 +53,25 @@ export function registerCommands(
         await clearAllAlarms();
         clearLockTipCache();
         clearLargeTipCache();
-        refresh();
       }
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.sort, async () => {
-      if (await sortStocks()) refresh();
-    }),
+    vscode.commands.registerCommand(COMMAND_MAP.sort, () => sortStocks()),
     vscode.commands.registerCommand(COMMAND_MAP.alarm, () => manageAlarms()),
     vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
       manageStock(appState),
     ),
     vscode.commands.registerCommand(COMMAND_MAP.toggle, () => {
       appState.userForced = !getIsVisible(appState);
+      // 老板键同时控制股票面板：隐藏时视图 tab 从面板中消失，恢复时回来但不主动聚焦
+      void vscode.commands.executeCommand(
+        "setContext",
+        "watch-stock.show",
+        appState.userForced,
+      );
       if (appState.userForced) {
-        refresh();
+        void refreshData(appState);
       } else {
-        // 老板键：隐藏时同步关闭股票面板，一次按键清除所有看盘痕迹
         appState.statusBar.setHidden();
-        StockHomePanel.current?.dispose();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
@@ -85,9 +79,8 @@ export function registerCommands(
       await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),
-    vscode.commands.registerCommand(COMMAND_MAP.home, () => StockHomePanel.show()),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("watch-stock")) refresh();
+      if (affectsRefresh(e)) scheduleRefresh(appState);
     }),
   ];
   context.subscriptions.push(...subs);
@@ -98,6 +91,8 @@ async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
   const isSortTypeCustom = config.getStockSortType() === "custom";
   const visible = getIsVisible(state);
+  // 一键隐藏后股票面板不存在，不提供「查看股票」
+  const viewAvailable = state.userForced !== false;
   const options = [
     {
       label: "$(add) 添加股票",
@@ -108,11 +103,15 @@ async function manageStock(state: AppState): Promise<void> {
 
   if (stocks.length > 0) {
     options.push(
-      {
-        label: "$(list-flat) 查看股票",
-        description: "查看股票详细数据",
-        action: "home",
-      },
+      ...(viewAvailable
+        ? [
+            {
+              label: "$(list-flat) 查看股票",
+              description: "在底部面板查看行情、指数与板块",
+              action: "home",
+            },
+          ]
+        : []),
       {
         label: "$(remove) 移除股票",
         description: "从已添加的股票中选择移除",
@@ -144,7 +143,7 @@ async function manageStock(state: AppState): Promise<void> {
     {
       label: visible ? "$(eye-closed) 一键隐藏" : "$(eye) 恢复显示",
       description: visible
-        ? "隐藏状态栏并关闭股票面板"
+        ? "隐藏状态栏与股票面板"
         : "恢复状态栏股票信息",
       action: "toggle",
     },

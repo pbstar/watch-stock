@@ -3,14 +3,14 @@
   "displayName": "摸鱼看盘",
   "icon": "images/logo.jpg",
   "description": "极简股票查看插件，编码的同时轻松掌握股市动态",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "publisher": "pbstar",
   "engines": {
     "vscode": "^1.96.0",
     "node": ">=18"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p src/webview --noEmit",
     "build": "npm run typecheck && node esbuild.config.mjs && vsce package"
   },
   "categories": [
@@ -56,6 +56,26 @@
         "title": "刷新行情数据"
       }
     ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "watch-stock",
+          "title": "看盘",
+          "icon": "images/panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "watch-stock": [
+        {
+          "type": "webview",
+          "id": "watch-stock.view",
+          "name": "看盘",
+          "icon": "images/panel.svg",
+          "when": "watch-stock.show"
+        }
+      ]
+    },
     "configuration": {
       "title": "摸鱼看盘",
       "properties": {
@@ -123,7 +143,7 @@
         "watch-stock.enableColorful": {
           "type": "boolean",
           "default": false,
-          "description": "是否开启彩色视图"
+          "description": "查看股票面板中涨跌以红绿色显示（状态栏不受影响）"
         },
         "watch-stock.stockSortType": {
           "type": "string",

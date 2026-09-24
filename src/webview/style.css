@@ -1,0 +1,212 @@
+/* 终端 / 日志风格：等宽字体、无卡片无边框，默认单色 */
+:root {
+  --fg: var(--vscode-editor-foreground);
+  --dim: var(--vscode-descriptionForeground);
+  --up: var(--fg);
+  --dn: var(--fg);
+  --vol-up: 0.55;
+  --vol-dn: 0.2;
+}
+
+/* 彩色模式跟随终端 ANSI 配色 */
+body.colorful {
+  --up: var(--vscode-terminal-ansiRed);
+  --dn: var(--vscode-terminal-ansiGreen);
+  --vol-up: 0.6;
+  --vol-dn: 0.6;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  color: var(--fg);
+  padding: 0 12px 8px;
+  line-height: 1.6;
+}
+
+.up {
+  color: var(--up);
+}
+
+.dn {
+  color: var(--dn);
+}
+
+.dim {
+  color: var(--dim);
+}
+
+/* 顶栏：tab + 时间 + 刷新 */
+.bar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 4px 0;
+  background: var(--vscode-panel-background, var(--vscode-editor-background));
+}
+
+.tab,
+.refresh {
+  cursor: pointer;
+  color: var(--dim);
+  user-select: none;
+}
+
+.tab:hover,
+.refresh:hover,
+.tab.active {
+  color: var(--fg);
+}
+
+.tab.active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.time {
+  margin-left: auto;
+  color: var(--dim);
+}
+
+/* 行情列表 */
+table {
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+td {
+  padding: 0 16px 0 0;
+}
+
+td.num {
+  text-align: right;
+}
+
+tr.row {
+  cursor: pointer;
+}
+
+tr.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.marker {
+  width: 1.2em;
+  padding: 0;
+  color: var(--dim);
+}
+
+.empty {
+  padding: 8px 0;
+  color: var(--dim);
+}
+
+/* 行内展开详情 */
+.detail > td {
+  padding: 2px 0 8px 1.2em;
+}
+
+/* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑），内容按自身宽度溢出显示 */
+.detail-body {
+  width: 0;
+}
+
+/* 指标一行展示，宽度随内容自适应 */
+.metrics {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  color: var(--dim);
+}
+
+/* 指标容器不占布局，内部各项直接参与 flex 换行 */
+.metrics .info {
+  display: contents;
+}
+
+.metrics b {
+  font-weight: normal;
+  color: var(--fg);
+}
+
+/* 悬停读数独占指标下方一行，固定一行高度：有无读数都不挤动图表 */
+.hover {
+  height: 1.6em;
+  width: max-content;
+  color: var(--dim);
+}
+
+/* 图表宽度由 chart.ts 的 CHART_WIDTH 固定，容器包住 svg 即可 */
+.chart {
+  position: relative;
+  width: max-content;
+  margin-top: 4px;
+  cursor: crosshair;
+}
+
+.chart svg {
+  display: block;
+}
+
+.pre-close {
+  stroke: var(--dim);
+  stroke-opacity: 0.4;
+  stroke-dasharray: 3 3;
+}
+
+.line-up,
+.line-dn {
+  fill: none;
+  stroke-width: 1;
+  stroke-opacity: 0.85;
+}
+
+.line-up {
+  stroke: var(--up);
+}
+
+.line-dn {
+  stroke: var(--dn);
+}
+
+.vol-up {
+  fill: var(--up);
+  fill-opacity: var(--vol-up);
+}
+
+.vol-dn {
+  fill: var(--dn);
+  fill-opacity: var(--vol-dn);
+}
+
+.cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--dim);
+  opacity: 0.5;
+  pointer-events: none;
+  display: none;
+}
+
+/* 板块网格：等宽流式 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15ch, 1fr));
+  gap: 0 16px;
+}
+
+.cell {
+  display: flex;
+  justify-content: space-between;
+  white-space: nowrap;
+}

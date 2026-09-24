@@ -1,20 +1,13 @@
 // 全局类型定义
-import type * as vscode from "vscode";
+import type { StatusBarManager } from "./ui/statusBar";
+import type { StockViewProvider } from "./ui/stockView";
 
 export type PriceType = "up" | "down" | "none" | "err";
 
-// 状态栏对外契约
-export interface StatusBar {
-  initialize(): void;
-  render(stocks: string[], stockInfos: Stock[]): void;
-  setHidden(): void;
-  getStatusBarItem(): vscode.StatusBarItem | null;
-  dispose(): void;
-}
-
 // 应用状态
 export interface AppState {
-  statusBar: StatusBar;
+  statusBar: StatusBarManager;
+  stockView: StockViewProvider;
   userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
   refreshTimer: NodeJS.Timeout | null;
 }
@@ -41,7 +34,7 @@ export interface Stock {
   lockAmount?: number;
 }
 
-// 详情面板的完整行情（腾讯源）
+// 股票面板展开详情的完整行情（腾讯源）
 export interface StockQuote {
   name: string;
   code: string;
@@ -60,32 +53,12 @@ export interface StockQuote {
   totalMarket: number;
   pb: number;
   volumeRatio: string;
-  avgPrice: string;
-  circulatingShares: number;
-  totalShares: number;
   isETF: boolean;
   dateTime: string;
 }
 
-// 详情面板上半部分的概览数据
-export interface StockOverview {
-  name: string;
-  code: string;
-  current: string;
-  changeValue: string;
-  changePercent: string;
-  preClose: string;
-  isETF: boolean;
-  dateTime: string;
-}
-
-// 分时数据点（无数据时各字段为 null）
-export interface MinutePoint {
-  time: string;
-  price: number | null;
-  volume: number | null;
-  amount: number | null;
-}
+// 分时数据点定义在消息协议中，两端共用
+export type { MinutePoint } from "./shared/protocol";
 
 export interface Alarm {
   id: string;
@@ -108,5 +81,4 @@ export interface IndustryConfig {
 // sendMsg 选项
 export interface SendMsgOptions {
   type?: "info" | "warning" | "error"; // 消息类型
-  showConfirm?: boolean; // 是否显示确认按钮
 }

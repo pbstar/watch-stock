@@ -1,9 +1,9 @@
 // 摸鱼看盘 - VS Code 入口
 import * as vscode from "vscode";
 import { registerCommands } from "./commands";
-import { startRefreshTimer, stopRefreshTimer } from "./refresher";
+import { refreshData, startRefreshTimer, stopRefreshTimer } from "./refresher";
 import { StatusBarManager } from "./ui/statusBar";
-import { StockHomePanel } from "./ui/stockHome";
+import { StockViewProvider } from "./ui/stockView";
 import { disposeRateLimit } from "./utils/msg";
 import type { AppState } from "./types";
 
@@ -11,22 +11,32 @@ import type { AppState } from "./types";
 let appState: AppState | null = null;
 
 export function activate(context: vscode.ExtensionContext): void {
-  appState = {
+  const state: AppState = {
     statusBar: new StatusBarManager(),
+    stockView: new StockViewProvider(context.extensionUri, () =>
+      refreshData(state),
+    ),
     userForced: null,
     refreshTimer: null,
   };
-  appState.statusBar.initialize();
-  registerCommands(context, appState);
-  startRefreshTimer(appState);
+  appState = state;
+  state.statusBar.initialize();
+  context.subscriptions.push(
+    state.stockView,
+    vscode.window.registerWebviewViewProvider(
+      StockViewProvider.viewId,
+      state.stockView,
+    ),
+  );
+  // 视图 when 条件为 watch-stock.show：激活前视图不存在，避免启动时恢复面板直接弹出行情
+  void vscode.commands.executeCommand("setContext", "watch-stock.show", true);
+  registerCommands(context, state);
+  startRefreshTimer(state);
 }
 
 export function deactivate(): void {
-  if (appState) {
-    stopRefreshTimer(appState);
-    appState.statusBar.dispose();
-  }
-  StockHomePanel.current?.dispose();
+  // 状态栏与股票面板已注册到 context.subscriptions，由 VS Code 统一释放
+  if (appState) stopRefreshTimer(appState);
   disposeRateLimit();
   appState = null;
 }
