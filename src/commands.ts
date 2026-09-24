@@ -42,7 +42,7 @@ export function registerCommands(
   };
 
   const subs: vscode.Disposable[] = [
-    appState.statusBar.getStatusBarItem()!,
+    appState.statusBar,
     vscode.commands.registerCommand(COMMAND_MAP.add, async () => {
       if (await addStock()) refresh();
     }),

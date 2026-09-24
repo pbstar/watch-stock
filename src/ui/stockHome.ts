@@ -7,12 +7,12 @@ import {
   getStockQuoteList,
   getStockList,
 } from "../services/stockService";
+import { config } from "../config";
 import {
-  config,
   INDEX_CODES,
   INDUSTRY_CODES,
   INDUSTRY_CODE_LIST,
-} from "../config";
+} from "../constants";
 import type { Stock, StockQuote, StockOverview, MinutePoint } from "../types";
 import stockHomeHtml from "../webview/stockHome.html";
 import stockOverviewHtml from "../webview/stockOverview.html";

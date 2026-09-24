@@ -74,9 +74,6 @@ function parseFullQuote(fields: string[], code: string): StockQuote | null {
     totalMarket: safeNumber(fields[45]) * 100000000,
     pb: safeNumber(fields[46]),
     volumeRatio: safeNumber(fields[49]).toFixed(2),
-    avgPrice: safeNumber(fields[51]).toFixed(dec),
-    circulatingShares: safeNumber(fields[72]),
-    totalShares: safeNumber(fields[73]),
     isETF,
     dateTime,
   };

@@ -22,10 +22,8 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
-  if (appState) {
-    stopRefreshTimer(appState);
-    appState.statusBar.dispose();
-  }
+  // 状态栏已注册到 context.subscriptions，由 VS Code 统一释放
+  if (appState) stopRefreshTimer(appState);
   StockHomePanel.current?.dispose();
   disposeRateLimit();
   appState = null;

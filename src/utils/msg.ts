@@ -23,17 +23,16 @@ function formatTime(): string {
 function showVscodeMessage(
   msg: string,
   type: NonNullable<SendMsgOptions["type"]> = "info",
-  buttons: string[] = [],
 ): void {
   switch (type) {
     case "warning":
-      vscode.window.showWarningMessage(msg, ...buttons);
+      vscode.window.showWarningMessage(msg);
       break;
     case "error":
-      vscode.window.showErrorMessage(msg, ...buttons);
+      vscode.window.showErrorMessage(msg);
       break;
     default:
-      vscode.window.showInformationMessage(msg, ...buttons);
+      vscode.window.showInformationMessage(msg);
       break;
   }
 }
@@ -48,9 +47,7 @@ function sendPendingMessages(): void {
 
 // 发送普通消息
 export function sendMsg(text: string, options: SendMsgOptions = {}): void {
-  const { type = "info", showConfirm = false } = options;
-  const newText = `[${formatTime()}] ${text}`;
-  showVscodeMessage(newText, type, showConfirm ? ["知道了"] : []);
+  showVscodeMessage(`[${formatTime()}] ${text}`, options.type);
 }
 
 // 清除限流定时器，扩展停用时调用，防止泄漏

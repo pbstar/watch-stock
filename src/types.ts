@@ -1,20 +1,11 @@
 // 全局类型定义
-import type * as vscode from "vscode";
+import type { StatusBarManager } from "./ui/statusBar";
 
 export type PriceType = "up" | "down" | "none" | "err";
 
-// 状态栏对外契约
-export interface StatusBar {
-  initialize(): void;
-  render(stocks: string[], stockInfos: Stock[]): void;
-  setHidden(): void;
-  getStatusBarItem(): vscode.StatusBarItem | null;
-  dispose(): void;
-}
-
 // 应用状态
 export interface AppState {
-  statusBar: StatusBar;
+  statusBar: StatusBarManager;
   userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
   refreshTimer: NodeJS.Timeout | null;
 }
@@ -60,9 +51,6 @@ export interface StockQuote {
   totalMarket: number;
   pb: number;
   volumeRatio: string;
-  avgPrice: string;
-  circulatingShares: number;
-  totalShares: number;
   isETF: boolean;
   dateTime: string;
 }
@@ -108,5 +96,4 @@ export interface IndustryConfig {
 // sendMsg 选项
 export interface SendMsgOptions {
   type?: "info" | "warning" | "error"; // 消息类型
-  showConfirm?: boolean; // 是否显示确认按钮
 }
