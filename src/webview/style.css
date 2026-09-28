@@ -6,8 +6,8 @@
   --dn: var(--fg);
   --vol-up: 0.55;
   --vol-dn: 0.2;
-  /* 分时图固定宽度，不随面板宽度变化 */
-  --chart-w: 500px;
+  /* 行情行与详情的固定宽度，分时图与行情行等宽，都不随面板宽度变化 */
+  --list-w: 500px;
 }
 
 /* 彩色模式跟随终端 ANSI 配色 */
@@ -78,10 +78,11 @@ body {
   color: var(--dim);
 }
 
-/* 行情列表 */
+/* 行情列表：固定宽度，展开详情不会改变列宽 */
 table {
   border-collapse: collapse;
   white-space: nowrap;
+  width: var(--list-w);
 }
 
 td {
@@ -116,18 +117,7 @@ tr.row:hover {
   padding: 2px 0 8px 1.2em;
 }
 
-/* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑）；
-   --detail-w 由 main.ts 写入面板可用宽度，指标与读数据此换行，不产生横向滚动条 */
-.detail-body {
-  width: 0;
-}
-
-.detail-body > .metrics,
-.detail-body > .hover {
-  width: var(--detail-w, 100%);
-}
-
-/* 指标放得下就一行，超宽自动换行 */
+/* 指标放得下就一行，超宽在详情区内换行 */
 .metrics {
   display: flex;
   flex-wrap: wrap;
@@ -153,10 +143,9 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 分时图：固定宽度（--chart-w），不随面板宽度变化 */
+/* 分时图：与行情行等宽（父级详情区宽度） */
 .chart {
   position: relative;
-  width: var(--chart-w);
   margin-top: 4px;
   cursor: crosshair;
 }

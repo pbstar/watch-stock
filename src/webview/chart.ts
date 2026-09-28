@@ -85,7 +85,7 @@ export function renderChart(
   dec: number,
   onHover: (text: string | null) => void,
 ): void {
-  // 宽度取自容器（固定宽度，见 style.css 的 --chart-w）
+  // 宽度取自容器（与行情行同为 style.css 的 --list-w）
   const width = el.clientWidth;
   if (!data.some((d) => d.price != null) || !preClose || width < 10) {
     el.innerHTML = '<div class="dim">暂无分时</div>';
