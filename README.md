@@ -94,10 +94,17 @@
 # 克隆项目
 git clone https://github.com/pbstar/watch-stock.git
 cd watch-stock
+# 安装依赖
+npm install
 # 使用 VS Code 打开项目
-# 按 F5 启动调试模式
+# 按 F5（macOS 为 Fn+F5）启动调试
 # 贡献代码请先通过issue沟通，避免不必要的麻烦
 ```
+
+- F5 会新开一个「扩展开发主机」窗口，扩展在其中运行；按 `Cmd/Ctrl+J` 打开底部面板的「看盘」标签即可看到效果
+- 启动前自动执行 `npm run dev`（类型检查 + 构建，不打包 vsix），也可单独执行该命令手动构建
+- 改完代码后：webview（`src/webview/`）在开发主机窗口按 `Cmd/Ctrl+R` 重载窗口；扩展主体（`src/`）点调试工具条的重启按钮
+- 调试 webview 的界面与样式：在开发主机窗口执行「开发者: 打开 Webview 开发者工具」
 
 ### 打包发布
 
