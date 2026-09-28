@@ -114,16 +114,21 @@ tr.row:hover {
   padding: 2px 0 8px 1.2em;
 }
 
-/* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑），内容按自身宽度溢出显示 */
+/* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑）；
+   --detail-w 由 main.ts 写入面板可用宽度，详情内容据此换行，不产生横向滚动条 */
 .detail-body {
   width: 0;
 }
 
-/* 指标一行展示，宽度随内容自适应 */
+.detail-body > * {
+  width: var(--detail-w, 100%);
+}
+
+/* 指标放得下就一行，超宽自动换行 */
 .metrics {
   display: flex;
-  gap: 16px;
-  width: max-content;
+  flex-wrap: wrap;
+  gap: 0 16px;
   color: var(--dim);
 }
 
@@ -140,14 +145,15 @@ tr.row:hover {
 /* 悬停读数独占指标下方一行，固定一行高度：有无读数都不挤动图表 */
 .hover {
   height: 1.6em;
-  width: max-content;
+  overflow: hidden;
+  white-space: nowrap;
   color: var(--dim);
 }
 
-/* 图表宽度由 chart.ts 的 CHART_WIDTH 固定，容器包住 svg 即可 */
+/* 分时图：宽度跟随详情区，最宽 500px（约为此前自适应宽度的 1.5 倍） */
 .chart {
   position: relative;
-  width: max-content;
+  max-width: 500px;
   margin-top: 4px;
   cursor: crosshair;
 }

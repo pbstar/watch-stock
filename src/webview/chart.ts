@@ -2,8 +2,6 @@
 import type { MinutePoint } from "../shared/protocol";
 import { fmtVol } from "./format";
 
-// 图表固定宽度（约为此前随表格自适应宽度的 1.5 倍），不随面板或表格宽度变化
-const CHART_WIDTH = 500;
 const PRICE_H = 64;
 const VOL_H = 24;
 const GAP = 4;
@@ -87,8 +85,9 @@ export function renderChart(
   dec: number,
   onHover: (text: string | null) => void,
 ): void {
-  const width = CHART_WIDTH;
-  if (!data.some((d) => d.price != null) || !preClose) {
+  // 宽度取自容器（详情区宽度，最宽 500px，见 style.css 的 .chart）
+  const width = el.clientWidth;
+  if (!data.some((d) => d.price != null) || !preClose || width < 10) {
     el.innerHTML = '<div class="dim">暂无分时</div>';
     el.onmousemove = el.onmouseleave = null;
     hoverX.delete(el);

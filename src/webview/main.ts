@@ -34,6 +34,16 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
+// 详情区按面板可用宽度定宽（表格列仍保持紧凑，详情不参与列宽计算）：
+// 指标超宽换行、图表取其中较窄的一侧，都不会撑出横向滚动条
+function applyDetailWidth(): void {
+  const body = detailRow?.querySelector<HTMLElement>(".detail-body");
+  if (!body) return;
+  const pad = parseFloat(getComputedStyle(body.parentElement!).paddingLeft) || 0;
+  const width = Math.max(0, content.clientWidth - pad);
+  body.style.setProperty("--detail-w", `${width}px`);
+}
+
 // 展开行的详情行：展开期间常驻，行情刷新只搬位置不重建
 let detailRow: HTMLTableRowElement | null = state.expanded ? createDetailRow() : null;
 
@@ -47,6 +57,7 @@ function render(): void {
   else {
     const attached = detailRow?.isConnected;
     renderList(content, data.stocks, state.expanded, true, detailRow);
+    applyDetailWidth();
     // 详情行未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
     if (!attached) drawChart();
   }
@@ -56,6 +67,7 @@ function render(): void {
 function renderDetail(): void {
   if (!detailRow) return;
   updateDetailMetrics(detailRow, data.detail);
+  applyDetailWidth();
   drawChart();
 }
 
@@ -128,6 +140,16 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
       return;
   }
   render();
+});
+
+// 面板宽度变化时重新定宽并重画（详情区宽度、图表宽度都随之变化）
+let raf = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    applyDetailWidth();
+    drawChart();
+  });
 });
 
 vscode.postMessage({ type: "ready", ...state });
