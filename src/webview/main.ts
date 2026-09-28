@@ -34,8 +34,8 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
-// 详情区宽度 = 面板可用宽度，行情行与分时图都按这个宽度铺满，
-// 指标放不下时换行，不会撑出横向滚动条
+// 指标与悬停读数按面板可用宽度排版（放不下时换行，不撑出横向滚动条）；
+// 分时图宽度固定，由 style.css 的 --chart-w 决定
 function applyDetailWidth(): void {
   const body = detailRow?.querySelector<HTMLElement>(".detail-body");
   if (!body) return;
@@ -142,14 +142,11 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
   render();
 });
 
-// 面板宽度变化时重新定宽并重画（详情区宽度、图表宽度都随之变化）
+// 面板宽度变化时重新定宽（分时图宽度固定，无需重画）
 let raf = 0;
 window.addEventListener("resize", () => {
   cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(() => {
-    applyDetailWidth();
-    drawChart();
-  });
+  raf = requestAnimationFrame(applyDetailWidth);
 });
 
 vscode.postMessage({ type: "ready", ...state });

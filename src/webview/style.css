@@ -6,6 +6,8 @@
   --dn: var(--fg);
   --vol-up: 0.55;
   --vol-dn: 0.2;
+  /* 分时图固定宽度，不随面板宽度变化 */
+  --chart-w: 500px;
 }
 
 /* 彩色模式跟随终端 ANSI 配色 */
@@ -115,12 +117,13 @@ tr.row:hover {
 }
 
 /* 宽度为 0 使详情不参与表格列宽计算（行情行保持紧凑）；
-   --detail-w 由 main.ts 写入面板可用宽度，详情内容据此换行，不产生横向滚动条 */
+   --detail-w 由 main.ts 写入面板可用宽度，指标与读数据此换行，不产生横向滚动条 */
 .detail-body {
   width: 0;
 }
 
-.detail-body > * {
+.detail-body > .metrics,
+.detail-body > .hover {
   width: var(--detail-w, 100%);
 }
 
@@ -150,9 +153,10 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 分时图：与行情行同宽（详情区宽度），不再额外限宽 */
+/* 分时图：固定宽度（--chart-w），不随面板宽度变化 */
 .chart {
   position: relative;
+  width: var(--chart-w);
   margin-top: 4px;
   cursor: crosshair;
 }
