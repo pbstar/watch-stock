@@ -102,30 +102,27 @@ async function manageStock(state: AppState): Promise<void> {
   ];
 
   if (stocks.length > 0) {
+    // 一键隐藏后股票面板不存在，不提供「查看股票」
+    if (viewAvailable) {
+      options.push({
+        label: "$(list-flat) 查看股票",
+        description: "在底部面板查看行情、指数与板块",
+        action: "home",
+      });
+    }
+    options.push({
+      label: "$(remove) 移除股票",
+      description: "从已添加的股票中选择移除",
+      action: "remove",
+    });
+    if (isSortTypeCustom) {
+      options.push({
+        label: "$(arrow-swap) 排序股票",
+        description: "调整股票的显示顺序",
+        action: "sort",
+      });
+    }
     options.push(
-      ...(viewAvailable
-        ? [
-            {
-              label: "$(list-flat) 查看股票",
-              description: "在底部面板查看行情、指数与板块",
-              action: "home",
-            },
-          ]
-        : []),
-      {
-        label: "$(remove) 移除股票",
-        description: "从已添加的股票中选择移除",
-        action: "remove",
-      },
-      ...(isSortTypeCustom
-        ? [
-            {
-              label: "$(arrow-swap) 排序股票",
-              description: "调整股票的显示顺序",
-              action: "sort",
-            },
-          ]
-        : []),
       {
         label: "$(trash) 清空股票",
         description: "清空所有已添加的股票",

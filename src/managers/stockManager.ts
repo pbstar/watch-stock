@@ -5,6 +5,31 @@ import { isValidStockCode, isFundCode } from "../utils/stock";
 import { searchStockCode } from "../services/stockSearch";
 import { getStockList } from "../services/stockService";
 import { config } from "../config";
+import type { Stock } from "../types";
+
+// 快速选择项：附带原始下标、code 与行情，便于调用点定制文案与定位
+export interface StockOption extends vscode.QuickPickItem {
+  code: string;
+  index: number;
+  info?: Stock;
+}
+
+// 拉取行情并构造「名称(代码)」选项，管理股票与闹钟入口共用；
+// decorate 用于各入口追加序号、说明等自身差异
+export async function buildStockOptions(
+  codes: string[],
+  decorate: (option: StockOption, index: number) => StockOption = (o) => o,
+): Promise<StockOption[]> {
+  const stockInfos = await getStockList(codes);
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
+  return codes.map((code, index) => {
+    const info = infoMap.get(code);
+    return decorate(
+      { label: info ? `${info.name}(${info.code})` : code, code, index, info },
+      index,
+    );
+  });
+}
 
 // 添加股票，成功返回 true
 export async function addStock(): Promise<boolean> {
@@ -69,16 +94,10 @@ export async function removeStock(): Promise<string | null> {
     return null;
   }
 
-  const stockInfos = await getStockList(stocks);
-  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
-  const options = stocks.map((code) => {
-    const info = infoMap.get(code);
-    return {
-      label: info ? `${info.name}(${info.code})` : code,
-      description: "点击移除",
-      code,
-    };
-  });
+  const options = await buildStockOptions(stocks, (o) => ({
+    ...o,
+    description: "点击移除",
+  }));
 
   const selected = await vscode.window.showQuickPick(options, {
     placeHolder: "选择要移除的股票",
@@ -121,23 +140,18 @@ export async function sortStocks(): Promise<boolean> {
     return false;
   }
 
-  const stockInfos = await getStockList(stocks);
-  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
-  const currentOrder = stocks.map((code, index) => {
-    const info = infoMap.get(code);
-    return {
-      label: `${index + 1}. ${info ? `${info.name}(${info.code})` : code}`,
-      description: "点击选择要移动的股票",
-      code,
-      index,
-    };
-  });
+  const currentOrder = await buildStockOptions(stocks, (o, index) => ({
+    ...o,
+    label: `${index + 1}. ${o.label}`,
+    description: "点击选择要移动的股票",
+  }));
 
   const selectedStock = await vscode.window.showQuickPick(currentOrder, {
     placeHolder: "选择要移动位置的股票",
   });
   if (!selectedStock) return false;
 
+  // targetIndex 用原始下标，表示「插到该股票所在位置」
   const targetOptions = currentOrder
     .filter((item) => item.code !== selectedStock.code)
     .map((item) => ({
@@ -151,19 +165,16 @@ export async function sortStocks(): Promise<boolean> {
   });
   if (!targetPosition) return false;
 
-  let toIndex = targetPosition.targetIndex;
   const fromIndex = selectedStock.index;
+  // 移除后再插入：向后移动时目标索引需前移一位
+  let toIndex = targetPosition.targetIndex;
   if (toIndex > fromIndex) toIndex--;
-
-  // 移除后再插入目标位置（向后移动时目标索引前移一位已修正）
   const newStocks = [...stocks];
   const [moved] = newStocks.splice(fromIndex, 1);
   newStocks.splice(toIndex, 0, moved);
   await config.saveStocks(newStocks);
 
-  const info = infoMap.get(selectedStock.code);
-  const stockName = info ? info.name : selectedStock.code;
-  sendMsg(`已调整 "${stockName}" 的显示顺序`);
+  sendMsg(`已调整 "${selectedStock.info?.name ?? selectedStock.code}" 的显示顺序`);
 
   return true;
 }

@@ -8,6 +8,7 @@ import {
   type DetailData,
 } from "./list";
 import { renderSector } from "./sector";
+import { decOf } from "../shared/format";
 
 interface ViewState {
   tab: Tab;
@@ -65,7 +66,7 @@ function drawChart(): void {
   if (!detailEl?.isConnected || !data.detail || !quote) return;
   const hover = detailEl.querySelector<HTMLElement>(".hover")!;
   const chart = detailEl.querySelector<HTMLElement>(".chart")!;
-  renderChart(chart, data.detail.minute, Number(quote.close), quote.isETF ? 3 : 2, (text) => {
+  renderChart(chart, data.detail.minute, Number(quote.close), decOf(quote.isETF), (text) => {
     hover.textContent = text ?? "";
   });
 }

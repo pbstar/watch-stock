@@ -24,7 +24,6 @@ export interface Stock {
   amount: number;
   isETF: boolean;
   dateTime: string;
-  close?: number;
   buy1Volume?: number;
   sell1Volume?: number;
   buy1Price?: number;
@@ -49,9 +48,7 @@ export interface StockQuote {
   amount: number;
   turnoverRatio: string;
   pe: number;
-  circulationMarket: number;
   totalMarket: number;
-  pb: number;
   volumeRatio: string;
   isETF: boolean;
   dateTime: string;

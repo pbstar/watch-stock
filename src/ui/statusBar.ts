@@ -1,29 +1,15 @@
 // 状态栏渲染
 import * as vscode from "vscode";
 import { config } from "../config";
-import { formatAmount, getDisplayName } from "../utils/stock";
-import type { PriceType, Stock } from "../types";
-
-// 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
-function priceDirection(changeValue: string): number {
-  const v = parseFloat(changeValue);
-  if (isNaN(v)) return 0;
-  if (v > 0) return 1;
-  if (v < 0) return -1;
-  return 0;
-}
+import { getDisplayName, isLockState } from "../utils/stock";
+import { formatAmount } from "../shared/format";
+import type { Stock } from "../types";
 
 // 涨跌符号
 function getPriceSymbol(changeValue: string): string {
-  const d = priceDirection(changeValue);
-  if (d > 0) return "↗";
-  if (d < 0) return "↘";
-  return "";
-}
-
-// 判断是否处于涨跌停状态
-function isLockState(priceType?: PriceType): boolean {
-  return priceType === "up" || priceType === "down";
+  const v = parseFloat(changeValue);
+  if (isNaN(v) || v === 0) return "";
+  return v > 0 ? "↗" : "↘";
 }
 
 export class StatusBarManager implements vscode.Disposable {

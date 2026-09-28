@@ -57,8 +57,11 @@ async function doRefreshData(
   const stocks = config.getStocks();
   const isMorningAuction = isMorningAuctionTime(now);
   const isAfternoonAuction = isAfternoonAuctionTime(now);
+  // 早盘集合竞价新浪源无数据，切腾讯简版源
   const stockInfos =
-    stocks.length > 0 ? await getStockList(stocks, !isMorningAuction) : [];
+    stocks.length > 0
+      ? await getStockList(stocks, isMorningAuction ? "tencent" : "sina")
+      : [];
 
   for (const stock of stockInfos) {
     const lockInfo = calculateLockInfo(stock);

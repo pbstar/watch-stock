@@ -7,7 +7,6 @@ export interface MinutePoint {
   time: string;
   price: number | null;
   volume: number | null;
-  amount: number | null;
 }
 
 // 列表行（自选 / 指数），名称与封单文案由扩展端处理好

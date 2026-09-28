@@ -1,25 +1,8 @@
-// webview 端格式化工具
+// webview 端格式化工具（量级格式化与小数位规则见 shared/format，两端共用）
 
 export function fmtNum(n: number | string | null | undefined, d = 2): string {
   const v = Number(n);
   return n == null || n === "" || isNaN(v) ? "-" : v.toFixed(d);
-}
-
-// 成交量（手）
-export function fmtVol(n: number | null | undefined): string {
-  if (n == null || isNaN(n)) return "-";
-  if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
-  if (n >= 1e4) return (n / 1e4).toFixed(1) + "万";
-  return String(Math.round(n));
-}
-
-// 金额（元）
-export function fmtMoney(n: number | null | undefined): string {
-  if (n == null || isNaN(n) || n === 0) return "-";
-  if (n >= 1e12) return (n / 1e12).toFixed(2) + "万亿";
-  if (n >= 1e8) return (n / 1e8).toFixed(1) + "亿";
-  if (n >= 1e4) return (n / 1e4).toFixed(0) + "万";
-  return n.toFixed(0);
 }
 
 // 涨跌方向样式类

@@ -1,6 +1,7 @@
 // 大单异动监控：基于最近多次刷新的成交额变化
 import { sendRateLimitMsg } from "../utils/msg";
-import { formatAmount } from "../utils/stock";
+import { formatAmount } from "../shared/format";
+import { clearCache } from "../utils/cache";
 import type { Stock } from "../types";
 
 // 单次行情快照，仅保留大单分析所需字段
@@ -24,9 +25,8 @@ const BASE_AMOUNT = 1000000; // 区间成交额绝对阈值：100万
 const LARGE_RATIO = 2; // 放量倍数
 const PRICE_MOVE_RATIO = 0.001; // 价格干扰
 
-// 根据快照历史生成大单异动通知文案
+// 根据快照历史生成大单异动通知文案（history 已由调用方保证长度达标）
 function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
-  if (history.length < HISTORY_SIZE) return "";
   const first = history[0];
   const prev = history[HISTORY_SIZE - 2];
   const cur = history[HISTORY_SIZE - 1];
@@ -62,11 +62,7 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
 
 // 清除指定股票的大单缓存，不传 code 则清空全部
 export function clearLargeTipCache(code?: string): void {
-  if (code) {
-    largeTipCache.delete(code);
-  } else {
-    largeTipCache.clear();
-  }
+  clearCache(largeTipCache, code);
 }
 
 // 检查并通知大单异动

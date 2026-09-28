@@ -1,6 +1,7 @@
 // 自选 / 指数行渲染 + 行内展开详情
 import type { DetailQuote, MinutePoint, RowItem } from "../shared/protocol";
-import { dirClass, esc, fmtMoney, fmtNum, fmtVol, signed } from "./format";
+import { decOf, formatMoney, formatVolume } from "../shared/format";
+import { dirClass, esc, fmtNum, signed } from "./format";
 
 export interface DetailData {
   quote: DetailQuote | null;
@@ -19,16 +20,17 @@ function cellsHtml(s: RowItem, marker: string): string {
 }
 
 function metricsHtml(q: DetailQuote): string {
+  const d = decOf(q.isETF);
   const items: [string, string][] = [
-    ["今开", fmtNum(q.open, q.isETF ? 3 : 2)],
-    ["最高", fmtNum(q.high, q.isETF ? 3 : 2)],
-    ["最低", fmtNum(q.low, q.isETF ? 3 : 2)],
-    ["量", fmtVol(q.volume)],
-    ["额", fmtMoney(q.amount)],
+    ["今开", fmtNum(q.open, d)],
+    ["最高", fmtNum(q.high, d)],
+    ["最低", fmtNum(q.low, d)],
+    ["量", formatVolume(q.volume)],
+    ["额", formatMoney(q.amount)],
     ["换手", q.turnoverRatio ? `${fmtNum(q.turnoverRatio)}%` : "-"],
     ["量比", fmtNum(q.volumeRatio)],
     ["市盈", q.pe ? fmtNum(q.pe) : "-"],
-    ["市值", fmtMoney(q.totalMarket)],
+    ["市值", formatMoney(q.totalMarket)],
   ];
   return items.map(([k, v]) => `<span>${k} <b>${v}</b></span>`).join("");
 }
@@ -68,7 +70,7 @@ export function renderList(
     el.innerHTML = '<div class="empty">暂无数据</div>';
     return;
   }
-  const rows = [...el.querySelectorAll<HTMLElement>(".row")];
+  let rows = [...el.querySelectorAll<HTMLElement>(".row")];
   const sameOrder =
     rows.length === items.length &&
     rows.every((r, i) => r.dataset.code === items[i].code);
@@ -79,16 +81,19 @@ export function renderList(
       r.innerHTML = cells(items[i]);
     });
   } else {
+    // 整体重建会连同详情块一起销毁，需重新取引用
     el.innerHTML = items
       .map((s) => `<div class="row" data-code="${esc(s.code)}">${cells(s)}</div>`)
       .join("");
+    rows = [...el.querySelectorAll<HTMLElement>(".row")];
   }
-  placeDetail(el, expandable ? expanded : null, detailEl);
+  placeDetail(el, rows, expandable ? expanded : null, detailEl);
 }
 
 // 移除过期详情块，并确保当前详情块紧跟展开行（已在位时不移动，避免打断悬停）
 function placeDetail(
   el: HTMLElement,
+  rows: HTMLElement[],
   expanded: string | null,
   detailEl: HTMLElement | null,
 ): void {
@@ -97,8 +102,6 @@ function placeDetail(
     detailEl?.remove();
     return;
   }
-  const row = [...el.querySelectorAll<HTMLElement>(".row")].find(
-    (r) => r.dataset.code === expanded,
-  );
+  const row = rows.find((r) => r.dataset.code === expanded);
   if (row && row.nextElementSibling !== detailEl) row.after(detailEl);
 }

@@ -12,7 +12,8 @@ import {
   getStockMinute,
   getStockQuoteList,
 } from "../services/stockService";
-import { formatAmount } from "../utils/stock";
+import { isLockState } from "../utils/stock";
+import { formatAmount } from "../shared/format";
 import { formatClock } from "../utils/time";
 import type { Stock, MinutePoint } from "../types";
 import type { RowItem, Tab, ToHost, ToView } from "../shared/protocol";
@@ -30,9 +31,7 @@ interface MinuteCacheEntry {
 
 // 行情 → 列表行（面板空间充足，始终显示全称），封单仅涨跌停时显示
 function toRow(stock: Stock): RowItem {
-  const locked =
-    (stock.priceType === "up" || stock.priceType === "down") &&
-    (stock.lockAmount ?? 0) > 0;
+  const locked = isLockState(stock.priceType) && (stock.lockAmount ?? 0) > 0;
   return {
     code: stock.code,
     name: stock.name,
