@@ -6,7 +6,7 @@
   --dn: var(--fg);
   --vol-up: 0.55;
   --vol-dn: 0.2;
-  /* 行情行与分时图的固定宽度，两者等宽，都不随面板宽度变化 */
+  /* 行情行与分时图的固定宽度，都不随面板宽度变化；分时图右对齐行情行，故再减去详情区缩进 */
   --list-w: 500px;
   /* 展开标记列宽与列间距：详情区缩进依赖两者对齐到名称列 */
   --marker-w: 1.2em;
@@ -148,10 +148,10 @@ body {
   color: var(--dim);
 }
 
-/* 分时图：固定宽度，与行情行等宽 */
+/* 分时图：位于详情区内，左缘被详情区缩进内边距右推，收窄宽度使右端与行情行对齐 */
 .chart {
   position: relative;
-  width: var(--list-w);
+  width: calc(var(--list-w) - var(--marker-w) - var(--row-gap));
   margin-top: 4px;
   cursor: crosshair;
 }
