@@ -2,7 +2,7 @@
 import type { RowItem, SectorItem, Tab, ToHost, ToView } from "../shared/protocol";
 import { renderChart } from "./chart";
 import {
-  createDetailRow,
+  createDetail,
   renderList,
   updateDetailMetrics,
   type DetailData,
@@ -34,8 +34,8 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
-// 展开行的详情行：展开期间常驻，行情刷新只搬位置不重建
-let detailRow: HTMLTableRowElement | null = state.expanded ? createDetailRow() : null;
+// 展开行的详情块：展开期间常驻，行情刷新只搬位置不重建
+let detailEl: HTMLElement | null = state.expanded ? createDetail() : null;
 
 function render(): void {
   document.querySelectorAll<HTMLElement>(".tab").forEach((el) => {
@@ -45,26 +45,26 @@ function render(): void {
   if (state.tab === "sector") renderSector(content, data.sector);
   else if (state.tab === "index") renderList(content, data.index, null, false);
   else {
-    const attached = detailRow?.isConnected;
-    renderList(content, data.stocks, state.expanded, true, detailRow);
-    // 详情行未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
+    const attached = detailEl?.isConnected;
+    renderList(content, data.stocks, state.expanded, true, detailEl);
+    // 详情块未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
     if (!attached) drawChart();
   }
 }
 
 // 详情数据到达：只更新指标文字并重画图表，列表与悬停读数不受影响
 function renderDetail(): void {
-  if (!detailRow) return;
-  updateDetailMetrics(detailRow, data.detail);
+  if (!detailEl) return;
+  updateDetailMetrics(detailEl, data.detail);
   drawChart();
 }
 
 // 展开行存在且分时已到达时画图
 function drawChart(): void {
   const quote = data.detail?.quote;
-  if (!detailRow?.isConnected || !data.detail || !quote) return;
-  const hover = detailRow.querySelector<HTMLElement>(".hover")!;
-  const chart = detailRow.querySelector<HTMLElement>(".chart")!;
+  if (!detailEl?.isConnected || !data.detail || !quote) return;
+  const hover = detailEl.querySelector<HTMLElement>(".hover")!;
+  const chart = detailEl.querySelector<HTMLElement>(".chart")!;
   renderChart(chart, data.detail.minute, Number(quote.close), quote.isETF ? 3 : 2, (text) => {
     hover.textContent = text ?? "";
   });
@@ -90,12 +90,12 @@ $(".bar").addEventListener("click", (e) => {
 
 content.addEventListener("click", (e) => {
   if (state.tab !== "mine") return;
-  const row = (e.target as HTMLElement).closest<HTMLElement>("tr.row");
+  const row = (e.target as HTMLElement).closest<HTMLElement>(".row");
   if (!row) return;
   const code = row.dataset.code === state.expanded ? null : row.dataset.code!;
   setState({ expanded: code });
   data.detail = undefined;
-  detailRow = code ? createDetailRow() : null;
+  detailEl = code ? createDetail() : null;
   vscode.postMessage({ type: "expand", code });
   render();
 });
@@ -111,7 +111,7 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
         msg.items.length > 0 && !msg.items.some((s) => s.code === state.expanded);
       if (state.expanded && gone) {
         setState({ expanded: null });
-        detailRow = null;
+        detailEl = null;
       }
       document.body.classList.toggle("colorful", msg.colorful);
       break;

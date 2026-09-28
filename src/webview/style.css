@@ -6,8 +6,11 @@
   --dn: var(--fg);
   --vol-up: 0.55;
   --vol-dn: 0.2;
-  /* 行情行与详情的固定宽度，分时图与行情行等宽，都不随面板宽度变化 */
+  /* 行情行与分时图的固定宽度，两者等宽，都不随面板宽度变化 */
   --list-w: 500px;
+  /* 展开标记列宽与列间距：详情区缩进依赖两者对齐到名称列 */
+  --marker-w: 1.2em;
+  --row-gap: 12px;
 }
 
 /* 彩色模式跟随终端 ANSI 配色 */
@@ -78,32 +81,34 @@ body {
   color: var(--dim);
 }
 
-/* 行情列表：固定宽度，展开详情不会改变列宽 */
-table {
-  border-collapse: collapse;
-  white-space: nowrap;
+/* 行情行：整行固定宽度，不随面板宽度变化。列宽以 ch 兜底，剩余宽度按比例分摊；
+   各行为同一套固定轨道，数值列纵向对齐，长名省略而不挤动其他列 */
+.row {
+  display: grid;
+  grid-template-columns:
+    var(--marker-w) minmax(9ch, 1fr) minmax(12ch, 2fr) minmax(8ch, 1fr)
+    minmax(7ch, 1fr) minmax(8ch, 1fr) minmax(10ch, 1fr);
+  gap: 0 var(--row-gap);
   width: var(--list-w);
-}
-
-td {
-  padding: 0 16px 0 0;
-}
-
-td.num {
-  text-align: right;
-}
-
-tr.row {
+  white-space: nowrap;
   cursor: pointer;
 }
 
-tr.row:hover {
+.row:hover {
   background: var(--vscode-list-hoverBackground);
 }
 
+/* 名称列吸收剩余宽度；超长时省略，避免挤到右侧数值列 */
+.row .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row .num {
+  text-align: right;
+}
+
 .marker {
-  width: 1.2em;
-  padding: 0;
   color: var(--dim);
 }
 
@@ -112,9 +117,9 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 行内展开详情 */
-.detail > td {
-  padding: 2px 0 8px 1.2em;
+/* 行内展开详情：占满面板宽度，指标超宽时在详情区内换行 */
+.detail {
+  padding: 2px 0 8px calc(var(--marker-w) + var(--row-gap));
 }
 
 /* 指标放得下就一行，超宽在详情区内换行 */
@@ -143,9 +148,10 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 分时图：与行情行等宽（父级详情区宽度） */
+/* 分时图：固定宽度，与行情行等宽 */
 .chart {
   position: relative;
+  width: var(--list-w);
   margin-top: 4px;
   cursor: crosshair;
 }

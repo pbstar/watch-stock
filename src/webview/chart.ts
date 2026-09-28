@@ -33,8 +33,7 @@ function xOf(ctx: ChartCtx, i: number): number {
 }
 
 // 价格折线（遇 null 断开）
-function pricePath(ctx: ChartCtx): string {
-  const prices = ctx.data.flatMap((d) => (d.price == null ? [] : [d.price]));
+function pricePath(ctx: ChartCtx, prices: number[]): string {
   const dev =
     Math.max(...prices.map((p) => Math.abs(p - ctx.preClose)), ctx.preClose * 0.005) * 1.1;
   const yOf = (p: number) => ((ctx.preClose + dev - p) / (dev * 2)) * PRICE_H;
@@ -87,7 +86,9 @@ export function renderChart(
 ): void {
   // 宽度取自容器（与行情行同为 style.css 的 --list-w）
   const width = el.clientWidth;
-  if (!data.some((d) => d.price != null) || !preClose || width < 10) {
+  // 停牌或非交易时段的点没有价格，单独取有效价格点供折线与判定复用
+  const prices = data.flatMap((d) => (d.price == null ? [] : [d.price]));
+  if (!prices.length || !preClose || width < 10) {
     el.innerHTML = '<div class="dim">暂无分时</div>';
     el.onmousemove = el.onmouseleave = null;
     hoverX.delete(el);
@@ -97,10 +98,10 @@ export function renderChart(
   const ctx: ChartCtx = { data, preClose, dec, width };
   const vols = minuteVolumes(data);
   const pcY = PRICE_H / 2;
-  const last = [...data].reverse().find((d) => d.price != null)!.price!;
+  const last = prices[prices.length - 1];
   el.innerHTML = `<svg width="${width}" height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}">
     <line class="pre-close" x1="0" y1="${pcY}" x2="${width}" y2="${pcY}"/>
-    <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${pricePath(ctx)}"/>
+    <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${pricePath(ctx, prices)}"/>
     ${volumeBars(ctx, vols)}
   </svg><div class="cursor"></div>`;
   bindHover(el, ctx, vols, onHover);
