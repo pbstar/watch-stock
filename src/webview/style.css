@@ -150,10 +150,9 @@ tr.row:hover {
   color: var(--dim);
 }
 
-/* 分时图：宽度跟随详情区，最宽 500px（约为此前自适应宽度的 1.5 倍） */
+/* 分时图：与行情行同宽（详情区宽度），不再额外限宽 */
 .chart {
   position: relative;
-  max-width: 500px;
   margin-top: 4px;
   cursor: crosshair;
 }

@@ -34,8 +34,8 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
-// 详情区按面板可用宽度定宽（表格列仍保持紧凑，详情不参与列宽计算）：
-// 指标超宽换行、图表取其中较窄的一侧，都不会撑出横向滚动条
+// 详情区宽度 = 面板可用宽度，行情行与分时图都按这个宽度铺满，
+// 指标放不下时换行，不会撑出横向滚动条
 function applyDetailWidth(): void {
   const body = detailRow?.querySelector<HTMLElement>(".detail-body");
   if (!body) return;
@@ -58,7 +58,7 @@ function render(): void {
     const attached = detailRow?.isConnected;
     renderList(content, data.stocks, state.expanded, true, detailRow);
     applyDetailWidth();
-    // 详情行未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
+      // 详情行未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
     if (!attached) drawChart();
   }
 }
