@@ -91,7 +91,7 @@ async function manageStock(state: AppState): Promise<void> {
   const stocks = config.getStocks();
   const isSortTypeCustom = config.getStockSortType() === "custom";
   const visible = getIsVisible(state);
-  // 一键隐藏后股票面板不存在，不提供「查看股票」
+  // 一键隐藏后面板不存在，不提供「打开面板」
   const viewAvailable = state.userForced !== false;
   const options = [
     {
@@ -102,14 +102,6 @@ async function manageStock(state: AppState): Promise<void> {
   ];
 
   if (stocks.length > 0) {
-    // 一键隐藏后股票面板不存在，不提供「查看股票」
-    if (viewAvailable) {
-      options.push({
-        label: "$(list-flat) 查看股票",
-        description: "在底部面板查看行情、指数与板块",
-        action: "home",
-      });
-    }
     options.push({
       label: "$(remove) 移除股票",
       description: "从已添加的股票中选择移除",
@@ -135,13 +127,19 @@ async function manageStock(state: AppState): Promise<void> {
       },
     );
   }
+  // 一键隐藏后面板不存在，不提供「打开面板」
+  if (viewAvailable) {
+    options.push({
+      label: "$(list-flat) 打开面板",
+      description: "在底部面板查看行情、指数与板块",
+      action: "home",
+    });
+  }
 
   options.push(
     {
       label: visible ? "$(eye-closed) 一键隐藏" : "$(eye) 恢复显示",
-      description: visible
-        ? "隐藏状态栏与股票面板"
-        : "恢复状态栏股票信息",
+      description: visible ? "隐藏状态栏与股票面板" : "恢复状态栏与股票面板",
       action: "toggle",
     },
     {
