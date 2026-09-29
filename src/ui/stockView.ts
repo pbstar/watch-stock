@@ -18,8 +18,8 @@ import { formatClock } from "../utils/time";
 import type { Stock, MinutePoint } from "../types";
 import type { RowItem, Tab, ToHost, ToView } from "../shared/protocol";
 
-// 分时数据缓存有效期：10秒，避免每个刷新周期都拉分时
-const MINUTE_CACHE_TTL = 10000;
+// 分时数据缓存有效期：30秒，避免每个刷新周期都拉分时
+const MINUTE_CACHE_TTL = 30000;
 
 // 行业代码 → 名称索引
 const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
