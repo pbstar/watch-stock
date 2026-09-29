@@ -2,7 +2,6 @@
 import { sendRateLimitMsg } from "../utils/msg";
 import { getLimitPercent } from "../utils/stock";
 import { formatAmount } from "../shared/format";
-import { clearCache } from "../utils/cache";
 import type { Stock, LockInfo } from "../types";
 
 const lockTipCache = new Map<string, LockInfo>();
@@ -76,7 +75,11 @@ function getLockChangeMessage(prev: LockInfo, stock: Stock): string {
 
 // 清除指定股票的封单缓存，不传 code 则清空全部
 export function clearLockTipCache(code?: string): void {
-  clearCache(lockTipCache, code);
+  if (code) {
+    lockTipCache.delete(code);
+  } else {
+    lockTipCache.clear();
+  }
 }
 
 // 检查并通知异动

@@ -1,7 +1,6 @@
 // 大单异动监控：基于最近多次刷新的成交额变化
 import { sendRateLimitMsg } from "../utils/msg";
 import { formatAmount } from "../shared/format";
-import { clearCache } from "../utils/cache";
 import type { Stock } from "../types";
 
 // 单次行情快照，仅保留大单分析所需字段
@@ -62,7 +61,11 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
 
 // 清除指定股票的大单缓存，不传 code 则清空全部
 export function clearLargeTipCache(code?: string): void {
-  clearCache(largeTipCache, code);
+  if (code) {
+    largeTipCache.delete(code);
+  } else {
+    largeTipCache.clear();
+  }
 }
 
 // 检查并通知大单异动
