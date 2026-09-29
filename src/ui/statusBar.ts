@@ -1,32 +1,18 @@
 // 状态栏渲染
 import * as vscode from "vscode";
 import { config } from "../config";
-import { formatAmount } from "../utils/stock";
-import type { PriceType, Stock, StatusBar } from "../types";
-
-// 判断涨跌方向：涨 → 1，跌 → -1，平 → 0
-function priceDirection(changeValue: string): number {
-  const v = parseFloat(changeValue);
-  if (isNaN(v)) return 0;
-  if (v > 0) return 1;
-  if (v < 0) return -1;
-  return 0;
-}
+import { getDisplayName, isLockState } from "../utils/stock";
+import { formatAmount } from "../shared/format";
+import type { Stock } from "../types";
 
 // 涨跌符号
 function getPriceSymbol(changeValue: string): string {
-  const d = priceDirection(changeValue);
-  if (d > 0) return "↗";
-  if (d < 0) return "↘";
-  return "";
+  const v = parseFloat(changeValue);
+  if (isNaN(v) || v === 0) return "";
+  return v > 0 ? "↗" : "↘";
 }
 
-// 判断是否处于涨跌停状态
-function isLockState(priceType?: PriceType): boolean {
-  return priceType === "up" || priceType === "down";
-}
-
-export class StatusBarManager implements StatusBar {
+export class StatusBarManager implements vscode.Disposable {
   private statusBarItem: vscode.StatusBarItem | null = null;
   private hidden = false;
   private lastText: string | null = null;
@@ -93,10 +79,12 @@ export class StatusBarManager implements StatusBar {
       );
       // 状态栏文本（仅前 maxDisplayCount 只）
       if (i >= maxDisplayCount) return;
-      const displayName = showMiniName
-        ? stockMiniNames[stock.code] ||
-          (stock.name.length > 2 ? stock.name.substring(0, 2) : stock.name)
-        : stock.name;
+      const displayName = getDisplayName(
+        stock.code,
+        stock.name,
+        showMiniName,
+        stockMiniNames,
+      );
       const lockText =
         showLockCount &&
         (stock.lockAmount ?? 0) > 0 &&
@@ -130,10 +118,6 @@ export class StatusBarManager implements StatusBar {
     this.lastTooltip = "状态栏股票信息已隐藏\n点击后选择'恢复显示'";
     this.statusBarItem.text = "$(eye-closed)";
     this.statusBarItem.tooltip = "状态栏股票信息已隐藏\n点击后选择'恢复显示'";
-  }
-
-  getStatusBarItem(): vscode.StatusBarItem | null {
-    return this.statusBarItem;
   }
 
   dispose(): void {

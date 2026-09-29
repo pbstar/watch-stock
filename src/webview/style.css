@@ -1,0 +1,216 @@
+/* 终端 / 日志风格：等宽字体、无卡片无边框，默认单色 */
+:root {
+  --fg: var(--vscode-editor-foreground);
+  --dim: var(--vscode-descriptionForeground);
+  --up: var(--fg);
+  --dn: var(--fg);
+  --vol-up: 0.55;
+  --vol-dn: 0.2;
+  /* 行情行与分时图的固定宽度，都不随面板宽度变化；分时图右对齐行情行，故再减去详情区缩进 */
+  --list-w: 500px;
+  /* 展开标记列宽与列间距：详情区缩进依赖两者对齐到名称列 */
+  --marker-w: 1.2em;
+  --row-gap: 12px;
+}
+
+/* 彩色模式跟随终端 ANSI 配色 */
+body.colorful {
+  --up: var(--vscode-terminal-ansiRed);
+  --dn: var(--vscode-terminal-ansiGreen);
+  --vol-up: 0.6;
+  --vol-dn: 0.6;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  color: var(--fg);
+  padding: 0 12px 8px;
+  line-height: 1.6;
+}
+
+.up {
+  color: var(--up);
+}
+
+.dn {
+  color: var(--dn);
+}
+
+.dim {
+  color: var(--dim);
+}
+
+/* 顶栏：tab + 时间 + 刷新 */
+.bar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 4px 0;
+  background: var(--vscode-panel-background, var(--vscode-editor-background));
+}
+
+.tab,
+.refresh {
+  cursor: pointer;
+  color: var(--dim);
+  user-select: none;
+}
+
+.tab:hover,
+.refresh:hover,
+.tab.active {
+  color: var(--fg);
+}
+
+.tab.active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.time {
+  margin-left: auto;
+  color: var(--dim);
+}
+
+/* 行情行：整行固定宽度，不随面板宽度变化。列宽以 ch 兜底，剩余宽度按比例分摊；
+   各行为同一套固定轨道，数值列纵向对齐，长名省略而不挤动其他列 */
+.row {
+  display: grid;
+  grid-template-columns:
+    var(--marker-w) minmax(9ch, 1fr) minmax(12ch, 2fr) minmax(8ch, 1fr)
+    minmax(7ch, 1fr) minmax(8ch, 1fr) minmax(10ch, 1fr);
+  gap: 0 var(--row-gap);
+  width: var(--list-w);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* 名称列吸收剩余宽度；超长时省略，避免挤到右侧数值列 */
+.row .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row .num {
+  text-align: right;
+}
+
+.marker {
+  color: var(--dim);
+}
+
+.empty {
+  padding: 8px 0;
+  color: var(--dim);
+}
+
+/* 行内展开详情：占满面板宽度，指标超宽时在详情区内换行 */
+.detail {
+  padding: 2px 0 8px calc(var(--marker-w) + var(--row-gap));
+}
+
+/* 指标放得下就一行，超宽在详情区内换行 */
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  color: var(--dim);
+}
+
+/* 指标容器不占布局，内部各项直接参与 flex 换行 */
+.metrics .info {
+  display: contents;
+}
+
+.metrics b {
+  font-weight: normal;
+  color: var(--fg);
+}
+
+/* 悬停读数独占指标下方一行，固定一行高度：有无读数都不挤动图表 */
+.hover {
+  height: 1.6em;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--dim);
+}
+
+/* 分时图：位于详情区内，左缘被详情区缩进内边距右推，收窄宽度使右端与行情行对齐 */
+.chart {
+  position: relative;
+  width: calc(var(--list-w) - var(--marker-w) - var(--row-gap));
+  margin-top: 4px;
+  cursor: crosshair;
+}
+
+.chart svg {
+  display: block;
+}
+
+.pre-close {
+  stroke: var(--dim);
+  stroke-opacity: 0.4;
+  stroke-dasharray: 3 3;
+}
+
+.line-up,
+.line-dn {
+  fill: none;
+  stroke-width: 1;
+  stroke-opacity: 0.85;
+}
+
+.line-up {
+  stroke: var(--up);
+}
+
+.line-dn {
+  stroke: var(--dn);
+}
+
+.vol-up {
+  fill: var(--up);
+  fill-opacity: var(--vol-up);
+}
+
+.vol-dn {
+  fill: var(--dn);
+  fill-opacity: var(--vol-dn);
+}
+
+.cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--dim);
+  opacity: 0.5;
+  pointer-events: none;
+  display: none;
+}
+
+/* 板块网格：等宽流式 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15ch, 1fr));
+  gap: 0 16px;
+}
+
+.cell {
+  display: flex;
+  justify-content: space-between;
+  white-space: nowrap;
+}

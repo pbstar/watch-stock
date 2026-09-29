@@ -1,8 +1,12 @@
 // 股票数据服务，支持新浪/腾讯双源批量查询
 import { get, getGbk } from "../utils/http";
 import { buildTimeSlots } from "../utils/time";
-import { isFund, getDecimals, safeNumber } from "../utils/stock";
+import { isFund, safeNumber } from "../utils/stock";
+import { decOf } from "../shared/format";
 import type { Stock, StockQuote, MinutePoint } from "../types";
+
+// 批量行情源：sina 含五档封单，tencent 简版在集合竞价等新浪缺数据时段兜底
+export type QuoteSource = "sina" | "tencent";
 
 // 解析新浪源单条数据
 function parseSinaStockData(code: string, data: string): Stock | null {
@@ -22,7 +26,7 @@ function parseSinaStockData(code: string, data: string): Stock | null {
   const changeValue = current - close;
   const changePercent = ((changeValue / close) * 100).toFixed(2);
   const isETF = isFund(code, name, current);
-  const dec = getDecimals(isETF);
+  const dec = decOf(isETF);
 
   return {
     name,
@@ -33,7 +37,6 @@ function parseSinaStockData(code: string, data: string): Stock | null {
     amount,
     isETF,
     dateTime: `${parts[30]} ${parts[31]}`,
-    close,
     buy1Volume: Math.round(safeNumber(parts[10]) / 100),
     sell1Volume: Math.round(safeNumber(parts[20]) / 100),
     buy1Price: safeNumber(parts[6]),
@@ -41,13 +44,13 @@ function parseSinaStockData(code: string, data: string): Stock | null {
   };
 }
 
-// 腾讯源完整行情解析（含市值、PE、PB 等详细指标）
+// 腾讯源完整行情解析（含成交额、换手、市值、PE 等详细指标）
 function parseFullQuote(fields: string[], code: string): StockQuote | null {
   const name = fields[1] ?? "";
   // 名称为空视为无效行（如接口对无效代码返回的空数据）
   if (!name) return null;
   const isETF = isFund(code, name, safeNumber(fields[3]));
-  const dec = getDecimals(isETF);
+  const dec = decOf(isETF);
 
   // 20260409114906 -> 2026-04-09 11:49
   const r = fields[30] ?? "";
@@ -70,13 +73,8 @@ function parseFullQuote(fields: string[], code: string): StockQuote | null {
     amount: safeNumber(fields[37]) * 10000,
     turnoverRatio: safeNumber(fields[38]).toFixed(2),
     pe: safeNumber(fields[39]),
-    circulationMarket: safeNumber(fields[44]) * 100000000,
     totalMarket: safeNumber(fields[45]) * 100000000,
-    pb: safeNumber(fields[46]),
     volumeRatio: safeNumber(fields[49]).toFixed(2),
-    avgPrice: safeNumber(fields[51]).toFixed(dec),
-    circulatingShares: safeNumber(fields[72]),
-    totalShares: safeNumber(fields[73]),
     isETF,
     dateTime,
   };
@@ -87,7 +85,7 @@ function parseSimpleQuote(fields: string[], code: string): Stock | null {
   const name = fields[1] ?? "";
   if (!name) return null;
   const isETF = isFund(code, name, safeNumber(fields[3]));
-  const dec = getDecimals(isETF);
+  const dec = decOf(isETF);
 
   return {
     name,
@@ -132,14 +130,14 @@ function parseTencentLines<T>(
 // 批量获取股票行情（默认新浪源，集合竞价期间切换腾讯简版源）
 export async function getStockList(
   codes: string[],
-  isSina = true,
+  source: QuoteSource = "sina",
 ): Promise<Stock[]> {
   if (!codes?.length) return [];
 
   // 行源返回的代码统一为小写，用 Set 匹配避免循环内线性查找
   const codeSet = new Set(codes.map((c) => c.toLowerCase()));
   try {
-    if (isSina) {
+    if (source === "sina") {
       const url = `https://hq.sinajs.cn/list=${codes.join(",")}`;
       const data = await getGbk(url);
       return data
@@ -201,13 +199,11 @@ export async function getStockMinute(code: string): Promise<MinutePoint[]> {
         time,
         price: safeNumber(item[1]),
         volume: safeNumber(item[2]),
-        amount: safeNumber(item[3]),
       });
     }
 
     return slots.map(
-      (time) =>
-        dataMap.get(time) ?? { time, price: null, volume: null, amount: null },
+      (time) => dataMap.get(time) ?? { time, price: null, volume: null },
     );
   } catch {
     return [];

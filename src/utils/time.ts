@@ -58,6 +58,14 @@ function formatMinute(minutes: number): string {
   return `${h}:${m}`;
 }
 
+// 本地时间 HH:MM:SS
+export function formatClock(now: Date): string {
+  const h = String(now.getHours()).padStart(2, "0");
+  const m = String(now.getMinutes()).padStart(2, "0");
+  const s = String(now.getSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 // 本地日期标识（YYYY-MM-DD），用于跨交易日检测
 export function formatDateKey(now: Date): string {
   const m = String(now.getMonth() + 1).padStart(2, "0");

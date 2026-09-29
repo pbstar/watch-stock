@@ -1,4 +1,5 @@
 // 股票相关纯工具函数
+import type { PriceType } from "../types";
 
 // 是否为基金/ETF（按代码前缀、名称关键词、低价基金特征综合判断）
 export function isFund(code: string, name: string, current: number): boolean {
@@ -19,11 +20,6 @@ export function isFund(code: string, name: string, current: number): boolean {
 // 是否为基金代码（6位纯数字且首位为 5 或 1）
 export function isFundCode(code: string): boolean {
   return /^[51]\d{5}$/.test(code);
-}
-
-// 价格小数位数
-export function getDecimals(isETF: boolean): number {
-  return isETF ? 3 : 2;
 }
 
 // 安全转数字
@@ -47,9 +43,18 @@ export function getLimitPercent(code: string, name: string): number {
   return 10;
 }
 
-// 金额格式化
-export function formatAmount(amount: number): string {
-  if (amount >= 100000000) return (amount / 100000000).toFixed(1) + "亿";
-  if (amount >= 10000) return (amount / 10000).toFixed(0) + "万";
-  return Math.round(amount) + "元";
+// 状态栏显示名称：开启简称时优先用自定义简称，否则截取前两位
+export function getDisplayName(
+  code: string,
+  name: string,
+  showMiniName: boolean,
+  miniNames: Record<string, string>,
+): string {
+  if (!showMiniName) return name;
+  return miniNames[code] || (name.length > 2 ? name.substring(0, 2) : name);
+}
+
+// 是否处于涨跌停状态
+export function isLockState(priceType?: PriceType): boolean {
+  return priceType === "up" || priceType === "down";
 }

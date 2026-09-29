@@ -1,54 +1,36 @@
 import { build } from "esbuild";
-import { readFile } from "fs/promises";
 
-// 简单的 HTML 压缩：移除注释、多余空白和换行
-function minifyHtml(html) {
-  return (
-    html
-      // 移除 HTML 注释 <!-- ... -->
-      .replace(/<!--[\s\S]*?-->/g, "")
-      // 移除 CSS / JS 块注释 /* ... */（含 JSDoc）；保留含 {{...}} 占位符的注释
-      .replace(/\/\*[\s\S]*?\*\//g, (m) => (m.includes("{{") ? m : ""))
-      // 移除 JS 单行注释 // ...（前置必须为行首/空白/分号/逗号/右括号，避开字符串里的 http://）；保留含 {{...}} 占位符的注释
-      .replace(/(^|[\s;,)}\]])\/\/[^\n]*/gm, (m, p1) =>
-        m.includes("{{") ? m : p1,
-      )
-      // 移除标签间的空白
-      .replace(/>\s+</g, "><")
-      // 所有连续空白（含换行）压成单个空格
-      .replace(/\s+/g, " ")
-      // 移除首尾空白
-      .trim()
-  );
-}
-
-// esbuild 插件：压缩 HTML 文件
-const htmlMinifyPlugin = {
-  name: "html-minify",
-  setup(build) {
-    build.onLoad({ filter: /\.html$/ }, async (args) => {
-      const text = await readFile(args.path, "utf8");
-      return {
-        contents: minifyHtml(text),
-        loader: "text",
-      };
-    });
-  },
-};
+// --dev：调试构建，不压缩并输出 sourcemap，便于在 TS 源码上打断点
+const dev = process.argv.includes("--dev");
 
 const buildOptions = {
   entryPoints: ["src/extension.ts"],
   outfile: "dist/extension.js",
   bundle: true,
-  minify: true,
+  minify: !dev,
   treeShaking: true,
   platform: "node",
   target: "node18",
   format: "cjs",
   external: ["vscode"],
-  sourcemap: false,
+  sourcemap: dev,
   legalComments: "none",
-  plugins: [htmlMinifyPlugin],
 };
 
-await build(buildOptions);
+// webview 浏览器端脚本与样式，运行时通过 asWebviewUri 引用
+const webviewOptions = {
+  entryPoints: {
+    webview: "src/webview/main.ts",
+    "webview-style": "src/webview/style.css",
+  },
+  outdir: "dist",
+  bundle: true,
+  minify: !dev,
+  platform: "browser",
+  target: "es2022",
+  format: "iife",
+  sourcemap: dev,
+  legalComments: "none",
+};
+
+await Promise.all([build(buildOptions), build(webviewOptions)]);

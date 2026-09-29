@@ -33,7 +33,10 @@ async function request(
   url: string,
   extraHeaders: Headers = {},
 ): Promise<Response> {
-  return fetch(url, buildOptions(url, extraHeaders));
+  const res = await fetch(url, buildOptions(url, extraHeaders));
+  // 非 2xx 时抛错，避免把错误页当行情解析，由调用方 try/catch 兜底
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+  return res;
 }
 
 // GET 请求，返回文本

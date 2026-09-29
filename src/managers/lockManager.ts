@@ -1,14 +1,10 @@
 // 涨跌停封单计算与异动通知
 import { sendRateLimitMsg } from "../utils/msg";
-import { getLimitPercent, formatAmount } from "../utils/stock";
-import type { Stock, LockInfo, PriceType } from "../types";
+import { getLimitPercent } from "../utils/stock";
+import { formatAmount } from "../shared/format";
+import type { Stock, LockInfo } from "../types";
 
-interface LockSnapshot {
-  priceType: PriceType;
-  lockAmount: number;
-}
-
-const lockTipCache = new Map<string, LockSnapshot>();
+const lockTipCache = new Map<string, LockInfo>();
 const MIN_LOCK_CHANGE = 7000000; // 封单变化通知阈值：700万
 const LOCK_CHANGE_PERCENT = 7; // 封单变化百分比通知阈值：7%
 
@@ -36,12 +32,11 @@ export function calculateLockInfo(stock: Stock): LockInfo {
   const volume = isLimitUp ? buy1Volume : sell1Volume;
   const price = isLimitUp ? buy1Price : sell1Price;
   const lockAmount = volume * 100 * price;
-  const priceType: PriceType = isLimitUp ? "up" : "down";
-  return { priceType, lockAmount };
+  return { priceType: isLimitUp ? "up" : "down", lockAmount };
 }
 
 // 根据封单变化生成通知文案
-function getLockChangeMessage(prev: LockSnapshot, stock: Stock): string {
+function getLockChangeMessage(prev: LockInfo, stock: Stock): string {
   const curType = stock.priceType ?? "none";
   const curAmount = stock.lockAmount ?? 0;
   const prevType = prev.priceType ?? "none";

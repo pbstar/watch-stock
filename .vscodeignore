@@ -1,5 +1,6 @@
 .gitignore
 .vscodeignore
+.vscode/
 .git/
 node_modules/
 src/
@@ -9,5 +10,3 @@ tsconfig.json
 esbuild.config.mjs
 **/*.ts
 **/*.map
-AGENTS.md
-CLAUDE.md

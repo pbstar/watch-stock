@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
 import { getStockList } from "../services/stockService";
+import { buildStockOptions } from "./stockManager";
 import { config } from "../config";
 import type { Alarm, AlarmCondition, Stock } from "../types";
 
@@ -66,17 +67,10 @@ async function addAlarm(): Promise<void> {
     return;
   }
 
-  const stockInfos = await getStockList(stocks);
-
-  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
-  const stockOptions = stocks.map((code) => {
-    const info = infoMap.get(code);
-    return {
-      label: info ? `${info.name}(${info.code})` : code,
-      description: info ? `当前价格: ${info.current}` : "",
-      code,
-    };
-  });
+  const stockOptions = await buildStockOptions(stocks, (o) => ({
+    ...o,
+    description: o.info ? `当前价格: ${o.info.current}` : "",
+  }));
 
   const selectedStock = await vscode.window.showQuickPick(stockOptions, {
     placeHolder: "选择要设置闹钟的股票",
@@ -89,8 +83,9 @@ async function addAlarm(): Promise<void> {
   );
   if (!selectedCondition) return;
 
-  const stockInfo = stockInfos.find((s) => s.code === selectedStock.code);
-  const currentPrice = stockInfo ? parseFloat(stockInfo.current) : 0;
+  const currentPrice = selectedStock.info
+    ? parseFloat(selectedStock.info.current)
+    : 0;
   const targetPrice = await inputTargetPrice(
     selectedCondition.value,
     currentPrice,
@@ -135,6 +130,7 @@ export async function manageAlarms(): Promise<void> {
   if (alarms.length > 0) {
     const stockCodes = [...new Set(alarms.map((a) => a.stockCode))];
     const stockInfos = await getStockList(stockCodes);
+    const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
 
     if (options.length > 0) {
       options.push({
@@ -145,7 +141,7 @@ export async function manageAlarms(): Promise<void> {
     }
 
     for (const alarm of alarms) {
-      const info = stockInfos.find((s) => s.code === alarm.stockCode);
+      const info = infoMap.get(alarm.stockCode);
       const price = alarm.targetPrice.toFixed(2);
       options.push({
         label: `${info ? info.name : alarm.stockCode} 价格${CONDITION_TEXT[alarm.condition]} ${price} 时提醒`,
