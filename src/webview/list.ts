@@ -19,7 +19,8 @@ function cellsHtml(s: RowItem, marker: string): string {
     <span class="dim">${esc(s.lock)}</span>`;
 }
 
-function metricsHtml(q: DetailQuote): string {
+// compact 为精简模式（指数）：指数无换手、市盈等个股指标，只保留行情与成交
+function metricsHtml(q: DetailQuote, compact: boolean): string {
   const d = decOf(q.isETF);
   const items: [string, string][] = [
     ["今开", fmtNum(q.open, d)],
@@ -27,19 +28,24 @@ function metricsHtml(q: DetailQuote): string {
     ["最低", fmtNum(q.low, d)],
     ["量", formatVolume(q.volume)],
     ["额", formatMoney(q.amount)],
-    ["换手", q.turnoverRatio ? `${fmtNum(q.turnoverRatio)}%` : "-"],
-    ["量比", fmtNum(q.volumeRatio)],
-    ["市盈", q.pe ? fmtNum(q.pe) : "-"],
-    ["市值", formatMoney(q.totalMarket)],
   ];
+  if (!compact) {
+    items.push(
+      ["换手", q.turnoverRatio ? `${fmtNum(q.turnoverRatio)}%` : "-"],
+      ["量比", fmtNum(q.volumeRatio)],
+      ["市盈", q.pe ? fmtNum(q.pe) : "-"],
+      ["市值", formatMoney(q.totalMarket)],
+    );
+  }
   return items.map(([k, v]) => `<span>${k} <b>${v}</b></span>`).join("");
 }
 
 // 详情块骨架：展开期间常驻复用，列表刷新时整体搬入新列表，
 // 保证图表、悬停读数与鼠标事件不随每 5 秒的行情刷新重建
-export function createDetail(): HTMLElement {
+export function createDetail(compact = false): HTMLElement {
   const el = document.createElement("div");
   el.className = "detail";
+  el.dataset.compact = compact ? "1" : "0";
   el.innerHTML = `<div class="metrics"><span class="info">加载中</span></div>
     <div class="hover"></div>
     <div class="chart"></div>`;
@@ -54,10 +60,10 @@ export function updateDetailMetrics(
   const info = detail.querySelector<HTMLElement>(".info")!;
   if (!data) info.innerHTML = "加载中";
   else if (!data.quote) info.innerHTML = "暂无数据";
-  else info.innerHTML = metricsHtml(data.quote);
+  else info.innerHTML = metricsHtml(data.quote, detail.dataset.compact === "1");
 }
 
-// 渲染列表；expandable 为 false 时（指数）不支持展开；detailEl 放在展开行之后。
+// 渲染列表；expandable 为 false 时（板块）不支持展开；detailEl 放在展开行之后。
 // 行顺序不变时只替换各行单元格，详情块原地保留；顺序变化（排序、增删、切 tab）才整体重建
 export function renderList(
   el: HTMLElement,
