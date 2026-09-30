@@ -6,8 +6,7 @@
   "version": "2.5.1",
   "publisher": "pbstar",
   "engines": {
-    "vscode": "^1.96.0",
-    "node": ">=18"
+    "vscode": "^1.96.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc -p src/webview --noEmit",
@@ -175,8 +174,10 @@
   },
   "keywords": [
     "摸鱼看盘",
+    "看盘",
     "stock",
     "股票",
+    "炒股",
     "行情",
     "finance"
   ],
