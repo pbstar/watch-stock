@@ -83,10 +83,6 @@ export class StockViewProvider
   update(stocks: Stock[], now: Date): void {
     this.stocks = stocks;
     this.time = formatClock(now);
-    // 展开的股票已从自选移除时收起，避免继续为它拉详情（以配置为准，行情拉取失败不误收）
-    if (this.expanded && !config.getStocks().includes(this.expanded)) {
-      this.expanded = null;
-    }
     if (!this.view?.visible) return;
     this.postStocks();
     void this.pushTabData();
@@ -109,12 +105,12 @@ export class StockViewProvider
     switch (msg.type) {
       case "ready":
         this.tab = msg.tab;
-        this.expanded = msg.expanded;
         this.postStocks();
         await this.pushTabData();
         break;
       case "tab":
         this.tab = msg.tab;
+        this.expanded = null;
         await this.pushTabData();
         break;
       case "expand":
@@ -143,15 +139,20 @@ export class StockViewProvider
           changePercent: s.changePercent,
         })),
       });
-    } else {
-      await this.pushDetail();
     }
+    // 板块不支持展开，其余 tab 的展开行都要随列表一起刷新
+    if (this.tab !== "sector") await this.pushDetail();
+  }
+
+  // 当前 tab 的代码列表：展开行必然出自其中，配置变更把代码移出列表后不再为它拉详情
+  private listCodes(): string[] {
+    return this.tab === "index" ? INDEX_CODES : config.getStocks();
   }
 
   // 展开行详情：完整行情每次拉取，分时走 TTL 缓存
   private async pushDetail(): Promise<void> {
     const code = this.expanded;
-    if (!code) return;
+    if (!code || !this.listCodes().includes(code)) return;
     const [quotes, minute] = await Promise.all([
       getStockQuoteList([code]),
       this.getMinute(code),

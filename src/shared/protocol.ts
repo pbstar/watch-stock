@@ -52,9 +52,9 @@ export type ToView =
       minute: MinutePoint[];
     };
 
-// webview → 扩展（ready 携带 webview 恢复的界面状态）
+// webview → 扩展（ready 携带 webview 恢复的 tab）
 export type ToHost =
-  | { type: "ready"; tab: Tab; expanded: string | null }
+  | { type: "ready"; tab: Tab }
   | { type: "tab"; tab: Tab }
   | { type: "expand"; code: string | null }
   | { type: "refresh" };

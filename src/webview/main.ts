@@ -1,4 +1,4 @@
-// webview 入口：消息分发、tab 切换、界面状态恢复
+// webview 入口：消息分发、tab 切换、tab 状态恢复
 import type { RowItem, SectorItem, Tab, ToHost, ToView } from "../shared/protocol";
 import { renderChart } from "./chart";
 import {
@@ -10,9 +10,9 @@ import {
 import { renderSector } from "./sector";
 import { decOf } from "../shared/format";
 
+// 界面状态只记住 tab，展开行属于纯界面状态，不跨面板重建保留
 interface ViewState {
   tab: Tab;
-  expanded: string | null;
 }
 
 declare function acquireVsCodeApi(): {
@@ -22,7 +22,7 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
-const state: ViewState = vscode.getState() ?? { tab: "mine", expanded: null };
+const state: ViewState = vscode.getState() ?? { tab: "mine" };
 
 const data = {
   stocks: [] as RowItem[],
@@ -35,8 +35,15 @@ const data = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const content = $("#content");
 
+// 展开行：切 tab 即收起
+let expanded: string | null = null;
 // 展开行的详情块：展开期间常驻，行情刷新只搬位置不重建
-let detailEl: HTMLElement | null = state.expanded ? createDetail() : null;
+let detailEl: HTMLElement | null = null;
+
+// 指数无个股指标，详情块按精简模式渲染
+function compact(): boolean {
+  return state.tab === "index";
+}
 
 function render(): void {
   document.querySelectorAll<HTMLElement>(".tab").forEach((el) => {
@@ -44,11 +51,11 @@ function render(): void {
   });
   $("#time").textContent = data.time;
   if (state.tab === "sector") renderSector(content, data.sector);
-  else if (state.tab === "index") renderList(content, data.index, null, false);
   else {
     const attached = detailEl?.isConnected;
-    renderList(content, data.stocks, state.expanded, true, detailEl);
-    // 详情块未挂载期间到达的分时不会绘制，重新挂载（切回自选、列表从空恢复）时补画
+    const items = state.tab === "index" ? data.index : data.stocks;
+    renderList(content, items, expanded, true, detailEl);
+    // 详情块未挂载期间到达的分时不会绘制，重新挂载（切回列表、列表从空恢复）时补画
     if (!attached) drawChart();
   }
 }
@@ -71,11 +78,6 @@ function drawChart(): void {
   });
 }
 
-function setState(patch: Partial<ViewState>): void {
-  Object.assign(state, patch);
-  vscode.setState(state);
-}
-
 $(".bar").addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
   if (target.closest(".refresh")) {
@@ -84,19 +86,24 @@ $(".bar").addEventListener("click", (e) => {
   }
   const tab = target.closest<HTMLElement>(".tab")?.dataset.tab as Tab | undefined;
   if (!tab || tab === state.tab) return;
-  setState({ tab });
+  // 切 tab 一律收起展开行：各列表的展开状态互不相干，不跨 tab 保留
+  state.tab = tab;
+  vscode.setState(state);
+  expanded = null;
+  data.detail = undefined;
+  detailEl = null;
   vscode.postMessage({ type: "tab", tab });
   render();
 });
 
 content.addEventListener("click", (e) => {
-  if (state.tab !== "mine") return;
+  if (state.tab === "sector") return;
   const row = (e.target as HTMLElement).closest<HTMLElement>(".row");
   if (!row) return;
-  const code = row.dataset.code === state.expanded ? null : row.dataset.code!;
-  setState({ expanded: code });
+  const code = row.dataset.code === expanded ? null : row.dataset.code!;
+  expanded = code;
   data.detail = undefined;
-  detailEl = code ? createDetail() : null;
+  detailEl = code ? createDetail(compact()) : null;
   vscode.postMessage({ type: "expand", code });
   render();
 });
@@ -107,13 +114,6 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
     case "stocks":
       data.stocks = msg.items;
       data.time = msg.time;
-      // 行情为空多为拉取失败，不据此收起展开行
-      const gone =
-        msg.items.length > 0 && !msg.items.some((s) => s.code === state.expanded);
-      if (state.expanded && gone) {
-        setState({ expanded: null });
-        detailEl = null;
-      }
       document.body.classList.toggle("colorful", msg.colorful);
       break;
     case "index":
@@ -123,7 +123,7 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
       data.sector = msg.items;
       break;
     case "detail":
-      if (msg.code !== state.expanded) return;
+      if (msg.code !== expanded) return;
       data.detail = { quote: msg.quote, minute: msg.minute };
       renderDetail();
       return;
@@ -131,4 +131,4 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
   render();
 });
 
-vscode.postMessage({ type: "ready", ...state });
+vscode.postMessage({ type: "ready", tab: state.tab });
