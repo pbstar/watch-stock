@@ -148,10 +148,10 @@ body {
   color: var(--dim);
 }
 
-/* 分时图：位于详情区内，左缘被详情区缩进内边距右推，收窄宽度使右端与行情行对齐 */
+/* 分时图：位于详情区内，左缘被详情区缩进内边距右推；宽度固定 380px，比行情行窄，避免图表过宽 */
 .chart {
   position: relative;
-  width: calc(var(--list-w) - var(--marker-w) - var(--row-gap));
+  width: 380px;
   margin-top: 4px;
   cursor: crosshair;
 }
