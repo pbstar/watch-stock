@@ -6,16 +6,18 @@ import {
   INDEX_CODES,
   INDUSTRY_CODES,
   INDUSTRY_CODE_LIST,
+  RANK_SIZE,
 } from "../constants";
 import {
   getStockList,
   getStockMinute,
   getStockQuoteList,
+  getRankList,
 } from "../services/stockService";
 import { isLockState } from "../utils/stock";
 import { formatAmount } from "../shared/format";
 import { formatClock } from "../utils/time";
-import type { Stock, MinutePoint } from "../types";
+import type { Stock, MinutePoint, RankItem } from "../types";
 import type { RowItem, Tab, ToHost, ToView } from "../shared/protocol";
 
 // 分时数据缓存有效期：30秒，避免每个刷新周期都拉分时
@@ -42,6 +44,18 @@ function toRow(stock: Stock): RowItem {
   };
 }
 
+// 排行行：字段与自选/指数一致，行内同样可展开详情
+function toRankRow(item: RankItem): RowItem {
+  return {
+    code: item.code,
+    name: item.name,
+    current: item.current,
+    changePercent: item.changePercent,
+    changeValue: item.changeValue,
+    lock: "",
+  };
+}
+
 export class StockViewProvider
   implements vscode.WebviewViewProvider, vscode.Disposable
 {
@@ -53,6 +67,8 @@ export class StockViewProvider
   private expanded: string | null = null;
   private stocks: Stock[] = [];
   private time = "";
+  // 当前排行榜单包含的代码：展开行必然出自其中，换榜后旧代码不再拉详情
+  private rankCodes: string[] = [];
   private minuteCache = new Map<string, MinuteCacheEntry>();
 
   constructor(
@@ -139,6 +155,18 @@ export class StockViewProvider
           changePercent: s.changePercent,
         })),
       });
+    } else if (this.tab === "rank") {
+      // 两份榜单一起下发，面板内切换涨跌不再回扩展端
+      const [up, down] = await Promise.all([
+        getRankList(false, RANK_SIZE),
+        getRankList(true, RANK_SIZE),
+      ]);
+      this.rankCodes = [...up, ...down].map((r) => r.code);
+      this.post({
+        type: "rank",
+        up: up.map(toRankRow),
+        down: down.map(toRankRow),
+      });
     }
     // 板块不支持展开，其余 tab 的展开行都要随列表一起刷新
     if (this.tab !== "sector") await this.pushDetail();
@@ -146,7 +174,9 @@ export class StockViewProvider
 
   // 当前 tab 的代码列表：展开行必然出自其中，配置变更把代码移出列表后不再为它拉详情
   private listCodes(): string[] {
-    return this.tab === "index" ? INDEX_CODES : config.getStocks();
+    if (this.tab === "index") return INDEX_CODES;
+    if (this.tab === "rank") return this.rankCodes;
+    return config.getStocks();
   }
 
   // 展开行详情：完整行情每次拉取，分时走 TTL 缓存
@@ -187,8 +217,13 @@ export class StockViewProvider
 <span class="tab" data-tab="mine">自选</span>
 <span class="tab" data-tab="index">指数</span>
 <span class="tab" data-tab="sector">板块</span>
+<span class="tab" data-tab="rank">排行</span>
 <span class="time" id="time"></span>
 <span class="refresh" title="刷新">↻</span>
+<span class="subtabs">
+<span class="subtab active" data-dir="up">涨幅榜</span>
+<span class="subtab" data-dir="down">跌幅榜</span>
+</span>
 </div>
 <div id="content"></div>
 <script nonce="${nonce}" src="${script}"></script>

@@ -3,7 +3,7 @@ import { get, getGbk } from "../utils/http";
 import { buildTimeSlots } from "../utils/time";
 import { isFund, safeNumber } from "../utils/stock";
 import { decOf } from "../shared/format";
-import type { Stock, StockQuote, MinutePoint } from "../types";
+import type { Stock, StockQuote, MinutePoint, RankItem } from "../types";
 
 // 批量行情源：sina 含五档封单，tencent 简版在集合竞价等新浪缺数据时段兜底
 export type QuoteSource = "sina" | "tencent";
@@ -171,6 +171,41 @@ export async function getStockQuoteList(
     const res = await getGbk(url);
     if (!res) return [];
     return parseTencentLines(res, codes, parseFullQuote);
+  } catch {
+    return [];
+  }
+}
+
+// 新浪行情中心原始字段（Simple 版除成交量/额外，数值都是字符串）
+interface RankRaw {
+  symbol?: string;
+  name?: string;
+  trade?: string;
+  pricechange?: string;
+  changepercent?: string;
+}
+
+// 涨跌排行：沪深京 A 股全市场按涨跌幅取头部，asc=false 涨幅榜、true 跌幅榜
+export async function getRankList(
+  asc: boolean,
+  num: number,
+): Promise<RankItem[]> {
+  try {
+    const url =
+      "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php" +
+      "/Market_Center.getHQNodeDataSimple" +
+      `?page=1&num=${num}&sort=changepercent&asc=${asc ? 1 : 0}&node=hs_a&symbol=`;
+    const list: RankRaw[] = JSON.parse(await get(url));
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((d) => d?.symbol && d?.name)
+      .map((d) => ({
+        code: String(d.symbol).toLowerCase(),
+        name: String(d.name),
+        current: safeNumber(d.trade).toFixed(2),
+        changeValue: safeNumber(d.pricechange).toFixed(2),
+        changePercent: safeNumber(d.changepercent).toFixed(2),
+      }));
   } catch {
     return [];
   }

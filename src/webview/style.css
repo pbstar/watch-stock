@@ -47,18 +47,20 @@ body {
   color: var(--dim);
 }
 
-/* 顶栏：tab + 时间 + 刷新 */
+/* 顶栏：tab + 时间 + 刷新；排行标签下的涨跌榜切换另起一行 */
 .bar {
   position: sticky;
   top: 0;
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   align-items: center;
   padding: 4px 0;
   background: var(--vscode-panel-background, var(--vscode-editor-background));
 }
 
 .tab,
+.subtab,
 .refresh {
   cursor: pointer;
   color: var(--dim);
@@ -66,14 +68,28 @@ body {
 }
 
 .tab:hover,
+.subtab:hover,
 .refresh:hover,
-.tab.active {
+.tab.active,
+.subtab.active {
   color: var(--fg);
 }
 
-.tab.active {
+.tab.active,
+.subtab.active {
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* 涨跌榜切换：靠位置而不是字号与顶部标签拉开层级 */
+.subtabs {
+  display: none;
+  flex-basis: 100%;
+  gap: 12px;
+}
+
+body.ranking .subtabs {
+  display: flex;
 }
 
 .time {
@@ -151,7 +167,7 @@ body {
 /* 分时图：位于详情区内 */
 .chart {
   position: relative;
-  width: 350px;
+  width: 320px;
   margin-top: 4px;
   cursor: crosshair;
 }
