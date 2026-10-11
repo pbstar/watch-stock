@@ -54,6 +54,15 @@ export interface StockQuote {
   dateTime: string;
 }
 
+// 涨跌排行条目（新浪行情中心，全市场按涨跌幅取头部）
+export interface RankItem {
+  code: string; // 带市场前缀，如 sh600519
+  name: string;
+  current: string;
+  changeValue: string;
+  changePercent: string;
+}
+
 // 分时数据点定义在消息协议中，两端共用
 export type { MinutePoint } from "./shared/protocol";
 

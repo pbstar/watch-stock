@@ -84,7 +84,7 @@ export function renderChart(
   dec: number,
   onHover: (text: string | null) => void,
 ): void {
-  // 宽度取自容器（与行情行同为 style.css 的 --list-w）
+  // 宽度取自容器（style.css 中 .chart 的固定宽度）
   const width = el.clientWidth;
   // 停牌或非交易时段的点没有价格，单独取有效价格点供折线与判定复用
   const prices = data.flatMap((d) => (d.price == null ? [] : [d.price]));

@@ -52,13 +52,15 @@ body {
   position: sticky;
   top: 0;
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   align-items: center;
   padding: 4px 0;
   background: var(--vscode-panel-background, var(--vscode-editor-background));
 }
 
 .tab,
+.subtab,
 .refresh {
   cursor: pointer;
   color: var(--dim);
@@ -66,14 +68,28 @@ body {
 }
 
 .tab:hover,
+.subtab:hover,
 .refresh:hover,
-.tab.active {
+.tab.active,
+.subtab.active {
   color: var(--fg);
 }
 
-.tab.active {
+.tab.active,
+.subtab.active {
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+/* 涨跌榜切换：靠位置而不是字号与顶部标签拉开层级 */
+.subtabs {
+  display: none;
+  flex-basis: 100%;
+  gap: 12px;
+}
+
+body.ranking .subtabs {
+  display: flex;
 }
 
 .time {
@@ -148,10 +164,10 @@ body {
   color: var(--dim);
 }
 
-/* 分时图：位于详情区内，左缘被详情区缩进内边距右推，收窄宽度使右端与行情行对齐 */
+/* 分时图：位于详情区内 */
 .chart {
   position: relative;
-  width: calc(var(--list-w) - var(--marker-w) - var(--row-gap));
+  width: 320px;
   margin-top: 4px;
   cursor: crosshair;
 }

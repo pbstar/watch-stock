@@ -62,3 +62,6 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
 
 // 行业板块代码列表（由 INDUSTRY_CODES 派生的纯代码数组）
 export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
+
+// 涨跌排行每榜条数（涨幅榜、跌幅榜各取这么多）
+export const RANK_SIZE = 20;

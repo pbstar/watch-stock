@@ -1,6 +1,9 @@
 // 扩展 ⇄ webview 消息协议，两端共用；保持环境无关，不依赖 vscode / DOM / node 类型
 
-export type Tab = "mine" | "index" | "sector";
+export type Tab = "mine" | "index" | "sector" | "rank";
+
+// 排行方向：涨幅榜 / 跌幅榜
+export type RankDir = "up" | "down";
 
 // 分时数据点（无数据时各字段为 null）
 export interface MinutePoint {
@@ -9,7 +12,7 @@ export interface MinutePoint {
   volume: number | null;
 }
 
-// 列表行（自选 / 指数），名称与封单文案由扩展端处理好
+// 列表行（自选 / 指数 / 排行），名称与封单文案由扩展端处理好
 export interface RowItem {
   code: string;
   name: string;
@@ -45,6 +48,7 @@ export type ToView =
   | { type: "stocks"; items: RowItem[]; time: string; colorful: boolean }
   | { type: "index"; items: RowItem[] }
   | { type: "sector"; items: SectorItem[] }
+  | { type: "rank"; up: RowItem[]; down: RowItem[] }
   | {
       type: "detail";
       code: string;
