@@ -130,7 +130,6 @@ $(".bar").addEventListener("click", (e) => {
   // 切 tab 一律收起展开行：各列表的展开状态互不相干，不跨 tab 保留
   state.tab = tab;
   vscode.setState(state);
-  // 排行方向不跨标签保留，下次进「排行」仍是涨幅榜
   rankDir = "up";
   collapse();
   vscode.postMessage({ type: "tab", tab });

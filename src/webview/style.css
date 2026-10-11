@@ -47,7 +47,7 @@ body {
   color: var(--dim);
 }
 
-/* 顶栏：tab + 时间 + 刷新；排行标签下的涨跌榜切换另起一行 */
+/* 顶栏：tab + 时间 + 刷新 */
 .bar {
   position: sticky;
   top: 0;
