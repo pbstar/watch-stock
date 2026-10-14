@@ -3,7 +3,13 @@ import { get, getGbk } from "../utils/http";
 import { buildTimeSlots } from "../utils/time";
 import { isFund, safeNumber } from "../utils/stock";
 import { decOf } from "../shared/format";
-import type { Stock, StockQuote, MinutePoint, RankItem } from "../types";
+import type {
+  Stock,
+  StockQuote,
+  MinutePoint,
+  RankItem,
+  MoneyFlowItem,
+} from "../types";
 
 // 批量行情源：sina 含五档封单，tencent 简版在集合竞价等新浪缺数据时段兜底
 export type QuoteSource = "sina" | "tencent";
@@ -206,6 +212,51 @@ export async function getRankList(
         changeValue: safeNumber(d.pricechange).toFixed(2),
         changePercent: safeNumber(d.changepercent).toFixed(2),
       }));
+  } catch {
+    return [];
+  }
+}
+
+// 新浪资金流向原始字段（数值均为字符串）
+interface MoneyFlowRaw {
+  symbol?: string;
+  name?: string | boolean; // 部分行没有名称，接口返回布尔 false
+  trade?: string;
+  changeratio?: string;
+  netamount?: string;
+  ratioamount?: string;
+}
+
+// 资金榜：全市场按净流入额取头部，asc=false 流入榜、true 流出榜
+export async function getMoneyFlowList(
+  asc: boolean,
+  num: number,
+): Promise<MoneyFlowItem[]> {
+  try {
+    const url =
+      "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php" +
+      "/MoneyFlow.ssl_bkzj_ssggzj" +
+      `?page=1&num=${num}&sort=netamount&asc=${asc ? 1 : 0}&bankuai=&shangzhang=`;
+    const list: MoneyFlowRaw[] = JSON.parse(await get(url));
+    if (!Array.isArray(list)) return [];
+
+    const rows: MoneyFlowItem[] = [];
+    for (const d of list) {
+      // 接口是「全市场个股 + 基金」口径，货基与国债 ETF 体量极大、常年占据榜单两端，
+      // 按基金特征剔除；另有少量行没有名称（返回布尔 false），一并跳过
+      if (typeof d?.name !== "string" || !d.name || !d.symbol) continue;
+      if (isFund(d.symbol, d.name, safeNumber(d.trade))) continue;
+      rows.push({
+        code: d.symbol.toLowerCase(),
+        name: d.name,
+        current: safeNumber(d.trade).toFixed(2),
+        // changeratio 是小数比值（0.1 即 10%），与行情中心的百分数字段不同
+        changePercent: (safeNumber(d.changeratio) * 100).toFixed(2),
+        netAmount: safeNumber(d.netamount),
+        netRatio: (safeNumber(d.ratioamount) * 100).toFixed(1),
+      });
+    }
+    return rows;
   } catch {
     return [];
   }

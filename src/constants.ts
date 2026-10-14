@@ -65,3 +65,9 @@ export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
 
 // 涨跌排行每榜条数（涨幅榜、跌幅榜各取这么多）
 export const RANK_SIZE = 20;
+
+// 资金榜每榜条数
+export const FLOW_SIZE = 20;
+
+// 资金榜取数条数：接口返回含基金与无名称的脏行，需放大取数后过滤再截断到 FLOW_SIZE
+export const FLOW_FETCH_SIZE = 50;

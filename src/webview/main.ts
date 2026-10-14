@@ -1,5 +1,6 @@
 // webview 入口：消息分发、tab 切换、tab 状态恢复
 import type {
+  FlowRowItem,
   RankDir,
   RowItem,
   SectorItem,
@@ -10,6 +11,8 @@ import type {
 import { renderChart } from "./chart";
 import {
   createDetail,
+  flowCellsHtml,
+  quoteCellsHtml,
   renderList,
   updateDetailMetrics,
   type DetailData,
@@ -39,6 +42,7 @@ const data = {
   index: [] as RowItem[],
   sector: [] as SectorItem[],
   rank: { up: [] as RowItem[], down: [] as RowItem[] },
+  flow: { inflow: [] as FlowRowItem[], outflow: [] as FlowRowItem[] },
   detail: undefined as DetailData | undefined,
   time: "",
 };
@@ -71,7 +75,7 @@ function render(): void {
   document.querySelectorAll<HTMLElement>(".subtab").forEach((el) => {
     el.classList.toggle("active", el.dataset.dir === rankDir);
   });
-  // 涨跌榜切换只在排行标签下露出
+  // 榜单切换只在排行标签下露出
   document.body.classList.toggle("ranking", state.tab === "rank");
   $("#time").textContent = data.time;
   if (state.tab === "sector") {
@@ -79,15 +83,43 @@ function render(): void {
     return;
   }
   const attached = detailEl?.isConnected;
-  const items =
-    state.tab === "rank"
-      ? data.rank[rankDir]
-      : state.tab === "index"
-        ? data.index
-        : data.stocks;
-  renderList(content, items, expanded, true, detailEl);
+  if (state.tab === "rank") {
+    renderRank();
+  } else {
+    renderList(
+      content,
+      state.tab === "index" ? data.index : data.stocks,
+      expanded,
+      true,
+      detailEl,
+      quoteCellsHtml,
+    );
+  }
   // 详情块未挂载期间到达的分时不会绘制，重新挂载（切回列表、列表从空恢复）时补画
   if (!attached) drawChart();
+}
+
+// 排行子榜两套列：涨跌榜是行情行，资金榜是资金行，行内都可展开
+function renderRank(): void {
+  if (rankDir === "up" || rankDir === "down") {
+    renderList(
+      content,
+      data.rank[rankDir],
+      expanded,
+      true,
+      detailEl,
+      quoteCellsHtml,
+    );
+  } else {
+    renderList(
+      content,
+      data.flow[rankDir],
+      expanded,
+      true,
+      detailEl,
+      flowCellsHtml,
+    );
+  }
 }
 
 // 详情数据到达：只更新指标文字并重画图表，列表与悬停读数不受影响
@@ -114,7 +146,7 @@ $(".bar").addEventListener("click", (e) => {
     vscode.postMessage({ type: "refresh" });
     return;
   }
-  // 涨跌榜切换只改本地方向：两份榜单随排行数据一起下发，不需要回扩展端
+  // 榜单切换只改本地方向：四份榜单随排行数据一起下发，不需要回扩展端
   const dir = target.closest<HTMLElement>(".subtab")?.dataset.dir as
     | RankDir
     | undefined;
@@ -164,6 +196,7 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
       break;
     case "rank":
       data.rank = { up: msg.up, down: msg.down };
+      data.flow = { inflow: msg.inflow, outflow: msg.outflow };
       break;
     case "detail":
       if (msg.code !== expanded) return;
