@@ -1,6 +1,7 @@
 // webview 入口：tab 切换、消息分发与面板状态
 import type { RankDir, Tab, ToHost, ToView } from "../shared/protocol";
 import { DetailBlock } from "./detail";
+import { bar, content } from "./dom";
 import { render } from "./render";
 import { createViewState, type PersistentState } from "./viewState";
 
@@ -13,16 +14,13 @@ declare function acquireVsCodeApi(): {
 const vscode = acquireVsCodeApi();
 const state = createViewState(vscode.getState()?.tab ?? "mine");
 
-const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const content = $("#content");
-
 // 收起展开行：切标签或切换涨跌榜都收起，行状态不跨列表保留
 function collapse(): void {
   state.open = null;
   vscode.postMessage({ type: "expand", code: null });
 }
 
-$(".bar").addEventListener("click", (e) => {
+bar.addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
   if (target.closest(".refresh")) {
     vscode.postMessage({ type: "refresh" });

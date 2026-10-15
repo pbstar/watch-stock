@@ -1,11 +1,9 @@
 // 按当前标签渲染面板：内容区交给列表或网格，展开行的详情块由列表负责落位
 import type { ViewState } from "./viewState";
 import { flowCells, quoteCells } from "./cells";
+import { content, time } from "./dom";
 import { renderList } from "./list";
 import { renderSector } from "./sector";
-
-const content = document.querySelector<HTMLElement>("#content")!;
-const time = document.querySelector<HTMLElement>("#time")!;
 
 export function render(state: ViewState): void {
   document.querySelectorAll<HTMLElement>(".tab").forEach((el) => {
