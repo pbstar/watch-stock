@@ -25,7 +25,16 @@ import type {
 // 批量行情源：sina 含五档封单，tencent 简版在集合竞价等新浪缺数据时段兜底
 export type QuoteSource = "sina" | "tencent";
 
-// 股票维度的缓存 key 形如 <源>:<类型>:<代码...>，供按股票精确失效识别
+// 股票维度的缓存 key 形如 <源>:<类型>:<代码...>，构造与解析共用同一套约定：
+// invalidateQuote 靠解析反解出代码做按股票失效，改这里的格式必须两边一起改
+function stockKey(
+  source: QuoteSource,
+  kind: "quote" | "full" | "minute",
+  codes: string[],
+): string {
+  return `${source}:${kind}:${codes.join(",")}`;
+}
+
 const STOCK_KEY_RE = /^(sina|tencent):(quote|full|minute):(.+)$/;
 
 // 代码归一化：小写、去重、排序，保证调用顺序不同也能命中同一份缓存
@@ -56,40 +65,42 @@ function orderBy<T extends { code: string }>(rows: T[], codes: string[]): T[] {
     .filter((r): r is T => r !== undefined);
 }
 
+// 批量取股票维度的行情：缓存 key 用归一化后的代码，调用顺序不同也命中同一份缓存；
+// 返回前再按调用方顺序还原。行情与详情同属行情类，共用 QUOTE_CACHE_TTL
+async function fetchQuoteRows<T extends { code: string }>(
+  source: QuoteSource,
+  kind: "quote" | "full",
+  codes: string[],
+  load: (list: string[]) => Promise<T[]>,
+): Promise<T[]> {
+  if (!codes?.length) return [];
+  const list = normalizeCodes(codes);
+  const rows = await cachedFetch<T[]>({
+    key: stockKey(source, kind, list),
+    ttl: QUOTE_CACHE_TTL,
+    fallback: [],
+    load: () => load(list),
+  });
+  return orderBy(rows, requestOrder(codes));
+}
+
 // 批量行情（自选/指数/板块）
 export async function getStockList(
   codes: string[],
   source: QuoteSource = "sina",
 ): Promise<Stock[]> {
-  if (!codes?.length) return [];
-  const list = normalizeCodes(codes);
-
-  const rows = await cachedFetch<Stock[]>({
-    key: `${source}:quote:${list.join(",")}`,
-    ttl: QUOTE_CACHE_TTL,
-    fallback: [],
-    load: () =>
-      source === "sina"
-        ? sina.fetchQuote(list)
-        : tencent.fetchSimpleQuotes(list),
-  });
-  return orderBy(rows, requestOrder(codes));
+  return fetchQuoteRows(source, "quote", codes, (list) =>
+    source === "sina" ? sina.fetchQuote(list) : tencent.fetchSimpleQuotes(list),
+  );
 }
 
 // 详细行情列表（面板展开行）
 export async function getStockQuoteList(
   codes: string[],
 ): Promise<StockQuote[]> {
-  if (!codes?.length) return [];
-  const list = normalizeCodes(codes);
-
-  const rows = await cachedFetch<StockQuote[]>({
-    key: `tencent:full:${list.join(",")}`,
-    ttl: QUOTE_CACHE_TTL,
-    fallback: [],
-    load: () => tencent.fetchFullQuotes(list),
-  });
-  return orderBy(rows, requestOrder(codes));
+  return fetchQuoteRows("tencent", "full", codes, (list) =>
+    tencent.fetchFullQuotes(list),
+  );
 }
 
 // 涨跌排行：沪深京 A 股全市场按涨跌幅取头部
@@ -126,7 +137,7 @@ export async function getMoneyFlowList(
 export async function getStockMinute(code: string): Promise<MinutePoint[]> {
   const key = code.toLowerCase();
   return cachedFetch<MinutePoint[]>({
-    key: `tencent:minute:${key}`,
+    key: stockKey("tencent", "minute", [key]),
     ttl: MINUTE_CACHE_TTL,
     fallback: [],
     load: () => tencent.fetchMinute(key),
