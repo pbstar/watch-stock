@@ -85,8 +85,9 @@ export class StockViewProvider
       case "refresh":
         // 主动刷新穿透全部接口缓存，避免又推一遍 TTL 内的旧数据
         refreshAll();
-        if (this.tab === "mine") await this.refreshStocks();
-        else await this.pushTabData();
+        // 统一走主循环链路：它会推送自选行情（带时间）、当前标签的数据与状态栏。
+        // 此前只刷当前标签，非自选标签拿不到新时间戳，点刷新像没反应
+        await this.refreshStocks();
         break;
     }
   }
