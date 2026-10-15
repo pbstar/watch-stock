@@ -36,10 +36,20 @@ async function inputTargetPrice(
   condition: AlarmCondition,
   currentPrice: number,
 ): Promise<number | null> {
+  // 行情没取到时当前价按 0 记，此时相对校验会把所有正数都判为非法，
+  // 「价格低于」将无法提交任何一个值，只能 Esc，故取不到价就跳过校验
+  const hasPrice = currentPrice > 0;
+  const prompt = hasPrice
+    ? `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`
+    : "请输入目标价格";
+  const example = (
+    condition === "above" ? currentPrice + 1 : currentPrice - 1
+  ).toFixed(2);
+
   while (true) {
     const priceInput = await vscode.window.showInputBox({
-      prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
-      placeHolder: `例如: ${condition === "above" ? (currentPrice + 1).toFixed(2) : (currentPrice - 1).toFixed(2)}`,
+      prompt,
+      placeHolder: hasPrice ? `例如: ${example}` : "",
     });
     if (!priceInput) return null;
     const price = parseFloat(priceInput);
@@ -47,11 +57,11 @@ async function inputTargetPrice(
       sendMsg("请输入有效的价格", { type: "error" });
       continue;
     }
-    if (condition === "above" && price <= currentPrice) {
+    if (hasPrice && condition === "above" && price <= currentPrice) {
       sendMsg("目标价格必须高于当前价格", { type: "error" });
       continue;
     }
-    if (condition === "below" && price >= currentPrice) {
+    if (hasPrice && condition === "below" && price >= currentPrice) {
       sendMsg("目标价格必须低于当前价格", { type: "error" });
       continue;
     }
