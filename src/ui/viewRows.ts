@@ -35,8 +35,7 @@ export function toRankRow(item: RankItem): RowItem {
   return quoteRow(item);
 }
 
-// 资金榜行：现价与涨跌幅仍按行情着色，第 6 列换成净额并按进出方向着色，
-// 末列补净额占成交额比，弥补榜单看不到强弱程度的短板
+// 资金榜行：净额按进出方向着色，末列补占成交额比，弥补榜单看不出强弱
 export function toFlowRow(item: MoneyFlowItem): FlowRowItem {
   return {
     code: item.code,

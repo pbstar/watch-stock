@@ -6,7 +6,6 @@ import type { SendMsgOptions } from "../types";
 // 限流冷却时间：60秒内同类型消息合并
 const RATE_LIMIT_COOLDOWN = 60000;
 
-// 全局限流状态
 let lastNotifyTime = 0;
 let pendingMessages: string[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -29,7 +28,7 @@ function showVscodeMessage(
   }
 }
 
-// 发送缓存消息
+// 积压的消息合并成一条发出，并从此刻起重新计时
 function sendPendingMessages(): void {
   const finalText = pendingMessages.join(" ---- ");
   pendingMessages = [];

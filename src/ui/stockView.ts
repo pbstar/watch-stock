@@ -83,10 +83,8 @@ export class StockViewProvider
         await this.pushDetail();
         break;
       case "refresh":
-        // 主动刷新穿透全部接口缓存，避免又推一遍 TTL 内的旧数据
+        // 穿透全部接口缓存，避免又推一遍 TTL 内的旧数据
         refreshAll();
-        // 统一走主循环链路：它会推送自选行情（带时间）、当前标签的数据与状态栏。
-        // 此前只刷当前标签，非自选标签拿不到新时间戳，点刷新像没反应
         await this.refreshStocks();
         break;
     }
@@ -96,8 +94,8 @@ export class StockViewProvider
   private async pushTabData(): Promise<void> {
     const tab = this.tab;
     const { msg, codes } = await loadTab(tab);
-    // 取数期间切了标签：这批数据已不属于当前标签，写进 listCodes 会让新标签的
-    // 展开行因为代码不在列表里而永远拉不到详情（各标签取数耗时不同，必然发生）
+    // 取数期间切了标签就丢弃这批结果：listCodes 被旧标签的代码覆盖后，
+    // 新标签的展开行会因为代码不在列表里而拉不到详情
     if (tab !== this.tab) return;
     this.listCodes = codes;
     if (msg) this.post(msg);

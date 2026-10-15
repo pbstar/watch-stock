@@ -38,8 +38,7 @@ function prune(): void {
   for (const [key, entry] of [...store]) {
     if (now >= entry.expireAt) store.delete(key);
   }
-  // 仍超限说明未过期的活跃 key 太多，按最早到期淘汰：只清过期项的话，
-  // 一条都不过期时上限形同虚设，缓存照旧涨
+  // 仍超限说明未过期的活跃 key 太多，按最早到期淘汰到上限内
   if (store.size < MAX_ENTRIES) return;
   const byExpire = [...store].sort((a, b) => a[1].expireAt - b[1].expireAt);
   for (const [key] of byExpire) {

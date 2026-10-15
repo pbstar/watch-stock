@@ -39,7 +39,6 @@ bar.addEventListener("click", (e) => {
   }
   const tab = target.closest<HTMLElement>(".tab")?.dataset.tab as Tab | undefined;
   if (!tab || tab === state.tab) return;
-  // 切 tab 一律收起展开行：各列表的展开状态互不相干，不跨 tab 保留
   state.tab = tab;
   vscode.setState({ tab });
   state.rankDir = "up";

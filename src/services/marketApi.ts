@@ -56,8 +56,7 @@ function requestOrder(codes: string[]): string[] {
   return list;
 }
 
-// 按请求顺序对齐结果：接口返回顺序不可依赖，且板块列表顺序本身有意义；
-// 源未返回的代码（如无效代码）直接丢弃
+// 按请求顺序对齐结果，源未返回的代码（如无效代码）直接丢弃
 function orderBy<T extends { code: string }>(rows: T[], codes: string[]): T[] {
   const map = new Map(rows.map((r) => [r.code, r]));
   return codes
@@ -111,7 +110,6 @@ export async function getRankList(
   return cachedFetch<RankItem[]>({
     key: `sina:rank:${asc ? "asc" : "desc"}:${num}`,
     ttl: RANK_CACHE_TTL,
-    // 接口异常时返回空，不写缓存，下个刷新周期重试
     cacheEmpty: false,
     fallback: [],
     load: () => sina.fetchRank(asc, num),
@@ -126,7 +124,6 @@ export async function getMoneyFlowList(
   return cachedFetch<MoneyFlowItem[]>({
     key: `sina:flow:${asc ? "asc" : "desc"}:${num}`,
     ttl: FLOW_CACHE_TTL,
-    // 接口异常时返回空，不写缓存，下个刷新周期重试
     cacheEmpty: false,
     fallback: [],
     load: () => sina.fetchMoneyFlow(asc, num),

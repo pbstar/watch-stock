@@ -26,7 +26,7 @@ export interface RowItem extends BaseRow {
   lock: string;
 }
 
-// 资金榜行：净额与净额占比只有资金榜有，单独一套列，不与行情行混用
+// 资金榜行：尾部两列是净额与净额占比，与行情行不共用
 export interface FlowRowItem extends BaseRow {
   netAmount: string; // 净额文案，带符号与量级单位
   netDir: "up" | "dn"; // 净额按流入/流出着色

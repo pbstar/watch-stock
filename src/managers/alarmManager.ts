@@ -52,8 +52,7 @@ async function inputTargetPrice(
   condition: AlarmCondition,
   currentPrice: number,
 ): Promise<number | null> {
-  // 行情没取到时当前价按 0 记，此时相对校验会把所有正数都判为非法，
-  // 「价格低于」将无法提交任何一个值，只能 Esc，故取不到价就跳过校验
+  // 取不到价时当前价按 0 记，相对校验会把所有正数判为非法，故跳过
   const hasPrice = currentPrice > 0;
   const prompt = hasPrice
     ? `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`

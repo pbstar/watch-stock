@@ -66,8 +66,7 @@ export const config = {
   getStocks(): string[] {
     return sanitizeStocks(read("stocks"));
   },
-  // 用户手写配置可能带大写或非法代码，规范化后回写。不放在读路径上：
-  // getStocks 被轮询链路每 5 秒调一次，读接口带写副作用会顺带触发刷新
+  // 手写配置可能带大写或非法代码，规范化后回写（读路径每 5 秒调一次，不适合写配置）
   async normalizeStocks(): Promise<void> {
     const stored = read("stocks");
     const valid = sanitizeStocks(stored);

@@ -5,7 +5,6 @@
 // 量级档位：[阈值, 单位后缀, 小数位数]，按阈值从大到小排列
 type ScaleStep = readonly [threshold: number, unit: string, digits: number];
 
-// 金额档位：万亿 / 亿 / 万
 const MONEY_STEPS: readonly ScaleStep[] = [
   [1e12, "万亿", 2],
   [1e8, "亿", 1],
