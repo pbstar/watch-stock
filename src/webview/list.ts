@@ -1,7 +1,7 @@
 // 列表渲染：行复用、整体重建与详情块落位
 import type { BaseRow } from "../shared/protocol";
 import type { DetailBlock } from "./detail";
-import { esc } from "./format";
+import { esc } from "../shared/format";
 
 // 展开行：code 为展开的那一行，block 为常驻的详情块，两者同生共死
 export interface OpenRow {

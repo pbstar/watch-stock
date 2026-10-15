@@ -1,8 +1,7 @@
 // 展开行详情块：指标 + 悬停读数 + 分时图，创建、更新、落位与绘制都由本类自理
 import type { DetailQuote, MinutePoint } from "../shared/protocol";
-import { decOf, formatMoney, formatVolume } from "../shared/format";
+import { decOf, fmtNum, formatMoney, formatVolume } from "../shared/format";
 import { renderChart } from "./chart";
-import { fmtNum } from "./format";
 
 export interface DetailData {
   quote: DetailQuote | null;

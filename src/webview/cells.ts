@@ -1,6 +1,6 @@
 // 列表单元格：行情行与资金行共用前 5 列，各自只写尾列
 import type { BaseRow, FlowRowItem, RowItem } from "../shared/protocol";
-import { dirClass, esc, signed } from "./format";
+import { dirClass, esc, signed } from "../shared/format";
 
 // 标记、代码、名称、现价、涨跌幅
 function baseCells(row: BaseRow, marker: string): string {

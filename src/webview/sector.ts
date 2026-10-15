@@ -1,6 +1,6 @@
 // 板块网格：按涨幅排序，等宽流式排布
 import type { SectorItem } from "../shared/protocol";
-import { dirClass, esc, signed } from "./format";
+import { dirClass, esc, signed } from "../shared/format";
 
 export function renderSector(el: HTMLElement, items: SectorItem[]): void {
   if (!items.length) {
