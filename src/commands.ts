@@ -88,6 +88,10 @@ export function registerCommands(
       sendMsg("股票行情数据刷新完成");
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
+      // 规范化回写自身会再触发一次本监听，但那时配置已是规范形态，不会再来一轮
+      if (e.affectsConfiguration("watch-stock.stocks")) {
+        void config.normalizeStocks();
+      }
       if (affectsRefresh(e)) scheduleRefresh(appState);
     }),
   ];
