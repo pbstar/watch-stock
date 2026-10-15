@@ -12,6 +12,54 @@ function getPriceSymbol(changeValue: string): string {
   return v > 0 ? "↗" : "↘";
 }
 
+// 本次渲染用到的展示配置，一次读齐
+interface DisplayOptions {
+  maxDisplayCount: number;
+  showMiniName: boolean;
+  miniNames: Record<string, string>;
+  showChangeValue: boolean;
+  showLockCount: boolean;
+}
+
+function readDisplayOptions(): DisplayOptions {
+  return {
+    maxDisplayCount: config.getMaxDisplayCount(),
+    showMiniName: config.getShowMiniName(),
+    miniNames: config.getStockMiniNames(),
+    showChangeValue: config.getShowChangeValue(),
+    showLockCount: config.getShowLockCount(),
+  };
+}
+
+// 状态栏封单后缀：开了 showLockCount 且确实有封单才显示
+function barLock(stock: Stock, showLockCount: boolean): string {
+  if (!showLockCount || !isLockState(stock.priceType)) return "";
+  const amount = stock.lockAmount ?? 0;
+  return amount > 0 ? ` 封${formatAmount(amount)}` : "";
+}
+
+// tooltip 封单后缀：涨跌停一律列出封单金额，不受状态栏配置影响
+function tooltipLock(stock: Stock): string {
+  if (!isLockState(stock.priceType)) return "";
+  const type = stock.priceType === "up" ? "涨停" : "跌停";
+  return ` ${type}封单: ${formatAmount(stock.lockAmount ?? 0)}`;
+}
+
+// 状态栏一行
+function barText(stock: Stock, o: DisplayOptions): string {
+  const symbol = getPriceSymbol(stock.changeValue);
+  const name = getDisplayName(stock.code, stock.name, o.showMiniName, o.miniNames);
+  const change = o.showChangeValue ? `(${stock.changeValue})` : "";
+  return `${name} ${stock.current} ${symbol}${stock.changePercent}%${change}${barLock(stock, o.showLockCount)}`;
+}
+
+// tooltip 一行：列出该股票的全部行情，含封单
+function tooltipLine(stock: Stock): string {
+  const symbol = getPriceSymbol(stock.changeValue);
+  const detail = `${stock.current} ${symbol}${stock.changePercent}%(${stock.changeValue})`;
+  return `${stock.name}(${stock.code}): ${detail}${tooltipLock(stock)}`;
+}
+
 export class StatusBarManager implements vscode.Disposable {
   private statusBarItem: vscode.StatusBarItem | null = null;
   private hidden = false;
@@ -59,55 +107,20 @@ export class StatusBarManager implements vscode.Disposable {
       return;
     }
 
-    const maxDisplayCount = config.getMaxDisplayCount();
-    const showMiniName = config.getShowMiniName();
-    const stockMiniNames = config.getStockMiniNames();
-    const showChangeValue = config.getShowChangeValue();
-    const showLockCount = config.getShowLockCount();
+    const options = readDisplayOptions();
+    const text = stockInfos
+      .slice(0, options.maxDisplayCount)
+      .map((s) => barText(s, options))
+      .join(" | ");
+    const hiddenCount = stockInfos.length - options.maxDisplayCount;
+    this.updateText(hiddenCount > 0 ? `${text} ...(${hiddenCount}+)` : text);
 
-    const stockTexts: string[] = [];
-    const tooltipLines: string[] = [];
-
-    stockInfos.forEach((stock, i) => {
-      const symbol = getPriceSymbol(stock.changeValue);
-      // tooltip 行（所有股票）
-      const lockType = isLockState(stock.priceType)
-        ? ` ${stock.priceType === "up" ? "涨停" : "跌停"}封单: ${formatAmount(stock.lockAmount ?? 0)}`
-        : "";
-      tooltipLines.push(
-        `${stock.name}(${stock.code}): ${stock.current} ${symbol}${stock.changePercent}%(${stock.changeValue})${lockType}`,
-      );
-      // 状态栏文本（仅前 maxDisplayCount 只）
-      if (i >= maxDisplayCount) return;
-      const displayName = getDisplayName(
-        stock.code,
-        stock.name,
-        showMiniName,
-        stockMiniNames,
-      );
-      const lockText =
-        showLockCount &&
-        (stock.lockAmount ?? 0) > 0 &&
-        isLockState(stock.priceType)
-          ? ` 封${formatAmount(stock.lockAmount ?? 0)}`
-          : "";
-      stockTexts.push(
-        `${displayName} ${stock.current} ${symbol}${stock.changePercent}%${showChangeValue ? `(${stock.changeValue})` : ""}${lockText}`,
-      );
-    });
-
-    const statusText = stockTexts.join(" | ");
-    this.updateText(
-      stockInfos.length > maxDisplayCount
-        ? `${statusText} ...(${stockInfos.length - maxDisplayCount}+)`
-        : statusText,
-    );
-
-    const failedInfo =
+    // 未取到行情的股票只在 tooltip 里提示数量，不占状态栏空间
+    const failed =
       stocks.length > stockInfos.length
         ? `\n\n$(warning) ${stocks.length - stockInfos.length}只股票获取失败`
         : "";
-    this.updateTooltip(tooltipLines.join("\n") + failedInfo);
+    this.updateTooltip(stockInfos.map(tooltipLine).join("\n") + failed);
   }
 
   // 显示隐藏图标（已隐藏时跳过）
