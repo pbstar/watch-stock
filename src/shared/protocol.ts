@@ -12,22 +12,22 @@ export interface MinutePoint {
   volume: number | null;
 }
 
-// 列表行（自选 / 指数 / 涨跌榜），名称与封单文案由扩展端处理好
-export interface RowItem {
+// 列表行共有部分：标记、代码、名称、现价、涨跌幅（涨跌幅同时决定整行涨跌配色）
+export interface BaseRow {
   code: string;
   name: string;
   current: string;
   changePercent: string;
+}
+
+// 列表行（自选 / 指数 / 涨跌榜），名称与封单文案由扩展端处理好
+export interface RowItem extends BaseRow {
   changeValue: string;
   lock: string;
 }
 
 // 资金榜行：净额与净额占比只有资金榜有，单独一套列，不与行情行混用
-export interface FlowRowItem {
-  code: string;
-  name: string;
-  current: string;
-  changePercent: string;
+export interface FlowRowItem extends BaseRow {
   netAmount: string; // 净额文案，带符号与量级单位
   netDir: "up" | "dn"; // 净额按流入/流出着色
   netRatio: string; // 净额占成交额比文案

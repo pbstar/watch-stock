@@ -8,17 +8,10 @@ import type {
   ToHost,
   ToView,
 } from "../shared/protocol";
-import { renderChart } from "./chart";
-import {
-  createDetail,
-  flowCellsHtml,
-  quoteCellsHtml,
-  renderList,
-  updateDetailMetrics,
-  type DetailData,
-} from "./list";
+import { renderList } from "./list";
+import { flowCells, quoteCells } from "./cells";
+import { DetailBlock } from "./detail";
 import { renderSector } from "./sector";
-import { decOf } from "../shared/format";
 
 // 界面状态只记住 tab；展开行与排行方向属于纯界面状态，不跨面板重建保留
 interface ViewState {
@@ -43,7 +36,6 @@ const data = {
   sector: [] as SectorItem[],
   rank: { up: [] as RowItem[], down: [] as RowItem[] },
   flow: { inflow: [] as FlowRowItem[], outflow: [] as FlowRowItem[] },
-  detail: undefined as DetailData | undefined,
   time: "",
 };
 
@@ -53,7 +45,7 @@ const content = $("#content");
 // 展开行：切 tab 即收起
 let expanded: string | null = null;
 // 展开行的详情块：展开期间常驻，行情刷新只搬位置不重建
-let detailEl: HTMLElement | null = null;
+let detail: DetailBlock | null = null;
 
 // 指数无个股指标，详情块按精简模式渲染
 function compact(): boolean {
@@ -63,8 +55,7 @@ function compact(): boolean {
 // 收起展开行：切标签或切换涨跌榜都收起，行状态不跨列表保留
 function collapse(): void {
   expanded = null;
-  data.detail = undefined;
-  detailEl = null;
+  detail = null;
   vscode.postMessage({ type: "expand", code: null });
 }
 
@@ -82,7 +73,6 @@ function render(): void {
     renderSector(content, data.sector);
     return;
   }
-  const attached = detailEl?.isConnected;
   if (state.tab === "rank") {
     renderRank();
   } else {
@@ -90,54 +80,19 @@ function render(): void {
       content,
       state.tab === "index" ? data.index : data.stocks,
       expanded,
-      true,
-      detailEl,
-      quoteCellsHtml,
+      detail,
+      quoteCells,
     );
   }
-  // 详情块未挂载期间到达的分时不会绘制，重新挂载（切回列表、列表从空恢复）时补画
-  if (!attached) drawChart();
 }
 
 // 排行子榜两套列：涨跌榜是行情行，资金榜是资金行，行内都可展开
 function renderRank(): void {
   if (rankDir === "up" || rankDir === "down") {
-    renderList(
-      content,
-      data.rank[rankDir],
-      expanded,
-      true,
-      detailEl,
-      quoteCellsHtml,
-    );
+    renderList(content, data.rank[rankDir], expanded, detail, quoteCells);
   } else {
-    renderList(
-      content,
-      data.flow[rankDir],
-      expanded,
-      true,
-      detailEl,
-      flowCellsHtml,
-    );
+    renderList(content, data.flow[rankDir], expanded, detail, flowCells);
   }
-}
-
-// 详情数据到达：只更新指标文字并重画图表，列表与悬停读数不受影响
-function renderDetail(): void {
-  if (!detailEl) return;
-  updateDetailMetrics(detailEl, data.detail);
-  drawChart();
-}
-
-// 展开行存在且分时已到达时画图
-function drawChart(): void {
-  const quote = data.detail?.quote;
-  if (!detailEl?.isConnected || !data.detail || !quote) return;
-  const hover = detailEl.querySelector<HTMLElement>(".hover")!;
-  const chart = detailEl.querySelector<HTMLElement>(".chart")!;
-  renderChart(chart, data.detail.minute, Number(quote.close), decOf(quote.isETF), (text) => {
-    hover.textContent = text ?? "";
-  });
 }
 
 $(".bar").addEventListener("click", (e) => {
@@ -174,8 +129,7 @@ content.addEventListener("click", (e) => {
   if (!row) return;
   const code = row.dataset.code === expanded ? null : row.dataset.code!;
   expanded = code;
-  data.detail = undefined;
-  detailEl = code ? createDetail(compact()) : null;
+  detail = code ? new DetailBlock(compact()) : null;
   vscode.postMessage({ type: "expand", code });
   render();
 });
@@ -200,8 +154,7 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
       break;
     case "detail":
       if (msg.code !== expanded) return;
-      data.detail = { quote: msg.quote, minute: msg.minute };
-      renderDetail();
+      detail?.update({ quote: msg.quote, minute: msg.minute });
       return;
   }
   render();
