@@ -63,6 +63,16 @@ export interface RankItem {
   changePercent: string;
 }
 
+// 资金榜条目（新浪资金流向，全市场按净流入额取头部）
+export interface MoneyFlowItem {
+  code: string; // 带市场前缀，如 sh600519
+  name: string;
+  current: string;
+  changePercent: string;
+  netAmount: number; // 净流入额（元），负数为净流出
+  netRatio: string; // 净额占成交额比（%）
+}
+
 // 分时数据点定义在消息协议中，两端共用
 export type { MinutePoint } from "./shared/protocol";
 

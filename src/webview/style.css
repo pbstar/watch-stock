@@ -81,7 +81,7 @@ body {
   text-underline-offset: 4px;
 }
 
-/* 涨跌榜切换：靠位置而不是字号与顶部标签拉开层级 */
+/* 榜单切换：靠位置而不是字号与顶部标签拉开层级 */
 .subtabs {
   display: none;
   flex-basis: 100%;

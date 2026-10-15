@@ -1,5 +1,10 @@
-// 自选 / 指数行渲染 + 行内展开详情
-import type { DetailQuote, MinutePoint, RowItem } from "../shared/protocol";
+// 列表行渲染（行情行 / 资金行）+ 行内展开详情
+import type {
+  DetailQuote,
+  FlowRowItem,
+  MinutePoint,
+  RowItem,
+} from "../shared/protocol";
 import { decOf, formatMoney, formatVolume } from "../shared/format";
 import { dirClass, esc, fmtNum, signed } from "./format";
 
@@ -8,7 +13,8 @@ export interface DetailData {
   minute: MinutePoint[];
 }
 
-function cellsHtml(s: RowItem, marker: string): string {
+// 行情行（自选 / 指数 / 涨跌榜）：现价、涨跌幅、涨跌额
+export function quoteCellsHtml(s: RowItem, marker: string): string {
   const cls = dirClass(s.changePercent);
   return `<span class="marker">${marker}</span>
     <span class="dim">${esc(s.code)}</span>
@@ -17,6 +23,18 @@ function cellsHtml(s: RowItem, marker: string): string {
     <span class="num ${cls}">${esc(signed(s.changePercent, "%"))}</span>
     <span class="num ${cls}">${esc(signed(s.changeValue))}</span>
     <span class="dim">${esc(s.lock)}</span>`;
+}
+
+// 资金榜行：第 6 列换成净额并按进出方向着色，末列补净额占比，与行情行共用同一套列宽
+export function flowCellsHtml(s: FlowRowItem, marker: string): string {
+  const cls = dirClass(s.changePercent);
+  return `<span class="marker">${marker}</span>
+    <span class="dim">${esc(s.code)}</span>
+    <span class="name">${esc(s.name)}</span>
+    <span class="num ${cls}">${esc(s.current)}</span>
+    <span class="num ${cls}">${esc(signed(s.changePercent, "%"))}</span>
+    <span class="num ${s.netDir}">${esc(s.netAmount)}</span>
+    <span class="dim">${esc(s.netRatio)}</span>`;
 }
 
 // compact 为精简模式（指数）：指数无换手、市盈等个股指标，只保留行情与成交
@@ -64,13 +82,15 @@ export function updateDetailMetrics(
 }
 
 // 渲染列表；expandable 为 false 时（板块）不支持展开；detailEl 放在展开行之后。
+// 列的含义由各列表自己的 cells 决定，这里只管行复用、整体重建与详情块落位：
 // 行顺序不变时只替换各行单元格，详情块原地保留；顺序变化（排序、增删、切 tab）才整体重建
-export function renderList(
+export function renderList<T extends { code: string }>(
   el: HTMLElement,
-  items: RowItem[],
+  items: T[],
   expanded: string | null,
   expandable: boolean,
-  detailEl: HTMLElement | null = null,
+  detailEl: HTMLElement | null,
+  cells: (item: T, marker: string) => string,
 ): void {
   if (!items.length) {
     el.innerHTML = '<div class="empty">暂无数据</div>';
@@ -80,16 +100,16 @@ export function renderList(
   const sameOrder =
     rows.length === items.length &&
     rows.every((r, i) => r.dataset.code === items[i].code);
-  const cells = (s: RowItem) =>
-    cellsHtml(s, expandable ? (s.code === expanded ? "▾" : "▸") : "");
+  const cellHtml = (s: T) =>
+    cells(s, expandable ? (s.code === expanded ? "▾" : "▸") : "");
   if (sameOrder) {
     rows.forEach((r, i) => {
-      r.innerHTML = cells(items[i]);
+      r.innerHTML = cellHtml(items[i]);
     });
   } else {
     // 整体重建会连同详情块一起销毁，需重新取引用
     el.innerHTML = items
-      .map((s) => `<div class="row" data-code="${esc(s.code)}">${cells(s)}</div>`)
+      .map((s) => `<div class="row" data-code="${esc(s.code)}">${cellHtml(s)}</div>`)
       .join("");
     rows = [...el.querySelectorAll<HTMLElement>(".row")];
   }
