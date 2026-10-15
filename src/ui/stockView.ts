@@ -16,33 +16,16 @@ import {
   getStockQuoteList,
   getRankList,
   getMoneyFlowList,
-} from "../services/stockService";
+  refreshAll,
+} from "../services/marketApi";
 import { isLockState } from "../utils/stock";
 import { formatAmount, formatMoney } from "../shared/format";
 import { formatClock } from "../utils/time";
-import type { Stock, MinutePoint, RankItem, MoneyFlowItem } from "../types";
+import type { Stock, RankItem, MoneyFlowItem } from "../types";
 import type { RowItem, FlowRowItem, Tab, ToHost, ToView } from "../shared/protocol";
-
-// 分时数据缓存有效期：30秒，避免每个刷新周期都拉分时
-const MINUTE_CACHE_TTL = 30000;
-
-// 资金榜缓存有效期：资金流是日内累计数据，变化远慢于逐笔行情，
-// 与 5 秒行情周期解耦，避免每次刷新都重拉同一份数据
-const FLOW_CACHE_TTL = 60000;
 
 // 行业代码 → 名称索引
 const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
-
-interface MinuteCacheEntry {
-  data: MinutePoint[];
-  timestamp: number;
-}
-
-interface FlowCacheEntry {
-  inflow: MoneyFlowItem[];
-  outflow: MoneyFlowItem[];
-  timestamp: number;
-}
 
 // 行情 → 列表行（面板空间充足，始终显示全称），封单仅涨跌停时显示
 function toRow(stock: Stock): RowItem {
@@ -96,8 +79,6 @@ export class StockViewProvider
   private time = "";
   // 当前排行榜单包含的代码：展开行必然出自其中，换榜后旧代码不再拉详情
   private rankCodes: string[] = [];
-  private minuteCache = new Map<string, MinuteCacheEntry>();
-  private flowCache: FlowCacheEntry | null = null;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -162,9 +143,8 @@ export class StockViewProvider
         await this.pushDetail();
         break;
       case "refresh":
-        if (this.expanded) this.minuteCache.delete(this.expanded);
-        // 手动刷新要穿透资金榜缓存，否则可能又推一遍 60 秒内的旧数据
-        if (this.tab === "rank") this.flowCache = null;
+        // 主动刷新穿透全部接口缓存，避免又推一遍 TTL 内的旧数据
+        refreshAll();
         if (this.tab === "mine") await this.refreshStocks();
         else await this.pushTabData();
         break;
@@ -187,13 +167,14 @@ export class StockViewProvider
       });
     } else if (this.tab === "rank") {
       // 四份榜单一起下发，面板内切换涨跌榜与资金榜都不再回扩展端
-      const [up, down, flow] = await Promise.all([
+      const [up, down, inflowAll, outflowAll] = await Promise.all([
         getRankList(false, RANK_SIZE),
         getRankList(true, RANK_SIZE),
-        this.getFlowList(),
+        getMoneyFlowList(false, FLOW_FETCH_SIZE),
+        getMoneyFlowList(true, FLOW_FETCH_SIZE),
       ]);
-      const inflow = flow.inflow.slice(0, FLOW_SIZE).map(toFlowRow);
-      const outflow = flow.outflow.slice(0, FLOW_SIZE).map(toFlowRow);
+      const inflow = inflowAll.slice(0, FLOW_SIZE).map(toFlowRow);
+      const outflow = outflowAll.slice(0, FLOW_SIZE).map(toFlowRow);
       this.rankCodes = [
         ...up.map((r) => r.code),
         ...down.map((r) => r.code),
@@ -219,44 +200,15 @@ export class StockViewProvider
     return config.getStocks();
   }
 
-  // 展开行详情：完整行情每次拉取，分时走 TTL 缓存
+  // 展开行详情：完整行情与分时各自走接口缓存
   private async pushDetail(): Promise<void> {
     const code = this.expanded;
     if (!code || !this.listCodes().includes(code)) return;
     const [quotes, minute] = await Promise.all([
       getStockQuoteList([code]),
-      this.getMinute(code),
+      getStockMinute(code),
     ]);
     this.post({ type: "detail", code, quote: quotes[0] ?? null, minute });
-  }
-
-  private async getMinute(code: string): Promise<MinutePoint[]> {
-    const now = Date.now();
-    const cached = this.minuteCache.get(code);
-    if (cached && now - cached.timestamp < MINUTE_CACHE_TTL) return cached.data;
-    const data = await getStockMinute(code);
-    this.minuteCache.set(code, { data, timestamp: now });
-    return data;
-  }
-
-  // 资金榜：命中缓存直接复用，两张榜一起返回
-  private async getFlowList(): Promise<{
-    inflow: MoneyFlowItem[];
-    outflow: MoneyFlowItem[];
-  }> {
-    const now = Date.now();
-    if (this.flowCache && now - this.flowCache.timestamp < FLOW_CACHE_TTL) {
-      return this.flowCache;
-    }
-    const [inflow, outflow] = await Promise.all([
-      getMoneyFlowList(false, FLOW_FETCH_SIZE),
-      getMoneyFlowList(true, FLOW_FETCH_SIZE),
-    ]);
-    // 任一侧为空都当作接口异常，不写缓存，下个刷新周期重试，
-    // 避免把「暂无数据」钉在面板上整整一个 TTL
-    if (!inflow.length || !outflow.length) return { inflow, outflow };
-    this.flowCache = { inflow, outflow, timestamp: now };
-    return this.flowCache;
   }
 
   private buildHtml(webview: vscode.Webview, distUri: vscode.Uri): string {
@@ -301,7 +253,5 @@ export class StockViewProvider
 
   dispose(): void {
     this.disposeView();
-    this.minuteCache.clear();
-    this.flowCache = null;
   }
 }

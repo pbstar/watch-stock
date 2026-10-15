@@ -1,7 +1,7 @@
 // 价格闹钟管理
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
-import { getStockList } from "../services/stockService";
+import { getStockList } from "../services/marketApi";
 import { buildStockOptions } from "./stockManager";
 import { config } from "../config";
 import type { Alarm, AlarmCondition, Stock } from "../types";

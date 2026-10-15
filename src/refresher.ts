@@ -1,6 +1,6 @@
 // 行情数据刷新与定时器调度
 import { config, getIsVisible } from "./config";
-import { getStockList } from "./services/stockService";
+import { getStockList, clearMarketCache } from "./services/marketApi";
 import {
   calculateLockInfo,
   checkLockTip,
@@ -46,10 +46,11 @@ async function doRefreshData(
   now: Date,
   isAuto?: boolean,
 ): Promise<void> {
-  // 跨交易日时清空封单/大单监控缓存，避免隔日首帧用昨日快照误报异动
+  // 跨交易日时清空封单/大单监控缓存与接口缓存，避免隔日首帧用昨日快照误报异动
   const tradeDate = formatDateKey(now);
   if (tradeDate !== lastTradeDate) {
     lastTradeDate = tradeDate;
+    clearMarketCache();
     clearLockTipCache();
     clearLargeTipCache();
   }

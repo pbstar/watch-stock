@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
 import { isValidStockCode, isFundCode } from "../utils/stock";
-import { searchStockCode } from "../services/stockSearch";
-import { getStockList } from "../services/stockService";
+import { getStockList, searchStockCode } from "../services/marketApi";
 import { config } from "../config";
 import type { Stock } from "../types";
 

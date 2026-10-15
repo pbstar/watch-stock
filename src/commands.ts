@@ -16,6 +16,11 @@ import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible, affectsRefresh } from "./config";
 import { refreshData, scheduleRefresh } from "./refresher";
+import {
+  refreshAll,
+  invalidateQuote,
+  clearMarketCache,
+} from "./services/marketApi";
 import type { AppState } from "./types";
 
 // 命令 ID 映射
@@ -44,6 +49,7 @@ export function registerCommands(
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
+        invalidateQuote([removed]);
         clearLockTipCache(removed);
         clearLargeTipCache(removed);
       }
@@ -51,6 +57,7 @@ export function registerCommands(
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
       if (await clearStocks()) {
         await clearAllAlarms();
+        clearMarketCache();
         clearLockTipCache();
         clearLargeTipCache();
       }
@@ -75,7 +82,8 @@ export function registerCommands(
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
-      // 等刷新完成再提示，避免数据未回来就报"完成"
+      // 先穿透接口缓存，等刷新完成再提示，避免数据未回来就报"完成"
+      refreshAll();
       await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),

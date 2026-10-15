@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import { registerCommands } from "./commands";
 import { refreshData, startRefreshTimer, stopRefreshTimer } from "./refresher";
+import { clearMarketCache } from "./services/marketApi";
 import { StatusBarManager } from "./ui/statusBar";
 import { StockViewProvider } from "./ui/stockView";
 import { disposeRateLimit } from "./utils/msg";
@@ -37,6 +38,8 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {
   // 状态栏与股票面板已注册到 context.subscriptions，由 VS Code 统一释放
   if (appState) stopRefreshTimer(appState);
+  // 停用即释放接口缓存，重新激活时不复用停用前的行情
+  clearMarketCache();
   disposeRateLimit();
   appState = null;
 }
