@@ -94,7 +94,11 @@ export class StockViewProvider
 
   // 按当前标签拉取对应数据（仅可见时由调用方触发）
   private async pushTabData(): Promise<void> {
-    const { msg, codes } = await loadTab(this.tab);
+    const tab = this.tab;
+    const { msg, codes } = await loadTab(tab);
+    // 取数期间切了标签：这批数据已不属于当前标签，写进 listCodes 会让新标签的
+    // 展开行因为代码不在列表里而永远拉不到详情（各标签取数耗时不同，必然发生）
+    if (tab !== this.tab) return;
     this.listCodes = codes;
     if (msg) this.post(msg);
     // 板块不支持展开，其余标签的展开行都要随列表一起刷新
