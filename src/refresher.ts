@@ -77,12 +77,8 @@ async function doRefreshData(
   clearDailyCaches(now);
 
   const stocks = config.getStocks();
-  const isMorningAuction = isMorningAuctionTime(now);
-  // 早盘集合竞价新浪源无数据，切腾讯简版源
-  const stockInfos =
-    stocks.length > 0
-      ? await getStockList(stocks, isMorningAuction ? "tencent" : "sina")
-      : [];
+  // 数据源由 getStockList 按当前时段选择，集合竞价会自动切到腾讯简版
+  const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
 
   for (const stock of stockInfos) {
     Object.assign(stock, calculateLockInfo(stock));
@@ -92,7 +88,7 @@ async function doRefreshData(
   if (stockInfos.length > 0) {
     await checkAlarms(stockInfos);
   }
-  if (isAuto && !isMorningAuction && !isAfternoonAuctionTime(now)) {
+  if (isAuto && !isMorningAuctionTime(now) && !isAfternoonAuctionTime(now)) {
     checkAbnormalTips(stockInfos, now);
   }
 

@@ -12,6 +12,7 @@ import {
   clearCache,
   invalidateWhere,
 } from "../utils/cache";
+import { isMorningAuctionTime } from "../utils/time";
 import * as sina from "../sources/sina";
 import * as tencent from "../sources/tencent";
 import type {
@@ -23,7 +24,7 @@ import type {
 } from "../types";
 
 // 批量行情源：sina 含五档封单，tencent 简版在集合竞价等新浪缺数据时段兜底
-export type QuoteSource = "sina" | "tencent";
+type QuoteSource = "sina" | "tencent";
 
 // 股票维度的缓存 key 形如 <源>:<类型>:<代码...>，构造与解析共用同一套约定：
 // invalidateQuote 靠解析反解出代码做按股票失效，改这里的格式必须两边一起改
@@ -83,11 +84,11 @@ async function fetchQuoteRows<T extends { code: string }>(
   return orderBy(rows, requestOrder(codes));
 }
 
-// 批量行情（自选/指数/板块）
-export async function getStockList(
-  codes: string[],
-  source: QuoteSource = "sina",
-): Promise<Stock[]> {
+// 批量行情（自选/指数/板块）：早盘集合竞价新浪无数据，切腾讯简版
+export async function getStockList(codes: string[]): Promise<Stock[]> {
+  const source: QuoteSource = isMorningAuctionTime(new Date())
+    ? "tencent"
+    : "sina";
   return fetchQuoteRows(source, "quote", codes, (list) =>
     source === "sina" ? sina.fetchQuote(list) : tencent.fetchSimpleQuotes(list),
   );
