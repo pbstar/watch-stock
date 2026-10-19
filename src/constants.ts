@@ -70,7 +70,7 @@ export const RANK_SIZE = 20;
 export const FLOW_SIZE = 20;
 
 // 资金榜取数条数：接口返回含基金与无名称的脏行，需放大取数后过滤再截断到 FLOW_SIZE
-export const FLOW_FETCH_SIZE = 50;
+export const FLOW_FETCH_SIZE = 30;
 
 // 行情类接口缓存有效期：略短于 5 秒刷新周期，保证每个周期都取新值，
 // 又能在周期内切换标签时直接命中缓存

@@ -7,14 +7,13 @@ export function isFund(code: string, name: string, current: number): boolean {
   const isFundByCode =
     (code.startsWith("sh") && codeNum.startsWith("5")) ||
     (code.startsWith("sz") && codeNum.startsWith("1"));
-  return (
-    isFundByCode ||
-    (!!name && (name.includes("ETF") || name.includes("LOF"))) ||
-    (current > 0 &&
-      current < 3 &&
-      !!name &&
-      (name.includes("基金") || name.includes("指数")))
-  );
+  const isFundByName = !!name && (name.includes("ETF") || name.includes("LOF"));
+  const isFundByPrice =
+    current > 0 &&
+    current < 3 &&
+    !!name &&
+    (name.includes("基金") || name.includes("指数"));
+  return isFundByCode || isFundByName || isFundByPrice;
 }
 
 // 是否为基金代码（6位纯数字且首位为 5 或 1）
@@ -34,9 +33,8 @@ export function isValidStockCode(code: unknown): boolean {
   return /^(sh|sz|bj)[0-9]{6}$/i.test(code);
 }
 
-// 涨跌幅限制（百分比）：ST 5%、创业板/科创板 20%、北交所 30%、其余 10%
-export function getLimitPercent(code: string, name: string): number {
-  if (name && /ST/i.test(name)) return 5;
+// 涨跌幅限制（百分比）：创业板/科创板 20%、北交所 30%、其余 10%
+export function getLimitPercent(code: string): number {
   if (code.startsWith("sz30")) return 20;
   if (code.startsWith("sh68")) return 20;
   if (code.startsWith("bj")) return 30;

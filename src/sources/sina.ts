@@ -104,7 +104,7 @@ export async function fetchMoneyFlow(
   const url =
     "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php" +
     "/MoneyFlow.ssl_bkzj_ssggzj" +
-    `?page=1&num=${num}&sort=netamount&asc=${asc ? 1 : 0}&bankuai=&shangzhang=`;
+    `?page=1&num=${num}&sort=netamount&asc=${asc ? 1 : 0}`;
   const list: MoneyFlowRaw[] = JSON.parse(await get(url));
   if (!Array.isArray(list)) return [];
 
