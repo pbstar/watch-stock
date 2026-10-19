@@ -15,6 +15,7 @@ import {
   isAfternoonAuctionTime,
   isStableTradeTime,
 } from "./utils/time";
+import { sortStockInfos } from "./utils/stock";
 import type { AppState, Stock } from "./types";
 
 // 刷新间隔 5 秒
@@ -50,16 +51,6 @@ function clearDailyCaches(now: Date): void {
   clearLargeTipCache();
 }
 
-// 按配置的排序方式排列；自定义模式保持用户设定的顺序
-function sortStockInfos(stockInfos: Stock[]): void {
-  const sortType = config.getStockSortType();
-  if (sortType === "custom") return;
-  const dir = sortType === "changeAsc" ? 1 : -1;
-  stockInfos.sort(
-    (a, b) => (parseFloat(a.changePercent) - parseFloat(b.changePercent)) * dir,
-  );
-}
-
 // 异动监控：封单任何时候都判，大单只在稳定交易时段判（集合竞价的价格跳动没有买卖含义）
 function checkAbnormalTips(stockInfos: Stock[], now: Date): void {
   if (config.getEnableLockTip()) checkLockTip(stockInfos);
@@ -83,7 +74,7 @@ async function doRefreshData(
   for (const stock of stockInfos) {
     Object.assign(stock, calculateLockInfo(stock));
   }
-  sortStockInfos(stockInfos);
+  sortStockInfos(stockInfos, config.getStockSortType());
 
   if (stockInfos.length > 0) {
     await checkAlarms(stockInfos);
@@ -92,7 +83,7 @@ async function doRefreshData(
     checkAbnormalTips(stockInfos, now);
   }
 
-  state.stockView.update(stockInfos, now);
+  state.stockView.onMainTick(stockInfos, now);
   if (getIsVisible(state, now)) {
     state.statusBar.render(stocks, stockInfos);
   } else {

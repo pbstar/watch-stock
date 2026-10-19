@@ -13,13 +13,22 @@ export interface PersistentState {
   tab: Tab;
 }
 
-export interface PanelData {
-  stocks: RowItem[];
-  index: RowItem[];
-  sector: SectorItem[];
-  rank: { up: RowItem[]; down: RowItem[] };
-  flow: { inflow: FlowRowItem[]; outflow: FlowRowItem[] };
+// 每个列表自成一份：数据与自己的刷新时刻一同更新，互不影响
+export interface ListData<T> {
+  items: T[];
   time: string;
+}
+
+export interface PanelData {
+  mine: ListData<RowItem>;
+  index: ListData<RowItem>;
+  sector: ListData<SectorItem>;
+  rank: {
+    up: ListData<RowItem>;
+    down: ListData<RowItem>;
+    inflow: ListData<FlowRowItem>;
+    outflow: ListData<FlowRowItem>;
+  };
 }
 
 export interface ViewState {
@@ -30,18 +39,25 @@ export interface ViewState {
   open: OpenRow | null;
 }
 
+function emptyList<T>(): ListData<T> {
+  return { items: [], time: "" };
+}
+
 export function createViewState(tab: Tab): ViewState {
   return {
     tab,
     // 排行方向不持久化，每次进「排行」都从涨幅榜开始
     rankDir: "up",
     data: {
-      stocks: [],
-      index: [],
-      sector: [],
-      rank: { up: [], down: [] },
-      flow: { inflow: [], outflow: [] },
-      time: "",
+      mine: emptyList(),
+      index: emptyList(),
+      sector: emptyList(),
+      rank: {
+        up: emptyList(),
+        down: emptyList(),
+        inflow: emptyList(),
+        outflow: emptyList(),
+      },
     },
     open: null,
   };

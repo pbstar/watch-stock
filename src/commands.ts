@@ -80,6 +80,8 @@ export function registerCommands(
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
       // 先穿透接口缓存，等刷新完成再提示，避免数据未回来就报"完成"
       clearMarketCache();
+      // 面板当前列表同样在本轮强制刷新，不受各列表到点判断影响
+      appState.stockView.forceNextRefresh();
       await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),
@@ -88,7 +90,10 @@ export function registerCommands(
       if (e.affectsConfiguration("watch-stock.stocks")) {
         void config.normalizeStocks();
       }
-      if (affectsRefresh(e)) scheduleRefresh(appState);
+      if (affectsRefresh(e)) {
+        scheduleRefresh(appState);
+        appState.stockView.onConfigChanged(e);
+      }
     }),
   ];
   context.subscriptions.push(...subs);

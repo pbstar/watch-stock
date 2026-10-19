@@ -1,13 +1,13 @@
 // VS Code 配置统一访问入口
 import * as vscode from "vscode";
-import { isValidStockCode } from "./utils/stock";
+import { isValidStockCode, type StockSortType } from "./utils/stock";
 import { isTradingTime } from "./utils/time";
 import type { Alarm, AppState } from "./types";
 
 const SECTION = "watch-stock";
 
 // 排序方式类型
-export type SortType = "custom" | "changeAsc" | "changeDesc";
+export type SortType = StockSortType;
 
 // 配置项类型
 export interface ConfigShape {

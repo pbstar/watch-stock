@@ -1,5 +1,5 @@
-// 面板取数编排：按标签拉数据并转成待下发的消息，缓存与数据源细节都在 marketApi 之下
-import { config } from "../config";
+// 面板取数编排：按列表拉数据并转成待下发的消息，缓存与数据源细节都在 marketApi 之下
+// 自选行情由主循环统一取数并推送，这里只处理需要面板单独取数的列表
 import {
   FLOW_FETCH_SIZE,
   FLOW_SIZE,
@@ -14,54 +14,62 @@ import {
   getStockMinute,
   getStockQuoteList,
 } from "../services/marketApi";
+import { formatClock } from "../utils/time";
 import { toFlowRow, toRankRow, toRow, toSectorItem } from "./viewRows";
-import type { Tab, ToView } from "../shared/protocol";
+import type { ListKey, RankDir, ToView } from "../shared/protocol";
 
-export interface TabPayload {
-  // 待下发的消息；自选标签的行情由主循环推送，没有自己的列表消息
-  msg: ToView | null;
+type FetchKey = Exclude<ListKey, "mine">;
+
+export interface ListPayload {
+  // 待下发的列表消息，带本次取数时刻
+  msg: ToView;
   // 本次列表实际包含的代码，供展开行判断是否还需要拉详情
   codes: string[];
 }
 
-// 按标签取数；板块不支持展开，其 codes 恒为空
-export async function loadTab(tab: Tab): Promise<TabPayload> {
-  if (tab === "index") {
-    const items = (await getStockList(INDEX_CODES)).map(toRow);
-    return { msg: { type: "index", items }, codes: items.map((r) => r.code) };
-  }
+// 取数完成的时刻即该列表的刷新时间
+function stamp(): string {
+  return formatClock(new Date());
+}
 
-  if (tab === "sector") {
-    const list = await getStockList(INDUSTRY_CODE_LIST);
-    return { msg: { type: "sector", items: list.map(toSectorItem) }, codes: [] };
-  }
+async function loadIndex(): Promise<ListPayload> {
+  const items = (await getStockList(INDEX_CODES)).map(toRow);
+  return {
+    msg: { type: "index", items, time: stamp() },
+    codes: items.map((r) => r.code),
+  };
+}
 
-  if (tab === "rank") {
-    // 四份榜单一起下发，面板内切换涨跌榜与资金榜都不再回扩展端
-    const [up, down, inflowAll, outflowAll] = await Promise.all([
-      getRankList(false, RANK_SIZE),
-      getRankList(true, RANK_SIZE),
-      getMoneyFlowList(false, FLOW_FETCH_SIZE),
-      getMoneyFlowList(true, FLOW_FETCH_SIZE),
-    ]);
-    const ranks = {
-      up: up.map(toRankRow),
-      down: down.map(toRankRow),
-      inflow: inflowAll.slice(0, FLOW_SIZE).map(toFlowRow),
-      outflow: outflowAll.slice(0, FLOW_SIZE).map(toFlowRow),
-    };
+// 板块只有名称与涨跌幅，不支持展开，codes 恒为空
+async function loadSector(): Promise<ListPayload> {
+  const items = (await getStockList(INDUSTRY_CODE_LIST)).map(toSectorItem);
+  return { msg: { type: "sector", items, time: stamp() }, codes: [] };
+}
+
+// 单份榜单：涨跌榜按涨跌幅取头部，资金榜按净流入额取头部
+async function loadRank(dir: RankDir): Promise<ListPayload> {
+  const asc = dir === "down" || dir === "outflow";
+  if (dir === "up" || dir === "down") {
+    const items = (await getRankList(asc, RANK_SIZE)).map(toRankRow);
     return {
-      msg: { type: "rank", ...ranks },
-      codes: [
-        ...ranks.up,
-        ...ranks.down,
-        ...ranks.inflow,
-        ...ranks.outflow,
-      ].map((r) => r.code),
+      msg: { type: "rank", dir, items, time: stamp() },
+      codes: items.map((r) => r.code),
     };
   }
+  const items = (await getMoneyFlowList(asc, FLOW_FETCH_SIZE))
+    .slice(0, FLOW_SIZE)
+    .map(toFlowRow);
+  return {
+    msg: { type: "rank", dir, items, time: stamp() },
+    codes: items.map((r) => r.code),
+  };
+}
 
-  return { msg: null, codes: config.getStocks() };
+// 按列表取数：一次只取一个列表，各列表互不并发
+export async function loadList(key: FetchKey): Promise<ListPayload> {
+  if (key === "index") return loadIndex();
+  if (key === "sector") return loadSector();
+  return loadRank(key);
 }
 
 // 展开行详情：完整行情与分时各自走接口缓存

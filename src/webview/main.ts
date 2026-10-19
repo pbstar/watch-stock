@@ -26,7 +26,7 @@ bar.addEventListener("click", (e) => {
     vscode.postMessage({ type: "refresh" });
     return;
   }
-  // 榜单切换只改本地方向：四份榜单随排行数据一起下发，不需要回扩展端
+  // 榜单切换：先切到该榜上次的数据，再由扩展端单独刷新这一份
   const dir = target.closest<HTMLElement>(".subtab")?.dataset.dir as
     | RankDir
     | undefined;
@@ -34,7 +34,9 @@ bar.addEventListener("click", (e) => {
     if (dir === state.rankDir) return;
     state.rankDir = dir;
     collapse();
+    // 先展示该榜上次的数据与时间，扩展端取回新数据后再覆盖
     render(state);
+    vscode.postMessage({ type: "rank", dir });
     return;
   }
   const tab = target.closest<HTMLElement>(".tab")?.dataset.tab as Tab | undefined;
@@ -43,7 +45,7 @@ bar.addEventListener("click", (e) => {
   vscode.setState({ tab });
   state.rankDir = "up";
   collapse();
-  vscode.postMessage({ type: "tab", tab });
+  vscode.postMessage({ type: "tab", tab, dir: state.rankDir });
   render(state);
 });
 
@@ -63,20 +65,25 @@ content.addEventListener("click", (e) => {
 window.addEventListener("message", (e: MessageEvent<ToView>) => {
   const msg = e.data;
   switch (msg.type) {
-    case "stocks":
-      state.data.stocks = msg.items;
-      state.data.time = msg.time;
-      document.body.classList.toggle("colorful", msg.colorful);
+    case "mine":
+      state.data.mine = { items: msg.items, time: msg.time };
       break;
     case "index":
-      state.data.index = msg.items;
+      state.data.index = { items: msg.items, time: msg.time };
       break;
     case "sector":
-      state.data.sector = msg.items;
+      state.data.sector = { items: msg.items, time: msg.time };
       break;
     case "rank":
-      state.data.rank = { up: msg.up, down: msg.down };
-      state.data.flow = { inflow: msg.inflow, outflow: msg.outflow };
+      // 行情行与资金行分两支赋值，保持消息与列表数据的类型收窄
+      if (msg.dir === "up" || msg.dir === "down") {
+        state.data.rank[msg.dir] = { items: msg.items, time: msg.time };
+      } else {
+        state.data.rank[msg.dir] = { items: msg.items, time: msg.time };
+      }
+      break;
+    case "colorful":
+      document.body.classList.toggle("colorful", msg.value);
       break;
     case "detail": {
       const open = state.open;
@@ -88,4 +95,4 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
   render(state);
 });
 
-vscode.postMessage({ type: "tab", tab: state.tab });
+vscode.postMessage({ type: "tab", tab: state.tab, dir: state.rankDir });

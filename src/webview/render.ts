@@ -5,6 +5,14 @@ import { content, time } from "./dom";
 import { renderList } from "./list";
 import { renderSector } from "./sector";
 
+// 顶栏时间只取当前列表自己的刷新时刻，与状态栏及其他列表无关
+function currentTime(state: ViewState): string {
+  if (state.tab === "mine") return state.data.mine.time;
+  if (state.tab === "index") return state.data.index.time;
+  if (state.tab === "sector") return state.data.sector.time;
+  return state.data.rank[state.rankDir].time;
+}
+
 export function render(state: ViewState): void {
   document.querySelectorAll<HTMLElement>(".tab").forEach((el) => {
     el.classList.toggle("active", el.dataset.tab === state.tab);
@@ -14,28 +22,34 @@ export function render(state: ViewState): void {
   });
   // 榜单切换只在排行标签下露出
   document.body.classList.toggle("ranking", state.tab === "rank");
-  time.textContent = state.data.time;
+  time.textContent = currentTime(state);
   if (state.tab === "sector") {
-    renderSector(content, state.data.sector);
+    renderSector(content, state.data.sector.items);
     return;
   }
   if (state.tab === "rank") {
     renderRank(state);
     return;
   }
-  renderList(
-    content,
-    state.tab === "index" ? state.data.index : state.data.stocks,
-    state.open,
-    quoteCells,
-  );
+  const list = state.tab === "index" ? state.data.index : state.data.mine;
+  renderList(content, list.items, state.open, quoteCells);
 }
 
 // 排行子榜两套列：涨跌榜是行情行，资金榜是资金行，行内都可展开
 function renderRank(state: ViewState): void {
   if (state.rankDir === "up" || state.rankDir === "down") {
-    renderList(content, state.data.rank[state.rankDir], state.open, quoteCells);
+    renderList(
+      content,
+      state.data.rank[state.rankDir].items,
+      state.open,
+      quoteCells,
+    );
   } else {
-    renderList(content, state.data.flow[state.rankDir], state.open, flowCells);
+    renderList(
+      content,
+      state.data.rank[state.rankDir].items,
+      state.open,
+      flowCells,
+    );
   }
 }

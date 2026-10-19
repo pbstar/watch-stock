@@ -1,5 +1,8 @@
 // 股票相关纯工具函数
-import type { PriceType } from "../types";
+import type { PriceType, Stock } from "../types";
+
+// 行情排序方式，与配置项 stockSortType 的取值一致
+export type StockSortType = "custom" | "changeAsc" | "changeDesc";
 
 // 是否为基金/ETF（按代码前缀、名称关键词、低价基金特征综合判断）
 export function isFund(code: string, name: string, current: number): boolean {
@@ -55,4 +58,16 @@ export function getDisplayName(
 // 是否处于涨跌停状态
 export function isLockState(priceType?: PriceType): boolean {
   return priceType === "up" || priceType === "down";
+}
+
+// 按涨跌幅排列行情；custom 保持传入顺序（状态栏与面板自选共用同一套规则）
+export function sortStockInfos(
+  stockInfos: Stock[],
+  sortType: StockSortType,
+): void {
+  if (sortType === "custom") return;
+  const dir = sortType === "changeAsc" ? 1 : -1;
+  stockInfos.sort(
+    (a, b) => (parseFloat(a.changePercent) - parseFloat(b.changePercent)) * dir,
+  );
 }
