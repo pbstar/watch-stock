@@ -6,10 +6,9 @@ import {
   RANK_CACHE_TTL,
 } from "../constants";
 import {
-  bumpEpoch,
   cachedFetch,
-  clearCache,
   invalidateWhere,
+  resetCache,
 } from "../utils/cache";
 import { isMorningAuctionTime } from "../utils/time";
 import * as sina from "../sources/sina";
@@ -74,10 +73,9 @@ async function fetchQuoteRows<T extends { code: string }>(
 ): Promise<T[]> {
   if (!codes?.length) return [];
   const list = normalizeCodes(codes);
-  const rows = await cachedFetch<T[]>({
+  const rows = await cachedFetch<T>({
     key: stockKey(source, kind, list),
     ttl: QUOTE_CACHE_TTL,
-    fallback: [],
     load: () => load(list),
   });
   return orderBy(rows, requestOrder(codes));
@@ -107,11 +105,10 @@ export async function getRankList(
   asc: boolean,
   num: number,
 ): Promise<RankItem[]> {
-  return cachedFetch<RankItem[]>({
+  return cachedFetch<RankItem>({
     key: `sina:rank:${asc ? "asc" : "desc"}:${num}`,
     ttl: RANK_CACHE_TTL,
     cacheEmpty: false,
-    fallback: [],
     load: () => sina.fetchRank(asc, num),
   });
 }
@@ -121,11 +118,10 @@ export async function getMoneyFlowList(
   asc: boolean,
   num: number,
 ): Promise<MoneyFlowItem[]> {
-  return cachedFetch<MoneyFlowItem[]>({
+  return cachedFetch<MoneyFlowItem>({
     key: `sina:flow:${asc ? "asc" : "desc"}:${num}`,
     ttl: FLOW_CACHE_TTL,
     cacheEmpty: false,
-    fallback: [],
     load: () => sina.fetchMoneyFlow(asc, num),
   });
 }
@@ -133,10 +129,9 @@ export async function getMoneyFlowList(
 // 分时数据
 export async function getStockMinute(code: string): Promise<MinutePoint[]> {
   const key = code.toLowerCase();
-  return cachedFetch<MinutePoint[]>({
+  return cachedFetch<MinutePoint>({
     key: stockKey("tencent", "minute", [key]),
     ttl: MINUTE_CACHE_TTL,
-    fallback: [],
     load: () => tencent.fetchMinute(key),
   });
 }
@@ -151,9 +146,9 @@ export async function searchStockCode(
   return sina.searchCode(trimmed);
 }
 
-// 主动刷新：全部缓存立即失效，下一次读取重新取数
-export function refreshAll(): void {
-  bumpEpoch();
+// 清空全部接口缓存（手动刷新、跨交易日、扩展释放），下一次读取重新取数
+export function clearMarketCache(): void {
+  resetCache();
 }
 
 // 失效指定股票的行情/详情/分时缓存（移除股票后不再保留其数据）
@@ -163,9 +158,4 @@ export function invalidateQuote(codes: string[]): void {
     const m = key.match(STOCK_KEY_RE);
     return !!m && m[3].split(",").some((c) => targets.has(c));
   });
-}
-
-// 清空全部接口缓存（跨交易日、扩展释放）
-export function clearMarketCache(): void {
-  clearCache();
 }

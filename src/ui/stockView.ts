@@ -1,7 +1,7 @@
 // 股票面板：底部面板 WebviewView，跟随主循环推送行情
 import * as vscode from "vscode";
 import { config } from "../config";
-import { refreshAll } from "../services/marketApi";
+import { clearMarketCache } from "../services/marketApi";
 import { formatClock } from "../utils/time";
 import { loadDetail, loadTab } from "./panelData";
 import { buildPanelHtml } from "./viewHtml";
@@ -84,7 +84,7 @@ export class StockViewProvider
         break;
       case "refresh":
         // 穿透全部接口缓存，避免又推一遍 TTL 内的旧数据
-        refreshAll();
+        clearMarketCache();
         await this.refreshStocks();
         break;
     }

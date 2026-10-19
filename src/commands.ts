@@ -16,11 +16,7 @@ import { clearLargeTipCache } from "./managers/largeManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible, affectsRefresh } from "./config";
 import { refreshData, scheduleRefresh } from "./refresher";
-import {
-  refreshAll,
-  invalidateQuote,
-  clearMarketCache,
-} from "./services/marketApi";
+import { invalidateQuote, clearMarketCache } from "./services/marketApi";
 import type { AppState } from "./types";
 
 // 命令 ID 映射
@@ -83,7 +79,7 @@ export function registerCommands(
     }),
     vscode.commands.registerCommand(COMMAND_MAP.refresh, async () => {
       // 先穿透接口缓存，等刷新完成再提示，避免数据未回来就报"完成"
-      refreshAll();
+      clearMarketCache();
       await refreshData(appState);
       sendMsg("股票行情数据刷新完成");
     }),
