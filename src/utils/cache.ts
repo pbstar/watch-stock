@@ -17,8 +17,6 @@ export interface CacheOptions<T> {
   // 空结果是否写入缓存，默认写入；接口异常会返回空的数据要传 false，
   // 否则"暂无数据"会钉在面板上整整一个 TTL
   cacheEmpty?: boolean;
-  // 空结果判定，默认按空数组判定
-  isEmpty?: (data: T) => boolean;
 }
 
 // 代际号：自增即让既有缓存全部失效（主动刷新）；
@@ -29,7 +27,7 @@ const store = new Map<string, CacheEntry>();
 // 进行中的请求：同 key 并发只发一次，避免切标签等场景重复打接口
 const inflight = new Map<string, { epoch: number; promise: Promise<unknown> }>();
 
-// 条目上限，超出后先清理过期项，避免搜索词这类长尾 key 无限堆积
+// 条目上限，超出后先清理过期项，避免长跑会话里过期 key 无限堆积
 const MAX_ENTRIES = 200;
 
 function prune(): void {
@@ -66,7 +64,7 @@ export function invalidateWhere(match: (key: string) => boolean): void {
 
 // 带缓存的取数：命中直接返回，否则取数并按需写回
 export async function cachedFetch<T>(options: CacheOptions<T>): Promise<T> {
-  const { key, ttl, load, fallback, cacheEmpty = true, isEmpty } = options;
+  const { key, ttl, load, fallback, cacheEmpty = true } = options;
 
   const cached = store.get(key);
   if (cached && cached.epoch === epoch && Date.now() < cached.expireAt) {
@@ -79,9 +77,7 @@ export async function cachedFetch<T>(options: CacheOptions<T>): Promise<T> {
   const myEpoch = epoch;
   const promise = load()
     .then((data) => {
-      const empty = isEmpty
-        ? isEmpty(data)
-        : Array.isArray(data) && data.length === 0;
+      const empty = Array.isArray(data) && data.length === 0;
       // 代际变更后不再回写：主动刷新期间，旧请求不能把过期数据写回缓存
       if (myEpoch === epoch && (cacheEmpty || !empty)) {
         prune();

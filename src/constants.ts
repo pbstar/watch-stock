@@ -82,6 +82,3 @@ export const RANK_CACHE_TTL = 30000;
 
 // 资金流是日内累计数据，变化最慢
 export const FLOW_CACHE_TTL = 60000;
-
-// 股票名称基本不变
-export const SUGGEST_CACHE_TTL = 300000;

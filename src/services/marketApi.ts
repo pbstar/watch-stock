@@ -4,7 +4,6 @@ import {
   MINUTE_CACHE_TTL,
   QUOTE_CACHE_TTL,
   RANK_CACHE_TTL,
-  SUGGEST_CACHE_TTL,
 } from "../constants";
 import {
   bumpEpoch,
@@ -149,15 +148,7 @@ export async function searchStockCode(
   const trimmed = keyword?.trim();
   if (!trimmed) return null;
 
-  return cachedFetch<string | null>({
-    key: `sina:suggest:${trimmed}`,
-    ttl: SUGGEST_CACHE_TTL,
-    fallback: null,
-    // 无匹配说明名称有误，不写缓存，用户改名后能立即重查
-    cacheEmpty: false,
-    isEmpty: (v) => v === null,
-    load: () => sina.searchCode(trimmed),
-  });
+  return sina.searchCode(trimmed);
 }
 
 // 主动刷新：全部缓存立即失效，下一次读取重新取数
