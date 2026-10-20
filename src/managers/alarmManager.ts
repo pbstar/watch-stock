@@ -1,7 +1,7 @@
 // 价格闹钟管理
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
-import { getStockList } from "../services/stockService";
+import { getStockList } from "../services/marketApi";
 import { buildStockOptions } from "./stockManager";
 import { config } from "../config";
 import type { Alarm, AlarmCondition, Stock } from "../types";
@@ -32,30 +32,55 @@ interface AlarmAction {
   kind?: vscode.QuickPickItemKind;
 }
 
+// 设置新闹钟的菜单项，有股票时才露出
+const ADD_ALARM_OPTION: AlarmAction = {
+  label: "$(add) 设置新闹钟",
+  description: "为股票设置价格提醒闹钟",
+  action: "add",
+};
+
+// 分隔行：标题写在 description 上，label 必须为空
+function separator(title: string): AlarmAction {
+  return {
+    label: "",
+    description: title ? `────────── ${title} ──────────` : "",
+    kind: vscode.QuickPickItemKind.Separator,
+  };
+}
+
 async function inputTargetPrice(
   condition: AlarmCondition,
   currentPrice: number,
 ): Promise<number | null> {
+  // 取不到价时当前价按 0 记，相对校验会把所有正数判为非法，故跳过
+  const hasPrice = currentPrice > 0;
+  const prompt = hasPrice
+    ? `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`
+    : "请输入目标价格";
+  const example = (
+    condition === "above" ? currentPrice + 1 : currentPrice - 1
+  ).toFixed(2);
+
   while (true) {
     const priceInput = await vscode.window.showInputBox({
-      prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
-      placeHolder: `例如: ${condition === "above" ? (currentPrice + 1).toFixed(2) : (currentPrice - 1).toFixed(2)}`,
+      prompt,
+      placeHolder: hasPrice ? `例如: ${example}` : "",
     });
     if (!priceInput) return null;
+
     const price = parseFloat(priceInput);
     if (isNaN(price) || price <= 0) {
       sendMsg("请输入有效的价格", { type: "error" });
       continue;
     }
-    if (condition === "above" && price <= currentPrice) {
-      sendMsg("目标价格必须高于当前价格", { type: "error" });
-      continue;
-    }
-    if (condition === "below" && price >= currentPrice) {
-      sendMsg("目标价格必须低于当前价格", { type: "error" });
-      continue;
-    }
-    return price;
+    if (!hasPrice) return price;
+    // 高于要求价格已涨过目标价，低于要求价格已跌破目标价
+    const reached =
+      condition === "above" ? price > currentPrice : price < currentPrice;
+    if (reached) return price;
+    sendMsg(`目标价格必须${CONDITION_TEXT[condition]}当前价格`, {
+      type: "error",
+    });
   }
 }
 
@@ -116,53 +141,12 @@ async function removeAlarm(alarmId: string): Promise<void> {
 // 主入口：管理闹钟
 export async function manageAlarms(): Promise<void> {
   const alarms = config.getAlarms();
-  const stocks = config.getStocks();
-  const options: AlarmAction[] = [];
-
-  if (stocks.length > 0) {
-    options.push({
-      label: "$(add) 设置新闹钟",
-      description: "为股票设置价格提醒闹钟",
-      action: "add",
-    });
-  }
+  const options: AlarmAction[] =
+    config.getStocks().length > 0 ? [ADD_ALARM_OPTION] : [];
 
   if (alarms.length > 0) {
-    const stockCodes = [...new Set(alarms.map((a) => a.stockCode))];
-    const stockInfos = await getStockList(stockCodes);
-    const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
-
-    if (options.length > 0) {
-      options.push({
-        label: "",
-        description: "────────── 现有闹钟 ──────────",
-        kind: vscode.QuickPickItemKind.Separator,
-      });
-    }
-
-    for (const alarm of alarms) {
-      const info = infoMap.get(alarm.stockCode);
-      const price = alarm.targetPrice.toFixed(2);
-      options.push({
-        label: `${info ? info.name : alarm.stockCode} 价格${CONDITION_TEXT[alarm.condition]} ${price} 时提醒`,
-        description: "点击删除",
-        action: "delete",
-        alarm,
-      });
-    }
-
-    options.push({
-      label: "",
-      description: "",
-      kind: vscode.QuickPickItemKind.Separator,
-    });
-    options.push({
-      label: "$(trash) 删除所有闹钟",
-      description: "清空所有价格闹钟",
-      action: "clearAll",
-    });
+    options.push(...(await alarmListOptions(alarms, options.length > 0)));
   }
-
   if (options.length === 0) {
     sendMsg("请先添加股票才能设置闹钟", { type: "warning" });
     return;
@@ -171,32 +155,63 @@ export async function manageAlarms(): Promise<void> {
   const selected = await vscode.window.showQuickPick(options, {
     placeHolder: alarms.length > 0 ? "选择操作或点击删除闹钟" : "选择操作",
   });
+  if (selected) await runAlarmAction(selected);
+}
 
-  if (!selected) return;
+// 现有闹钟：每项点击即删除，首尾用分隔行与上下两组操作隔开
+async function alarmListOptions(
+  alarms: Alarm[],
+  withLeadingSeparator: boolean,
+): Promise<AlarmAction[]> {
+  const stockCodes = [...new Set(alarms.map((a) => a.stockCode))];
+  const stockInfos = (await getStockList(stockCodes)).data;
+  const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
 
+  const options: AlarmAction[] = withLeadingSeparator
+    ? [separator("现有闹钟")]
+    : [];
+  for (const alarm of alarms) {
+    const info = infoMap.get(alarm.stockCode);
+    const price = alarm.targetPrice.toFixed(2);
+    options.push({
+      label: `${info ? info.name : alarm.stockCode} 价格${CONDITION_TEXT[alarm.condition]} ${price} 时提醒`,
+      description: "点击删除",
+      action: "delete",
+      alarm,
+    });
+  }
+
+  options.push(separator(""), {
+    label: "$(trash) 删除所有闹钟",
+    description: "清空所有价格闹钟",
+    action: "clearAll",
+  });
+  return options;
+}
+
+// 执行菜单动作；删除后重新进入管理界面，方便连着清掉多个闹钟
+async function runAlarmAction(selected: AlarmAction): Promise<void> {
   switch (selected.action) {
     case "add":
       await addAlarm();
       break;
     case "delete":
-      if (selected.alarm) {
-        await removeAlarm(selected.alarm.id);
-        sendMsg("已删除闹钟");
-        await manageAlarms();
-      }
+      if (!selected.alarm) break;
+      await removeAlarm(selected.alarm.id);
+      sendMsg("已删除闹钟");
+      await manageAlarms();
       break;
-    case "clearAll":
-      if (
-        (await vscode.window.showWarningMessage(
-          "确定要删除所有闹钟吗？",
-          "确定",
-          "取消",
-        )) === "确定"
-      ) {
-        await config.saveAlarms([]);
-        sendMsg("已删除所有闹钟");
-      }
+    case "clearAll": {
+      const confirm = await vscode.window.showWarningMessage(
+        "确定要删除所有闹钟吗？",
+        "确定",
+        "取消",
+      );
+      if (confirm !== "确定") break;
+      await config.saveAlarms([]);
+      sendMsg("已删除所有闹钟");
       break;
+    }
   }
 }
 

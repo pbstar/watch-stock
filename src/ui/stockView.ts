@@ -1,86 +1,28 @@
-// 股票面板：底部面板 WebviewView，跟随主循环推送行情
+// 股票面板：底部面板 WebviewView，自选复用主循环行情，其余列表到点独立刷新
 import * as vscode from "vscode";
-import * as crypto from "crypto";
 import { config } from "../config";
-import {
-  INDEX_CODES,
-  INDUSTRY_CODES,
-  INDUSTRY_CODE_LIST,
-  RANK_SIZE,
-  FLOW_SIZE,
-  FLOW_FETCH_SIZE,
-} from "../constants";
-import {
-  getStockList,
-  getStockMinute,
-  getStockQuoteList,
-  getRankList,
-  getMoneyFlowList,
-} from "../services/stockService";
-import { isLockState } from "../utils/stock";
-import { formatAmount, formatMoney } from "../shared/format";
+import { FLOW_CACHE_TTL, RANK_CACHE_TTL } from "../constants";
+import { clearMarketCache } from "../services/marketApi";
 import { formatClock } from "../utils/time";
-import type { Stock, MinutePoint, RankItem, MoneyFlowItem } from "../types";
-import type { RowItem, FlowRowItem, Tab, ToHost, ToView } from "../shared/protocol";
+import { loadDetail, loadList } from "./panelData";
+import { buildPanelHtml } from "./viewHtml";
+import { toRow } from "./viewRows";
+import type { Stock } from "../types";
+import type {
+  ListKey,
+  RankDir,
+  RowItem,
+  Tab,
+  ToHost,
+  ToView,
+} from "../shared/protocol";
 
-// 分时数据缓存有效期：30秒，避免每个刷新周期都拉分时
-const MINUTE_CACHE_TTL = 30000;
-
-// 资金榜缓存有效期：资金流是日内累计数据，变化远慢于逐笔行情，
-// 与 5 秒行情周期解耦，避免每次刷新都重拉同一份数据
-const FLOW_CACHE_TTL = 60000;
-
-// 行业代码 → 名称索引
-const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
-
-interface MinuteCacheEntry {
-  data: MinutePoint[];
-  timestamp: number;
-}
-
-interface FlowCacheEntry {
-  inflow: MoneyFlowItem[];
-  outflow: MoneyFlowItem[];
-  timestamp: number;
-}
-
-// 行情 → 列表行（面板空间充足，始终显示全称），封单仅涨跌停时显示
-function toRow(stock: Stock): RowItem {
-  const locked = isLockState(stock.priceType) && (stock.lockAmount ?? 0) > 0;
-  return {
-    code: stock.code,
-    name: stock.name,
-    current: stock.current,
-    changePercent: stock.changePercent,
-    changeValue: stock.changeValue,
-    lock: locked ? `封 ${formatAmount(stock.lockAmount ?? 0)}` : "",
-  };
-}
-
-// 排行行：字段与自选/指数一致，行内同样可展开详情
-function toRankRow(item: RankItem): RowItem {
-  return {
-    code: item.code,
-    name: item.name,
-    current: item.current,
-    changePercent: item.changePercent,
-    changeValue: item.changeValue,
-    lock: "",
-  };
-}
-
-// 资金榜行：现价与涨跌幅仍按行情着色，第 6 列换成净额并按进出方向着色，
-// 末列补净额占成交额比，弥补榜单看不到强弱程度的短板
-function toFlowRow(item: MoneyFlowItem): FlowRowItem {
-  return {
-    code: item.code,
-    name: item.name,
-    current: item.current,
-    changePercent: item.changePercent,
-    netAmount: (item.netAmount > 0 ? "+" : "") + formatMoney(item.netAmount),
-    netDir: item.netAmount >= 0 ? "up" : "dn",
-    netRatio: `占 ${item.netRatio}%`,
-  };
+// 列表的刷新周期：行情类（自选/指数/板块）跟随主循环每轮刷新，返回 0 即每轮都到点；
+// 涨跌榜、资金榜变化慢，用各自接口缓存的有效期做周期，保证刷新时拿到的确实是新数据
+function intervalOf(key: ListKey): number {
+  if (key === "up" || key === "down") return RANK_CACHE_TTL;
+  if (key === "inflow" || key === "outflow") return FLOW_CACHE_TTL;
+  return 0;
 }
 
 export class StockViewProvider
@@ -91,17 +33,18 @@ export class StockViewProvider
   private view: vscode.WebviewView | null = null;
   private disposables: vscode.Disposable[] = [];
   private tab: Tab = "mine";
+  private rankDir: RankDir = "up";
   private expanded: string | null = null;
-  private stocks: Stock[] = [];
-  private time = "";
-  // 当前排行榜单包含的代码：展开行必然出自其中，换榜后旧代码不再拉详情
-  private rankCodes: string[] = [];
-  private minuteCache = new Map<string, MinuteCacheEntry>();
-  private flowCache: FlowCacheEntry | null = null;
+  // 当前列表包含的代码：展开行必然出自其中，换列表后旧代码不再拉详情
+  private listCodes: string[] = [];
+  // 主循环最近一次推送的自选行情，切回自选时先展示这一份
+  private mine: { items: RowItem[]; time: string } = { items: [], time: "" };
+  // 其余列表最近一次取数的起点：主循环按各列表周期判断是否到点刷新
+  private refreshedAt: Partial<Record<ListKey, number>> = {};
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    // 手动刷新自选行情：走 refresher 主链路，刷新完成后会回调 update
+    // 手动刷新走主循环：自选与状态栏共用一次取数，当前列表在本轮强制刷新
     private readonly refreshStocks: () => Promise<void>,
   ) {}
 
@@ -110,11 +53,12 @@ export class StockViewProvider
     this.view = view;
     const distUri = vscode.Uri.joinPath(this.extensionUri, "dist");
     view.webview.options = { enableScripts: true, localResourceRoots: [distUri] };
-    view.webview.html = this.buildHtml(view.webview, distUri);
-    // 不保留隐藏时的上下文：隐藏即销毁页面，重新可见时 webview 重新加载并发送 ready
+    view.webview.html = buildPanelHtml(view.webview, distUri);
+    // 不保留隐藏时的上下文：隐藏即销毁页面，重新可见时 webview 重新加载并请求数据
     this.disposables.push(
       view.webview.onDidReceiveMessage((msg: ToHost) => this.handleMessage(msg)),
       view.onDidDispose(() => this.disposeView()),
+      view.onDidChangeVisibility(() => this.handleVisibility()),
     );
   }
 
@@ -123,174 +67,114 @@ export class StockViewProvider
     return this.view?.visible ?? false;
   }
 
-  // refresher 每次刷新后调用，面板不可见时只缓存不推送
-  update(stocks: Stock[], now: Date): void {
-    this.stocks = stocks;
-    this.time = formatClock(now);
-    if (!this.view?.visible) return;
-    this.postStocks();
-    void this.pushTabData();
+  // 当前展示的列表：排行标签下由所选子榜决定
+  private get activeKey(): ListKey {
+    return this.tab === "rank" ? this.rankDir : this.tab;
   }
 
   private post(msg: ToView): void {
     void this.view?.webview.postMessage(msg);
   }
 
-  private postStocks(): void {
-    this.post({
-      type: "stocks",
-      items: this.stocks.map(toRow),
-      time: this.time,
-      colorful: config.getEnableColorful(),
-    });
+  // 主循环每个周期调用：自选行情直接复用状态栏这一份，其余列表到点才刷新
+  onMainTick(stocks: Stock[], now: Date, fetchedAt: number | null): void {
+    // 时间取数据真实的取数成功时刻，命中缓存时不会显示成主循环的当前时间
+    const at = fetchedAt === null ? now : new Date(fetchedAt);
+    this.mine = { items: stocks.map(toRow), time: formatClock(at) };
+    if (!this.view?.visible) return;
+    if (this.activeKey === "mine") {
+      this.showMine();
+      void this.pushDetail();
+      return;
+    }
+    if (this.isDue(this.activeKey, now)) void this.refreshActive();
+  }
+
+  private isDue(key: ListKey, now: Date): boolean {
+    const last = this.refreshedAt[key];
+    return last === undefined || now.getTime() - last >= intervalOf(key);
+  }
+
+  // 手动刷新前调用：清掉当前列表的到点判断，让本轮主循环一定刷新它
+  forceNextRefresh(): void {
+    delete this.refreshedAt[this.activeKey];
   }
 
   private async handleMessage(msg: ToHost): Promise<void> {
     switch (msg.type) {
-      case "ready":
-        this.tab = msg.tab;
-        this.postStocks();
-        await this.pushTabData();
-        break;
       case "tab":
+        // 首次加载与切标签共用：面板重建后靠这条消息拿到首屏数据
         this.tab = msg.tab;
+        this.rankDir = msg.dir;
         this.expanded = null;
-        await this.pushTabData();
+        this.postColorful();
+        await this.refreshActive();
+        break;
+      case "rank":
+        this.rankDir = msg.dir;
+        await this.refreshActive();
         break;
       case "expand":
         this.expanded = msg.code;
         await this.pushDetail();
         break;
       case "refresh":
-        if (this.expanded) this.minuteCache.delete(this.expanded);
-        // 手动刷新要穿透资金榜缓存，否则可能又推一遍 60 秒内的旧数据
-        if (this.tab === "rank") this.flowCache = null;
-        if (this.tab === "mine") await this.refreshStocks();
-        else await this.pushTabData();
+        // 穿透接口缓存，并让本轮主循环强制刷新当前列表
+        clearMarketCache();
+        this.forceNextRefresh();
+        await this.refreshStocks();
         break;
     }
   }
 
-  // 按当前 tab 拉取对应数据（仅可见时由调用方触发）
-  private async pushTabData(): Promise<void> {
-    if (this.tab === "index") {
-      const list = await getStockList(INDEX_CODES);
-      this.post({ type: "index", items: list.map(toRow) });
-    } else if (this.tab === "sector") {
-      const list = await getStockList(INDUSTRY_CODE_LIST);
-      this.post({
-        type: "sector",
-        items: list.map((s) => ({
-          name: INDUSTRY_NAME_MAP.get(s.code) || s.name,
-          changePercent: s.changePercent,
-        })),
-      });
-    } else if (this.tab === "rank") {
-      // 四份榜单一起下发，面板内切换涨跌榜与资金榜都不再回扩展端
-      const [up, down, flow] = await Promise.all([
-        getRankList(false, RANK_SIZE),
-        getRankList(true, RANK_SIZE),
-        this.getFlowList(),
-      ]);
-      const inflow = flow.inflow.slice(0, FLOW_SIZE).map(toFlowRow);
-      const outflow = flow.outflow.slice(0, FLOW_SIZE).map(toFlowRow);
-      this.rankCodes = [
-        ...up.map((r) => r.code),
-        ...down.map((r) => r.code),
-        ...inflow.map((r) => r.code),
-        ...outflow.map((r) => r.code),
-      ];
-      this.post({
-        type: "rank",
-        up: up.map(toRankRow),
-        down: down.map(toRankRow),
-        inflow,
-        outflow,
-      });
+  // 刷新当前列表：自选直接展示主循环最近一份行情，其余只取当前这一份
+  private async refreshActive(): Promise<void> {
+    const key = this.activeKey;
+    if (key === "mine") {
+      this.showMine();
+      await this.pushDetail();
+      return;
     }
-    // 板块不支持展开，其余 tab 的展开行都要随列表一起刷新
-    if (this.tab !== "sector") await this.pushDetail();
+    const startedAt = Date.now();
+    const { msg, codes, fetchedAt } = await loadList(key);
+    // 取数期间切走了列表就丢弃这批结果，避免覆盖新列表的 listCodes
+    if (key !== this.activeKey) return;
+    // 到点判断以数据真实的成功时刻为准：缓存过期后才会再次取数，
+    // 否则 TTL 与刷新周期相同时，到点这一轮会命中缓存、拿回同一份数据
+    this.refreshedAt[key] = fetchedAt ?? startedAt;
+    this.listCodes = codes;
+    this.post(msg);
+    // 板块不支持展开，其余列表的展开行随列表一起刷新
+    if (key !== "sector") await this.pushDetail();
   }
 
-  // 当前 tab 的代码列表：展开行必然出自其中，配置变更把代码移出列表后不再为它拉详情
-  private listCodes(): string[] {
-    if (this.tab === "index") return INDEX_CODES;
-    if (this.tab === "rank") return this.rankCodes;
-    return config.getStocks();
+  // 自选列表直接展示主循环最近一次推送的行情，不再单独取数
+  private showMine(): void {
+    this.listCodes = this.mine.items.map((r) => r.code);
+    this.post({ type: "mine", ...this.mine });
   }
 
-  // 展开行详情：完整行情每次拉取，分时走 TTL 缓存
+  // 展开行详情：股票已不在当前列表里（换榜、被移除）时不再拉
   private async pushDetail(): Promise<void> {
     const code = this.expanded;
-    if (!code || !this.listCodes().includes(code)) return;
-    const [quotes, minute] = await Promise.all([
-      getStockQuoteList([code]),
-      this.getMinute(code),
-    ]);
-    this.post({ type: "detail", code, quote: quotes[0] ?? null, minute });
+    if (!code || !this.listCodes.includes(code)) return;
+    this.post(await loadDetail(code));
   }
 
-  private async getMinute(code: string): Promise<MinutePoint[]> {
-    const now = Date.now();
-    const cached = this.minuteCache.get(code);
-    if (cached && now - cached.timestamp < MINUTE_CACHE_TTL) return cached.data;
-    const data = await getStockMinute(code);
-    this.minuteCache.set(code, { data, timestamp: now });
-    return data;
+  private handleVisibility(): void {
+    if (!this.view?.visible) return;
+    // 隐藏期间可能改过颜色配置，重新可见时一并同步
+    this.postColorful();
+    void this.refreshActive();
   }
 
-  // 资金榜：命中缓存直接复用，两张榜一起返回
-  private async getFlowList(): Promise<{
-    inflow: MoneyFlowItem[];
-    outflow: MoneyFlowItem[];
-  }> {
-    const now = Date.now();
-    if (this.flowCache && now - this.flowCache.timestamp < FLOW_CACHE_TTL) {
-      return this.flowCache;
-    }
-    const [inflow, outflow] = await Promise.all([
-      getMoneyFlowList(false, FLOW_FETCH_SIZE),
-      getMoneyFlowList(true, FLOW_FETCH_SIZE),
-    ]);
-    // 任一侧为空都当作接口异常，不写缓存，下个刷新周期重试，
-    // 避免把「暂无数据」钉在面板上整整一个 TTL
-    if (!inflow.length || !outflow.length) return { inflow, outflow };
-    this.flowCache = { inflow, outflow, timestamp: now };
-    return this.flowCache;
+  private postColorful(): void {
+    this.post({ type: "colorful", value: config.getEnableColorful() });
   }
 
-  private buildHtml(webview: vscode.Webview, distUri: vscode.Uri): string {
-    const nonce = crypto.randomBytes(16).toString("base64url");
-    const script = webview.asWebviewUri(vscode.Uri.joinPath(distUri, "webview.js"));
-    const style = webview.asWebviewUri(
-      vscode.Uri.joinPath(distUri, "webview-style.css"),
-    );
-    return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-<link rel="stylesheet" href="${style}">
-</head>
-<body>
-<div class="bar">
-<span class="tab" data-tab="mine">自选</span>
-<span class="tab" data-tab="index">指数</span>
-<span class="tab" data-tab="sector">板块</span>
-<span class="tab" data-tab="rank">排行</span>
-<span class="time" id="time"></span>
-<span class="refresh" title="刷新">↻</span>
-<span class="subtabs">
-<span class="subtab active" data-dir="up">涨幅榜</span>
-<span class="subtab" data-dir="down">跌幅榜</span>
-<span class="subtab" data-dir="inflow">流入榜</span>
-<span class="subtab" data-dir="outflow">流出榜</span>
-</span>
-</div>
-<div id="content"></div>
-<script nonce="${nonce}" src="${script}"></script>
-</body>
-</html>`;
+  // 配置变更：颜色开关即时生效；自选增删与排序由主循环的下一次刷新自然带上
+  onConfigChanged(e: vscode.ConfigurationChangeEvent): void {
+    if (e.affectsConfiguration("watch-stock.enableColorful")) this.postColorful();
   }
 
   private disposeView(): void {
@@ -301,7 +185,5 @@ export class StockViewProvider
 
   dispose(): void {
     this.disposeView();
-    this.minuteCache.clear();
-    this.flowCache = null;
   }
 }

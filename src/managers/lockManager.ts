@@ -19,7 +19,7 @@ export function calculateLockInfo(stock: Stock): LockInfo {
     return { priceType: "err", lockAmount: 0 };
   }
 
-  const limit = getLimitPercent(stock.code, stock.name);
+  const limit = getLimitPercent(stock.code);
   const changePercent = parseFloat(stock.changePercent);
   const isLimitUp =
     changePercent >= limit - 0.1 && sell1Volume === 0 && sell1Price === 0;

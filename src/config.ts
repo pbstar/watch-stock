@@ -1,13 +1,13 @@
 // VS Code 配置统一访问入口
 import * as vscode from "vscode";
-import { isValidStockCode } from "./utils/stock";
+import { isValidStockCode, type StockSortType } from "./utils/stock";
 import { isTradingTime } from "./utils/time";
 import type { Alarm, AppState } from "./types";
 
 const SECTION = "watch-stock";
 
 // 排序方式类型
-export type SortType = "custom" | "changeAsc" | "changeDesc";
+export type SortType = StockSortType;
 
 // 配置项类型
 export interface ConfigShape {
@@ -53,18 +53,31 @@ function read<K extends keyof ConfigShape>(key: K): ConfigShape[K] {
   }
 }
 
+// 过滤非法代码并统一转小写：与行情源返回的代码、闹钟存储的代码保持一致
+function sanitizeStocks(codes: string[]): string[] {
+  return codes
+    .filter((c) => isValidStockCode(c))
+    .map((c) => c.toLowerCase());
+}
+
 // 统一配置访问入口
 export const config = {
-  // 已校验过格式的股票代码列表，过滤非法值并统一转为小写（与行情源返回代码、闹钟存储代码保持一致），自动回写
+  // 已校验过格式的股票代码列表
   getStocks(): string[] {
-    const codes = raw().get<string[]>("stocks", []);
-    const valid = codes
-      .filter((c) => isValidStockCode(c))
-      .map((c) => c.toLowerCase());
-    if (valid.length !== codes.length || valid.some((c, i) => c !== codes[i])) {
-      raw().update("stocks", valid, vscode.ConfigurationTarget.Global);
+    return sanitizeStocks(read("stocks"));
+  },
+  // 手写配置可能带大写或非法代码，规范化后回写（读路径每 5 秒调一次，不适合写配置）
+  async normalizeStocks(): Promise<void> {
+    const stored = read("stocks");
+    const valid = sanitizeStocks(stored);
+    const changed =
+      valid.length !== stored.length || valid.some((c, i) => c !== stored[i]);
+    if (!changed) return;
+    try {
+      await raw().update("stocks", valid, vscode.ConfigurationTarget.Global);
+    } catch (e) {
+      console.error("[watch-stock] 股票列表规范化回写失败:", e);
     }
-    return valid;
   },
   async saveStocks(stocks: string[]): Promise<void> {
     await raw().update("stocks", stocks, vscode.ConfigurationTarget.Global);

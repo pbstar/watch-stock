@@ -63,11 +63,18 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
 // 行业板块代码列表（由 INDUSTRY_CODES 派生的纯代码数组）
 export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
 
-// 涨跌排行每榜条数（涨幅榜、跌幅榜各取这么多）
+// 排行各榜条数（涨跌榜、资金榜各取这么多个）
 export const RANK_SIZE = 20;
 
-// 资金榜每榜条数
-export const FLOW_SIZE = 20;
+// 资金榜取数条数：接口返回含基金与无名称的脏行，需放大取数后过滤再截断到 RANK_SIZE
+export const FLOW_FETCH_SIZE = 30;
 
-// 资金榜取数条数：接口返回含基金与无名称的脏行，需放大取数后过滤再截断到 FLOW_SIZE
-export const FLOW_FETCH_SIZE = 50;
+// 行情类接口缓存有效期：略短于 5 秒刷新周期，保证每个周期都取新值，又能在周期内切换标签时直接命中缓存
+export const QUOTE_CACHE_TTL = 3000;
+
+// 分时与涨跌榜变化慢于逐笔行情，与刷新周期解耦
+export const MINUTE_CACHE_TTL = 30000;
+export const RANK_CACHE_TTL = 30000;
+
+// 资金流是日内累计数据，变化最慢
+export const FLOW_CACHE_TTL = 60000;

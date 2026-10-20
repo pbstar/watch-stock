@@ -92,8 +92,11 @@ body.ranking .subtabs {
   display: flex;
 }
 
+/* 刷新时间固定占位，首次进入某个列表、时间还没回来时不挤动刷新按钮 */
 .time {
   margin-left: auto;
+  min-width: 8ch;
+  text-align: right;
   color: var(--dim);
 }
 

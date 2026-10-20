@@ -1,6 +1,6 @@
 // 行情数据刷新与定时器调度
 import { config, getIsVisible } from "./config";
-import { getStockList } from "./services/stockService";
+import { getStockList, clearMarketCache } from "./services/marketApi";
 import {
   calculateLockInfo,
   checkLockTip,
@@ -15,7 +15,8 @@ import {
   isAfternoonAuctionTime,
   isStableTradeTime,
 } from "./utils/time";
-import type { AppState } from "./types";
+import { sortStockInfos } from "./utils/stock";
+import type { AppState, Stock } from "./types";
 
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
@@ -40,56 +41,54 @@ export async function refreshData(
   }
 }
 
+// 跨交易日时清空封单/大单监控缓存与接口缓存，避免隔日首帧用昨日快照误报异动
+function clearDailyCaches(now: Date): void {
+  const tradeDate = formatDateKey(now);
+  if (tradeDate === lastTradeDate) return;
+  lastTradeDate = tradeDate;
+  clearMarketCache();
+  clearLockTipCache();
+  clearLargeTipCache();
+}
+
+// 异动监控：封单任何时候都判，大单只在稳定交易时段判（集合竞价的价格跳动没有买卖含义）
+function checkAbnormalTips(stockInfos: Stock[], now: Date): void {
+  if (config.getEnableLockTip()) checkLockTip(stockInfos);
+  if (config.getEnableLargeTip() && isStableTradeTime(now)) {
+    checkLargeTip(stockInfos);
+  }
+}
+
 // 拉取数据 -> 计算封单 -> 触发闹钟 -> 推送股票面板 -> 渲染状态栏
 async function doRefreshData(
   state: AppState,
   now: Date,
   isAuto?: boolean,
 ): Promise<void> {
-  // 跨交易日时清空封单/大单监控缓存，避免隔日首帧用昨日快照误报异动
-  const tradeDate = formatDateKey(now);
-  if (tradeDate !== lastTradeDate) {
-    lastTradeDate = tradeDate;
-    clearLockTipCache();
-    clearLargeTipCache();
-  }
+  clearDailyCaches(now);
 
   const stocks = config.getStocks();
-  const isMorningAuction = isMorningAuctionTime(now);
-  const isAfternoonAuction = isAfternoonAuctionTime(now);
-  // 早盘集合竞价新浪源无数据，切腾讯简版源
-  const stockInfos =
+  // 数据源由 getStockList 按当前时段选择，集合竞价会自动切到腾讯简版；
+  // fetchedAt 是数据真实的取数成功时刻，面板顶栏按它显示
+  const result =
     stocks.length > 0
-      ? await getStockList(stocks, isMorningAuction ? "tencent" : "sina")
-      : [];
+      ? await getStockList(stocks)
+      : { data: [] as Stock[], fetchedAt: null };
+  const stockInfos = result.data;
 
   for (const stock of stockInfos) {
-    const lockInfo = calculateLockInfo(stock);
-    Object.assign(stock, lockInfo);
+    Object.assign(stock, calculateLockInfo(stock));
   }
-
-  // 按涨跌幅排序（自定义模式跳过）
-  const sortType = config.getStockSortType();
-  if (sortType !== "custom") {
-    const dir = sortType === "changeAsc" ? 1 : -1;
-    stockInfos.sort(
-      (a, b) =>
-        (parseFloat(a.changePercent) - parseFloat(b.changePercent)) * dir,
-    );
-  }
+  sortStockInfos(stockInfos, config.getStockSortType());
 
   if (stockInfos.length > 0) {
     await checkAlarms(stockInfos);
   }
-
-  if (isAuto && !isMorningAuction && !isAfternoonAuction) {
-    if (config.getEnableLockTip()) checkLockTip(stockInfos);
-    if (config.getEnableLargeTip() && isStableTradeTime(now))
-      checkLargeTip(stockInfos);
+  if (isAuto && !isMorningAuctionTime(now) && !isAfternoonAuctionTime(now)) {
+    checkAbnormalTips(stockInfos, now);
   }
 
-  state.stockView.update(stockInfos, now);
-
+  state.stockView.onMainTick(stockInfos, now, result.fetchedAt);
   if (getIsVisible(state, now)) {
     state.statusBar.render(stocks, stockInfos);
   } else {

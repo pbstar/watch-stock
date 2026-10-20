@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
 import { isValidStockCode, isFundCode } from "../utils/stock";
-import { searchStockCode } from "../services/stockSearch";
-import { getStockList } from "../services/stockService";
+import { getStockList, searchStockCode } from "../services/marketApi";
 import { config } from "../config";
 import type { Stock } from "../types";
 
@@ -20,7 +19,7 @@ export async function buildStockOptions(
   codes: string[],
   decorate: (option: StockOption, index: number) => StockOption = (o) => o,
 ): Promise<StockOption[]> {
-  const stockInfos = await getStockList(codes);
+  const stockInfos = (await getStockList(codes)).data;
   const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
   return codes.map((code, index) => {
     const info = infoMap.get(code);
@@ -73,7 +72,7 @@ export async function addStock(): Promise<boolean> {
     return false;
   }
 
-  const stockInfo = await getStockList([stockCode]);
+  const stockInfo = (await getStockList([stockCode])).data;
   if (!stockInfo[0]?.name) {
     sendMsg("股票获取失败，请检查股票代码或名称", { type: "error" });
     return false;

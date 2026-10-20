@@ -4,9 +4,9 @@
 .git/
 node_modules/
 src/
-versions/
 package-lock.json
 tsconfig.json
 esbuild.config.mjs
 **/*.ts
 **/*.map
+**/*.vsix

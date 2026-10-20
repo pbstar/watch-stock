@@ -10,7 +10,7 @@ interface LargeSnapshot {
   timestamp: number; // 行情时间戳（秒）
 }
 
-// 将行情时间字符串解析为时间戳，无效时返回0
+// 行情时间字符串 → 时间戳（秒），无效为 0
 function toTimestamp(text: string): number {
   if (!text) return 0;
   const t = new Date(text).getTime();
@@ -24,7 +24,7 @@ const BASE_AMOUNT = 1000000; // 区间成交额绝对阈值：100万
 const LARGE_RATIO = 2; // 放量倍数
 const PRICE_MOVE_RATIO = 0.001; // 价格干扰
 
-// 根据快照历史生成大单异动通知文案（history 已由调用方保证长度达标）
+// 生成大单异动通知文案；history 长度由调用方保证
 function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   const first = history[0];
   const prev = history[HISTORY_SIZE - 2];
@@ -47,12 +47,12 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   const ratio = Number((lastAmount / avgAmount).toFixed(2));
   // 价格变化方向：最近一次间隔内的涨跌判断买卖意图
   const priceDiff = Number((cur.current - prev.current).toFixed(3));
-  // 价格推动不显著（tick 级波动不算买卖意图）
+  // 价格没被推动就谈不上买卖意图，tick 级波动不算数
   if (Math.abs(priceDiff) < prev.current * PRICE_MOVE_RATIO) return "";
 
   const emoji = priceDiff > 0 ? "💰" : "💸";
   const direction = priceDiff > 0 ? "买入" : "卖出";
-  // 超大单条件
+  // 超大单：高倍率配高增量，两种组合任一成立
   const sb1 = ratio > 5 && deltaAmount > BASE_AMOUNT * 7;
   const sb2 = ratio > 9 && deltaAmount > BASE_AMOUNT * 3;
   const size = sb1 || sb2 ? "超大" : "大";
