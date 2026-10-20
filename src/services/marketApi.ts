@@ -10,6 +10,7 @@ import {
   invalidateWhere,
   resetCache,
 } from "../utils/cache";
+import type { CacheResult } from "../utils/cache";
 import { isMorningAuctionTime } from "../utils/time";
 import * as sina from "../sources/sina";
 import * as tencent from "../sources/tencent";
@@ -70,19 +71,21 @@ async function fetchQuoteRows<T extends { code: string }>(
   kind: "quote" | "full",
   codes: string[],
   load: (list: string[]) => Promise<T[]>,
-): Promise<T[]> {
-  if (!codes?.length) return [];
+): Promise<CacheResult<T>> {
+  if (!codes?.length) return { data: [], fetchedAt: null };
   const list = normalizeCodes(codes);
-  const rows = await cachedFetch<T>({
+  const { data, fetchedAt } = await cachedFetch<T>({
     key: stockKey(source, kind, list),
     ttl: QUOTE_CACHE_TTL,
     load: () => load(list),
   });
-  return orderBy(rows, requestOrder(codes));
+  return { data: orderBy(data, requestOrder(codes)), fetchedAt };
 }
 
 // 批量行情（自选/指数/板块）：早盘集合竞价新浪无数据，切腾讯简版
-export async function getStockList(codes: string[]): Promise<Stock[]> {
+export async function getStockList(
+  codes: string[],
+): Promise<CacheResult<Stock>> {
   const source: QuoteSource = isMorningAuctionTime(new Date())
     ? "tencent"
     : "sina";
@@ -94,7 +97,7 @@ export async function getStockList(codes: string[]): Promise<Stock[]> {
 // 详细行情列表（面板展开行）
 export async function getStockQuoteList(
   codes: string[],
-): Promise<StockQuote[]> {
+): Promise<CacheResult<StockQuote>> {
   return fetchQuoteRows("tencent", "full", codes, (list) =>
     tencent.fetchFullQuotes(list),
   );
@@ -104,7 +107,7 @@ export async function getStockQuoteList(
 export async function getRankList(
   asc: boolean,
   num: number,
-): Promise<RankItem[]> {
+): Promise<CacheResult<RankItem>> {
   return cachedFetch<RankItem>({
     key: `sina:rank:${asc ? "asc" : "desc"}:${num}`,
     ttl: RANK_CACHE_TTL,
@@ -117,7 +120,7 @@ export async function getRankList(
 export async function getMoneyFlowList(
   asc: boolean,
   num: number,
-): Promise<MoneyFlowItem[]> {
+): Promise<CacheResult<MoneyFlowItem>> {
   return cachedFetch<MoneyFlowItem>({
     key: `sina:flow:${asc ? "asc" : "desc"}:${num}`,
     ttl: FLOW_CACHE_TTL,
@@ -127,7 +130,9 @@ export async function getMoneyFlowList(
 }
 
 // 分时数据
-export async function getStockMinute(code: string): Promise<MinutePoint[]> {
+export async function getStockMinute(
+  code: string,
+): Promise<CacheResult<MinutePoint>> {
   const key = code.toLowerCase();
   return cachedFetch<MinutePoint>({
     key: stockKey("tencent", "minute", [key]),

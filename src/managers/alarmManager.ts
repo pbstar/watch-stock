@@ -164,7 +164,7 @@ async function alarmListOptions(
   withLeadingSeparator: boolean,
 ): Promise<AlarmAction[]> {
   const stockCodes = [...new Set(alarms.map((a) => a.stockCode))];
-  const stockInfos = await getStockList(stockCodes);
+  const stockInfos = (await getStockList(stockCodes)).data;
   const infoMap = new Map(stockInfos.map((s) => [s.code, s]));
 
   const options: AlarmAction[] = withLeadingSeparator

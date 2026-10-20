@@ -68,8 +68,13 @@ async function doRefreshData(
   clearDailyCaches(now);
 
   const stocks = config.getStocks();
-  // 数据源由 getStockList 按当前时段选择，集合竞价会自动切到腾讯简版
-  const stockInfos = stocks.length > 0 ? await getStockList(stocks) : [];
+  // 数据源由 getStockList 按当前时段选择，集合竞价会自动切到腾讯简版；
+  // fetchedAt 是数据真实的取数成功时刻，面板顶栏按它显示
+  const result =
+    stocks.length > 0
+      ? await getStockList(stocks)
+      : { data: [] as Stock[], fetchedAt: null };
+  const stockInfos = result.data;
 
   for (const stock of stockInfos) {
     Object.assign(stock, calculateLockInfo(stock));
@@ -83,7 +88,7 @@ async function doRefreshData(
     checkAbnormalTips(stockInfos, now);
   }
 
-  state.stockView.onMainTick(stockInfos, now);
+  state.stockView.onMainTick(stockInfos, now, result.fetchedAt);
   if (getIsVisible(state, now)) {
     state.statusBar.render(stocks, stockInfos);
   } else {

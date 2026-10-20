@@ -77,8 +77,10 @@ export class StockViewProvider
   }
 
   // 主循环每个周期调用：自选行情直接复用状态栏这一份，其余列表到点才刷新
-  onMainTick(stocks: Stock[], now: Date): void {
-    this.mine = { items: stocks.map(toRow), time: formatClock(now) };
+  onMainTick(stocks: Stock[], now: Date, fetchedAt: number | null): void {
+    // 时间取数据真实的取数成功时刻，命中缓存时不会显示成主循环的当前时间
+    const at = fetchedAt === null ? now : new Date(fetchedAt);
+    this.mine = { items: stocks.map(toRow), time: formatClock(at) };
     if (!this.view?.visible) return;
     if (this.activeKey === "mine") {
       this.showMine();
@@ -134,10 +136,12 @@ export class StockViewProvider
       return;
     }
     const startedAt = Date.now();
-    const { msg, codes } = await loadList(key);
+    const { msg, codes, fetchedAt } = await loadList(key);
     // 取数期间切走了列表就丢弃这批结果，避免覆盖新列表的 listCodes
     if (key !== this.activeKey) return;
-    this.refreshedAt[key] = startedAt;
+    // 到点判断以数据真实的成功时刻为准：缓存过期后才会再次取数，
+    // 否则 TTL 与刷新周期相同时，到点这一轮会命中缓存、拿回同一份数据
+    this.refreshedAt[key] = fetchedAt ?? startedAt;
     this.listCodes = codes;
     this.post(msg);
     // 板块不支持展开，其余列表的展开行随列表一起刷新
