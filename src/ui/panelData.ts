@@ -2,7 +2,6 @@
 // 自选行情由主循环统一取数并推送，这里只处理需要面板单独取数的列表
 import {
   FLOW_FETCH_SIZE,
-  FLOW_SIZE,
   INDEX_CODES,
   INDUSTRY_CODE_LIST,
   RANK_SIZE,
@@ -69,7 +68,7 @@ async function loadRank(dir: RankDir): Promise<ListPayload> {
     };
   }
   const { data, fetchedAt } = await getMoneyFlowList(asc, FLOW_FETCH_SIZE);
-  const items = data.slice(0, FLOW_SIZE).map(toFlowRow);
+  const items = data.slice(0, RANK_SIZE).map(toFlowRow);
   return {
     msg: { type: "rank", dir, items, time: stamp(fetchedAt) },
     codes: items.map((r) => r.code),
