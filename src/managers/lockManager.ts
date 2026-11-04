@@ -61,7 +61,9 @@ function getLockChangeMessage(prev: LockInfo, stock: Stock): string {
   if (prevType === curType && (curType === "up" || curType === "down")) {
     const delta = curAmount - prevAmount;
     const absDelta = Math.abs(delta);
-    const deltaChange = Math.round((absDelta / prevAmount) * 100);
+    // 上次封单为 0 时百分比无意义，按 100% 处理，只由增减绝对值决定是否通知
+    const deltaChange =
+      prevAmount > 0 ? Math.round((absDelta / prevAmount) * 100) : 100;
     if (absDelta > MIN_LOCK_CHANGE && deltaChange > LOCK_CHANGE_PERCENT) {
       if (delta > 0) {
         return `🔒 ${stock.name} 封单增加${formatAmount(absDelta)}`;
