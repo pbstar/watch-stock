@@ -170,7 +170,7 @@ body.ranking .subtabs {
 /* 分时图：位于详情区内 */
 .chart {
   position: relative;
-  width: 320px;
+  width: 300px;
   margin-top: 4px;
   cursor: crosshair;
 }

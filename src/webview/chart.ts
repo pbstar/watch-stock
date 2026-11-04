@@ -2,7 +2,7 @@
 import type { MinutePoint } from "../shared/protocol";
 import { formatVolume } from "../shared/format";
 
-const PRICE_H = 64;
+const PRICE_H = 74;
 const VOL_H = 24;
 const GAP = 4;
 const HEIGHT = PRICE_H + GAP + VOL_H;
