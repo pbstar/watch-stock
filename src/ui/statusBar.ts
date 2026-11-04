@@ -22,8 +22,10 @@ interface DisplayOptions {
 }
 
 function readDisplayOptions(): DisplayOptions {
+  // 配置可能被改成 0、负数或小数，状态栏至少显示一只，避免只剩省略后缀
+  const count = Math.floor(config.getMaxDisplayCount());
   return {
-    maxDisplayCount: config.getMaxDisplayCount(),
+    maxDisplayCount: Number.isFinite(count) ? Math.max(1, count) : 1,
     showMiniName: config.getShowMiniName(),
     miniNames: config.getStockMiniNames(),
     showChangeValue: config.getShowChangeValue(),

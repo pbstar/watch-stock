@@ -137,7 +137,7 @@ export async function searchCode(keyword: string): Promise<string | null> {
   const items = match[1].split(";").filter((i) => i.trim());
   for (const item of items) {
     const [, , , fullCode] = item.split(",");
-    if (fullCode?.match(/^(sh|sz)\d{6}$/)) return fullCode;
+    if (fullCode?.match(/^(sh|sz|bj)\d{6}$/)) return fullCode;
   }
   return null;
 }
