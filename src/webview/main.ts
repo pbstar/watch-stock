@@ -75,7 +75,8 @@ window.addEventListener("message", (e: MessageEvent<ToView>) => {
       state.data.sector = { items: msg.items, time: msg.time };
       break;
     case "rank":
-      // 行情行与资金行分两支赋值，保持消息与列表数据的类型收窄
+      // 行情行与资金行分两支赋值：两段代码相同，但各自收窄了 msg.dir 对应的
+      // items 类型；合并成一次赋值时 TS 会把索引类型算成交叉类型而报错
       if (msg.dir === "up" || msg.dir === "down") {
         state.data.rank[msg.dir] = { items: msg.items, time: msg.time };
       } else {
