@@ -1,6 +1,6 @@
 // 迷你分时图 + 成交量柱（SVG）：细线无面积、无坐标框，仅昨收虚线
 import type { MinutePoint } from "../shared/protocol";
-import { formatVolume } from "../shared/format";
+import { formatMoney, formatVolume } from "../shared/format";
 
 const PRICE_H = 74;
 const VOL_H = 24;
@@ -17,13 +17,17 @@ interface ChartCtx {
   width: number;
 }
 
-// 累计成交量 → 分钟成交量
-function minuteVolumes(data: MinutePoint[]): number[] {
+// 累计值 → 每分钟增量：成交量（手）与成交额（元）共用
+function minuteDeltas(
+  data: MinutePoint[],
+  pick: (d: MinutePoint) => number | null,
+): number[] {
   let prev = 0;
   return data.map((d) => {
-    if (d.volume == null) return 0;
-    const v = Math.max(0, d.volume - prev);
-    prev = d.volume;
+    const cur = pick(d);
+    if (cur == null) return 0;
+    const v = Math.max(0, cur - prev);
+    prev = cur;
     return v;
   });
 }
@@ -67,13 +71,18 @@ function volumeBars(ctx: ChartCtx, vols: number[]): string {
 }
 
 // 悬停时刻的说明文本
-function hoverText(ctx: ChartCtx, i: number, vols: number[]): string {
+function hoverText(
+  ctx: ChartCtx,
+  i: number,
+  vols: number[],
+  amounts: number[],
+): string {
   const d = ctx.data[i];
   const t = d.time.slice(-5);
   if (d.price == null) return `${t} -`;
   const pct = ((d.price - ctx.preClose) / ctx.preClose) * 100;
   const sign = pct > 0 ? "+" : "";
-  return `${t} ${d.price.toFixed(ctx.dec)} ${sign}${pct.toFixed(2)}% 量${formatVolume(vols[i])}`;
+  return `${t} ${d.price.toFixed(ctx.dec)} ${sign}${pct.toFixed(2)}% 量${formatVolume(vols[i])} 额${formatMoney(amounts[i])}`;
 }
 
 // 渲染到容器；onHover 传 null 表示离开
@@ -96,7 +105,8 @@ export function renderChart(
     return;
   }
   const ctx: ChartCtx = { data, preClose, dec, width };
-  const vols = minuteVolumes(data);
+  const vols = minuteDeltas(data, (d) => d.volume);
+  const amounts = minuteDeltas(data, (d) => d.amount);
   const pcY = PRICE_H / 2;
   const last = prices[prices.length - 1];
   el.innerHTML = `<svg width="${width}" height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}">
@@ -104,13 +114,14 @@ export function renderChart(
     <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${pricePath(ctx, prices)}"/>
     ${volumeBars(ctx, vols)}
   </svg><div class="cursor"></div>`;
-  bindHover(el, ctx, vols, onHover);
+  bindHover(el, ctx, vols, amounts, onHover);
 }
 
 function bindHover(
   el: HTMLElement,
   ctx: ChartCtx,
   vols: number[],
+  amounts: number[],
   onHover: (text: string | null) => void,
 ): void {
   const cursor = el.querySelector<HTMLElement>(".cursor")!;
@@ -119,7 +130,7 @@ function bindHover(
     const i = Math.max(0, Math.min(n - 1, Math.round((x / ctx.width) * (n - 1))));
     cursor.style.left = `${xOf(ctx, i)}px`;
     cursor.style.display = "block";
-    onHover(hoverText(ctx, i, vols));
+    onHover(hoverText(ctx, i, vols, amounts));
   };
   el.onmousemove = (e) => {
     const x = e.clientX - el.getBoundingClientRect().left;

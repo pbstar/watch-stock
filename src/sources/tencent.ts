@@ -117,14 +117,16 @@ export async function fetchMinute(code: string): Promise<MinutePoint[]> {
     const item = itemStr.split(" ");
     if (item.length !== 4 || !item[0]) continue;
     const time = `${date} ${item[0].slice(0, 2)}:${item[0].slice(2, 4)}`;
+    // 每行 4 个字段：时间、价格、累计成交量（手）、累计成交额（元）
     dataMap.set(time, {
       time,
       price: safeNumber(item[1]),
       volume: safeNumber(item[2]),
+      amount: safeNumber(item[3]),
     });
   }
 
   return slots.map(
-    (time) => dataMap.get(time) ?? { time, price: null, volume: null },
+    (time) => dataMap.get(time) ?? { time, price: null, volume: null, amount: null },
   );
 }

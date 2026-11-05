@@ -13,6 +13,7 @@ export interface MinutePoint {
   time: string;
   price: number | null;
   volume: number | null;
+  amount: number | null;
 }
 
 // 列表行共有部分：标记、代码、名称、现价、涨跌幅（涨跌幅同时决定整行涨跌配色）
