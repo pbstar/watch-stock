@@ -189,7 +189,8 @@ body.ranking .subtabs {
 .line-dn {
   fill: none;
   stroke-width: 1;
-  stroke-opacity: 0.85;
+  stroke-opacity: 0.7;
+  shape-rendering: crispEdges;
 }
 
 .line-up {
