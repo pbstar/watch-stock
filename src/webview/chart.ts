@@ -1,6 +1,6 @@
 // 迷你分时图 + 成交量柱（SVG）：细线无面积、无坐标框，仅昨收虚线
 import type { MinutePoint } from "../shared/protocol";
-import { formatMoney, formatVolume } from "../shared/format";
+import { formatMoney, formatVolume, signed } from "../shared/format";
 
 const PRICE_H = 74;
 const VOL_H = 24;
@@ -81,8 +81,7 @@ function hoverText(
   const t = d.time.slice(-5);
   if (d.price == null) return `${t} -`;
   const pct = ((d.price - ctx.preClose) / ctx.preClose) * 100;
-  const sign = pct > 0 ? "+" : "";
-  return `${t} ${d.price.toFixed(ctx.dec)} ${sign}${pct.toFixed(2)}% 量${formatVolume(vols[i])} 额${formatMoney(amounts[i])}`;
+  return `${t} ${d.price.toFixed(ctx.dec)} ${signed(pct.toFixed(2), "%")} 量${formatVolume(vols[i])} 额${formatMoney(amounts[i])}`;
 }
 
 // 渲染到容器；onHover 传 null 表示离开
