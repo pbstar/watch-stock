@@ -2,7 +2,7 @@
 import { get, getGbk } from "../utils/http";
 import { isFund, safeNumber } from "../utils/stock";
 import { decOf } from "../shared/format";
-import type { MoneyFlowItem, RankItem, Stock } from "../types";
+import type { CodeNameConfig, MoneyFlowItem, RankItem, Stock } from "../types";
 
 // 解析单条行情（含五档封单），无效行返回 null
 function parseQuote(code: string, data: string): Stock | null {
@@ -140,4 +140,62 @@ export async function searchCode(keyword: string): Promise<string | null> {
     if (fullCode?.match(/^(sh|sz|bj)\d{6}$/)) return fullCode;
   }
   return null;
+}
+
+// ── 全球经济数据 ──
+
+// 外盘期货解析后的行情字段
+interface GlobalRaw {
+  current: number;
+  changeValue: number;
+  changePercent: number;
+  dateTime: string;
+}
+
+// 外盘期货 hf_：0 现价、6 时间、7 昨收、12 日期、13 名称
+function parseHfQuote(fields: string[]): GlobalRaw | null {
+  const current = safeNumber(fields[0]);
+  const prevClose = safeNumber(fields[7]);
+  if (!fields[13]?.trim() || current <= 0 || prevClose <= 0) return null;
+  const changeValue = current - prevClose;
+  return {
+    current,
+    changeValue,
+    changePercent: (changeValue / prevClose) * 100,
+    dateTime: `${fields[12] ?? ""} ${fields[6] ?? ""}`.trim(),
+  };
+}
+
+// 外盘期货批量行情：一次取回，按配置顺序返回
+export async function fetchGlobalQuotes(
+  items: CodeNameConfig[],
+): Promise<Stock[]> {
+  const url = `https://hq.sinajs.cn/list=${items.map((i) => i.code).join(",")}`;
+  const text = await getGbk(url);
+
+  // 按变量名取原始行，避免依赖返回顺序
+  const rawMap = new Map<string, string[]>();
+  for (const line of text.split("\n")) {
+    const match = line.match(/var hq_str_([^=]+)="([^"]*)"/);
+    if (match) rawMap.set(match[1], match[2].split(","));
+  }
+
+  const rows: Stock[] = [];
+  for (const item of items) {
+    const fields = rawMap.get(item.code);
+    if (!fields) continue;
+    const parsed = parseHfQuote(fields);
+    if (!parsed) continue;
+    rows.push({
+      name: item.name,
+      code: item.code,
+      current: parsed.current.toFixed(2),
+      changeValue: parsed.changeValue.toFixed(2),
+      changePercent: parsed.changePercent.toFixed(2),
+      amount: 0,
+      isETF: false,
+      dateTime: parsed.dateTime,
+    });
+  }
+  return rows;
 }

@@ -88,8 +88,8 @@ export interface LockInfo {
   lockAmount: number;
 }
 
-// 行业板块配置项
-export interface IndustryConfig {
+// 代码 + 名称的配置项：行业板块与全球经济数据共用
+export interface CodeNameConfig {
   code: string;
   name: string;
 }

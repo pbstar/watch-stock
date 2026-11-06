@@ -22,7 +22,8 @@ export function renderList<T extends BaseRow>(
     return;
   }
   const openCode = open?.code ?? null;
-  const cellHtml = (s: T) => cells(s, s.code === openCode ? "▾" : "▸");
+  const cellHtml = (s: T) =>
+    cells(s, s.expandable === false ? "" : s.code === openCode ? "▾" : "▸");
   let rows = [...el.querySelectorAll<HTMLElement>(".row")];
   const sameOrder =
     rows.length === items.length &&
@@ -34,10 +35,10 @@ export function renderList<T extends BaseRow>(
   } else {
     // 整体重建会连同详情块一起销毁，落位放到重建之后
     el.innerHTML = items
-      .map(
-        (s) =>
-          `<div class="row" data-code="${esc(s.code)}">${cellHtml(s)}</div>`,
-      )
+      .map((s) => {
+        const noExpand = s.expandable === false ? ' data-no-expand="1"' : "";
+        return `<div class="row" data-code="${esc(s.code)}"${noExpand}>${cellHtml(s)}</div>`;
+      })
       .join("");
     rows = [...el.querySelectorAll<HTMLElement>(".row")];
   }

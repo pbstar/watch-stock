@@ -52,7 +52,8 @@ bar.addEventListener("click", (e) => {
 content.addEventListener("click", (e) => {
   if (state.tab === "sector") return;
   const row = (e.target as HTMLElement).closest<HTMLElement>(".row");
-  if (!row) return;
+  // 全球行情没有详细指标与分时，点击不展开
+  if (!row || row.dataset.noExpand) return;
   const code = row.dataset.code === state.open?.code ? null : row.dataset.code!;
   // 指数无个股指标，详情块按精简模式渲染
   state.open = code

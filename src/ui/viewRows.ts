@@ -30,6 +30,11 @@ export function toRow(stock: Stock): RowItem {
   );
 }
 
+// 全球行情行：没有详细指标与分时，不提供点击展开
+export function toGlobalRow(stock: Stock): RowItem {
+  return { ...toRow(stock), expandable: false };
+}
+
 // 涨跌榜行
 export function toRankRow(item: RankItem): RowItem {
   return quoteRow(item);

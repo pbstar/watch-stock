@@ -1,6 +1,7 @@
 // 行情接口统一入口：路由数据源 + 接口级缓存 + 主动刷新与失效
 import {
   FLOW_CACHE_TTL,
+  GLOBAL_ITEMS,
   MINUTE_CACHE_TTL,
   QUOTE_CACHE_TTL,
   RANK_CACHE_TTL,
@@ -101,6 +102,16 @@ export async function getStockQuoteList(
   return fetchQuoteRows("tencent", "full", codes, (list) =>
     tencent.fetchFullQuotes(list),
   );
+}
+
+// 全球经济数据：与指数行情共用刷新节奏，空结果不缓存，下一轮自动重试
+export async function getGlobalList(): Promise<CacheResult<Stock>> {
+  return cachedFetch<Stock>({
+    key: `sina:global:${GLOBAL_ITEMS.map((i) => i.code).join(",")}`,
+    ttl: QUOTE_CACHE_TTL,
+    cacheEmpty: false,
+    load: () => sina.fetchGlobalQuotes(GLOBAL_ITEMS),
+  });
 }
 
 // 涨跌排行：沪深京 A 股全市场按涨跌幅取头部

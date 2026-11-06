@@ -22,6 +22,8 @@ export interface BaseRow {
   name: string;
   current: string;
   changePercent: string;
+  // 是否支持点击展开详情；全球行情没有详细指标与分时，置 false
+  expandable?: boolean;
 }
 
 // 列表行（自选 / 指数 / 涨跌榜），名称与封单文案由扩展端处理好
