@@ -1,6 +1,6 @@
 // 面板列表行构造：把行情与榜单条目转成 webview 直接渲染的行
 import { INDUSTRY_CODES } from "../constants";
-import { formatAmount, formatMoney } from "../shared/format";
+import { formatAmount, formatMoney, signed } from "../shared/format";
 import { isLockState } from "../utils/stock";
 import type { MoneyFlowItem, RankItem, Stock } from "../types";
 import type { FlowRowItem, RowItem, SectorItem } from "../shared/protocol";
@@ -8,16 +8,16 @@ import type { FlowRowItem, RowItem, SectorItem } from "../shared/protocol";
 // 行业代码 → 名称索引：接口返回的是 ETF 全称，面板上改用行业短名
 const INDUSTRY_NAME_MAP = new Map(INDUSTRY_CODES.map((c) => [c.code, c.name]));
 
-// 行情行与榜单行字段完全一致，只差封单；榜单没有封单数据，恒为空。
+// 行情行与榜单行字段一致，只差行尾文案；榜单没有该数据，恒为空。
 // 逐字段取值而不展开源对象：Stock 还带着五档、成交额等面板用不到的字段
-function quoteRow(base: Omit<RowItem, "lock">, lock = ""): RowItem {
+function quoteRow(base: Omit<RowItem, "tail">, tail = ""): RowItem {
   return {
     code: base.code,
     name: base.name,
     current: base.current,
     changePercent: base.changePercent,
     changeValue: base.changeValue,
-    lock,
+    tail,
   };
 }
 
@@ -28,6 +28,13 @@ export function toRow(stock: Stock): RowItem {
     stock,
     locked ? `封 ${formatAmount(stock.lockAmount ?? 0)}` : "",
   );
+}
+
+// 全球行情行：没有详细指标与分时，不提供点击展开；行尾展示昨日涨跌
+export function toGlobalRow(stock: Stock, prevChange?: number): RowItem {
+  const tail =
+    prevChange === undefined ? "" : `昨 ${signed(prevChange.toFixed(2), "%")}`;
+  return { ...quoteRow(stock, tail), expandable: false };
 }
 
 // 涨跌榜行

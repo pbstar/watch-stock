@@ -1,6 +1,6 @@
 // 涨跌停封单计算与异动通知
 import { sendRateLimitMsg } from "../utils/msg";
-import { getLimitPercent } from "../utils/stock";
+import { getLimitPercent, isLockState, safeNumber } from "../utils/stock";
 import { formatAmount } from "../shared/format";
 import type { Stock, LockInfo } from "../types";
 
@@ -20,7 +20,7 @@ export function calculateLockInfo(stock: Stock): LockInfo {
   }
 
   const limit = getLimitPercent(stock.code);
-  const changePercent = parseFloat(stock.changePercent);
+  const changePercent = safeNumber(stock.changePercent);
   const isLimitUp =
     changePercent >= limit - 0.1 && sell1Volume === 0 && sell1Price === 0;
   const isLimitDown =
@@ -43,7 +43,7 @@ function getLockChangeMessage(prev: LockInfo, stock: Stock): string {
   const prevAmount = prev.lockAmount ?? 0;
 
   // 新涨停/跌停
-  if (prevType === "none" && (curType === "up" || curType === "down")) {
+  if (prevType === "none" && isLockState(curType)) {
     return `🔒 ${stock.name} ${curType === "up" ? "涨停" : "跌停"} 封单${formatAmount(curAmount)}`;
   }
 
@@ -58,7 +58,7 @@ function getLockChangeMessage(prev: LockInfo, stock: Stock): string {
   }
 
   // 同向延续，封单变化超阈值
-  if (prevType === curType && (curType === "up" || curType === "down")) {
+  if (prevType === curType && isLockState(curType)) {
     const delta = curAmount - prevAmount;
     const absDelta = Math.abs(delta);
     // 上次封单为 0 时百分比无意义，按 100% 处理，只由增减绝对值决定是否通知

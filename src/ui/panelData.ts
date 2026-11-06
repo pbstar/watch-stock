@@ -7,6 +7,8 @@ import {
   RANK_SIZE,
 } from "../constants";
 import {
+  getGlobalList,
+  getGlobalPrevChanges,
   getMoneyFlowList,
   getRankList,
   getStockList,
@@ -14,7 +16,13 @@ import {
   getStockQuoteList,
 } from "../services/marketApi";
 import { formatClock } from "../utils/time";
-import { toFlowRow, toRankRow, toRow, toSectorItem } from "./viewRows";
+import {
+  toFlowRow,
+  toGlobalRow,
+  toRankRow,
+  toRow,
+  toSectorItem,
+} from "./viewRows";
 import type { ListKey, RankDir, ToView } from "../shared/protocol";
 
 type FetchKey = Exclude<ListKey, "mine">;
@@ -34,13 +42,23 @@ function stamp(fetchedAt: number | null): string {
   return formatClock(new Date(fetchedAt ?? Date.now()));
 }
 
+// 大盘指数与全球行情同一套刷新；昨日涨跌按天缓存，当天不再重复请求
 async function loadIndex(): Promise<ListPayload> {
-  const { data, fetchedAt } = await getStockList(INDEX_CODES);
-  const items = data.map(toRow);
+  const [domestic, global, prev] = await Promise.all([
+    getStockList(INDEX_CODES),
+    getGlobalList(),
+    getGlobalPrevChanges(),
+  ]);
+  const prevMap = new Map(prev.data.map((r) => [r.code, r.changePercent]));
+  const items = [
+    ...domestic.data.map(toRow),
+    ...global.data.map((s) => toGlobalRow(s, prevMap.get(s.code))),
+  ];
   return {
-    msg: { type: "index", items, time: stamp(fetchedAt) },
-    codes: items.map((r) => r.code),
-    fetchedAt,
+    msg: { type: "index", items, time: stamp(domestic.fetchedAt) },
+    // 全球行情不支持展开，只有 A 股指数进入可展开代码集合
+    codes: domestic.data.map((r) => r.code),
+    fetchedAt: domestic.fetchedAt,
   };
 }
 

@@ -1,5 +1,6 @@
 // 大单异动监控：基于最近多次刷新的成交额变化
 import { sendRateLimitMsg } from "../utils/msg";
+import { safeNumber } from "../utils/stock";
 import { formatAmount } from "../shared/format";
 import type { Stock } from "../types";
 
@@ -72,8 +73,8 @@ export function clearLargeTipCache(code?: string): void {
 export function checkLargeTip(stockInfos: Stock[]): void {
   for (const stock of stockInfos) {
     if (!stock || stock.priceType !== "none" || stock.amount <= 0) continue;
-    const current = parseFloat(stock.current);
-    if (isNaN(current) || current <= 0) continue;
+    const current = safeNumber(stock.current);
+    if (current <= 0) continue;
     const timestamp = toTimestamp(stock.dateTime);
     if (timestamp === 0) continue;
     const history = largeTipCache.get(stock.code) ?? [];

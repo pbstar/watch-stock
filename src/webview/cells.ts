@@ -12,12 +12,12 @@ function baseCells(row: BaseRow, marker: string): string {
     <span class="num ${cls}">${esc(signed(row.changePercent, "%"))}</span>`;
 }
 
-// 行情行尾列：涨跌额（同行情着色）与封单
+// 行情行单元格：涨跌额 + 行尾文案（封单或昨日涨跌）
 export function quoteCells(s: RowItem, marker: string): string {
   const cls = dirClass(s.changePercent);
   return `${baseCells(s, marker)}
     <span class="num ${cls}">${esc(signed(s.changeValue))}</span>
-    <span class="dim">${esc(s.lock)}</span>`;
+    <span class="dim">${esc(s.tail)}</span>`;
 }
 
 // 资金行尾列：净额按进出方向着色，末列补净额占成交额比

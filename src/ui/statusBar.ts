@@ -1,14 +1,14 @@
 // 状态栏渲染
 import * as vscode from "vscode";
 import { config } from "../config";
-import { getDisplayName, isLockState } from "../utils/stock";
+import { getDisplayName, isLockState, safeNumber } from "../utils/stock";
 import { formatAmount } from "../shared/format";
 import type { Stock } from "../types";
 
 // 涨跌符号
 function getPriceSymbol(changeValue: string): string {
-  const v = parseFloat(changeValue);
-  if (isNaN(v) || v === 0) return "";
+  const v = safeNumber(changeValue);
+  if (v === 0) return "";
   return v > 0 ? "↗" : "↘";
 }
 
@@ -97,13 +97,13 @@ export class StatusBarManager implements vscode.Disposable {
     if (!this.statusBarItem) return;
     this.hidden = false;
 
-    if (!stocks || stocks.length === 0) {
+    if (stocks.length === 0) {
       this.updateText("$(add) 点击添加股票");
       this.updateTooltip("点击管理股票，开始您的看盘之旅");
       return;
     }
 
-    if (!stockInfos || stockInfos.length === 0) {
+    if (stockInfos.length === 0) {
       this.updateText("$(error) 股票获取失败");
       this.updateTooltip("请检查网络连接或股票代码是否正确");
       return;

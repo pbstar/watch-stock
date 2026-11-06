@@ -30,6 +30,7 @@ function showVscodeMessage(
 
 // 积压的消息合并成一条发出，并从此刻起重新计时
 function sendPendingMessages(): void {
+  flushTimer = null;
   const finalText = pendingMessages.join(" ---- ");
   pendingMessages = [];
   lastNotifyTime = Date.now();
@@ -41,12 +42,14 @@ export function sendMsg(text: string, options: SendMsgOptions = {}): void {
   showVscodeMessage(`[${formatClock(new Date())}] ${text}`, options.type);
 }
 
-// 清除限流定时器，扩展停用时调用，防止泄漏
+// 清除限流定时器与积压消息，扩展停用时调用，防止泄漏
 export function disposeRateLimit(): void {
   if (flushTimer) {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
+  pendingMessages = [];
+  lastNotifyTime = 0;
 }
 
 // 发送限流消息：60秒内合并消息

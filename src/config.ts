@@ -6,9 +6,6 @@ import type { Alarm, AppState } from "./types";
 
 const SECTION = "watch-stock";
 
-// 排序方式类型
-export type SortType = StockSortType;
-
 // 配置项类型
 export interface ConfigShape {
   stocks: string[];
@@ -22,7 +19,7 @@ export interface ConfigShape {
   enableLargeTip: boolean;
   showLockCount: boolean;
   enableColorful: boolean;
-  stockSortType: SortType;
+  stockSortType: StockSortType;
 }
 
 const DEFAULTS: ConfigShape = {
@@ -113,5 +110,7 @@ export function affectsRefresh(e: vscode.ConfigurationChangeEvent): boolean {
 // 状态栏是否应该显示
 export function getIsVisible(state: AppState, now?: Date): boolean {
   if (state.userForced !== null) return state.userForced;
-  return config.getAutoHideByMarket() ? isTradingTime(now || new Date()) : true;
+  return config.getAutoHideByMarket()
+    ? isTradingTime(now ?? new Date())
+    : true;
 }

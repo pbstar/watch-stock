@@ -13,6 +13,7 @@ export interface MinutePoint {
   time: string;
   price: number | null;
   volume: number | null;
+  amount: number | null;
 }
 
 // 列表行共有部分：标记、代码、名称、现价、涨跌幅（涨跌幅同时决定整行涨跌配色）
@@ -21,12 +22,15 @@ export interface BaseRow {
   name: string;
   current: string;
   changePercent: string;
+  // 是否支持点击展开详情；全球行情没有详细指标与分时，置 false
+  expandable?: boolean;
 }
 
-// 列表行（自选 / 指数 / 涨跌榜），名称与封单文案由扩展端处理好
+// 列表行（自选 / 指数 / 涨跌榜），名称与行尾文案由扩展端处理好
 export interface RowItem extends BaseRow {
   changeValue: string;
-  lock: string;
+  // 行尾展示文案：自选为封单，指数页为昨日涨跌
+  tail: string;
 }
 
 // 资金榜行：尾部两列是净额与净额占比，与行情行不共用

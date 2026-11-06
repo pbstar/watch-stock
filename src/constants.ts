@@ -1,5 +1,5 @@
-// 行情常量：大盘指数、行业板块代码
-import type { IndustryConfig } from "./types";
+// 行情常量：大盘指数、行业板块与全球经济数据代码
+import type { CodeNameConfig } from "./types";
 
 // 大盘指数代码
 export const INDEX_CODES: string[] = [
@@ -11,7 +11,7 @@ export const INDEX_CODES: string[] = [
 ];
 
 // 行业板块代码
-export const INDUSTRY_CODES: IndustryConfig[] = [
+export const INDUSTRY_CODES: CodeNameConfig[] = [
   { code: "sh512880", name: "证券" },
   { code: "sz159326", name: "电网设备" },
   { code: "sh512400", name: "有色金属" },
@@ -62,6 +62,15 @@ export const INDUSTRY_CODES: IndustryConfig[] = [
 
 // 行业板块代码列表（由 INDUSTRY_CODES 派生的纯代码数组）
 export const INDUSTRY_CODE_LIST: string[] = INDUSTRY_CODES.map((i) => i.code);
+
+// 全球经济数据（新浪外盘期货），顺序即面板展示顺序
+export const GLOBAL_ITEMS: CodeNameConfig[] = [
+  { code: "hf_OIL", name: "布伦特原油" },
+  { code: "hf_CL", name: "纽约原油" },
+  { code: "hf_GC", name: "纽约黄金" },
+  { code: "hf_SI", name: "纽约白银" },
+  { code: "hf_VX", name: "恐慌指数" },
+];
 
 // 排行各榜条数（涨跌榜、资金榜各取这么多个）
 export const RANK_SIZE = 20;
