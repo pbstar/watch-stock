@@ -8,6 +8,7 @@ import {
 } from "../constants";
 import {
   getGlobalList,
+  getGlobalPrevChanges,
   getMoneyFlowList,
   getRankList,
   getStockList,
@@ -41,15 +42,17 @@ function stamp(fetchedAt: number | null): string {
   return formatClock(new Date(fetchedAt ?? Date.now()));
 }
 
-// 大盘指数与全球行情同一套刷新：并行取回，合并成一份列表下发
+// 大盘指数与全球行情同一套刷新；昨日涨跌按天缓存，当天不再重复请求
 async function loadIndex(): Promise<ListPayload> {
-  const [domestic, global] = await Promise.all([
+  const [domestic, global, prev] = await Promise.all([
     getStockList(INDEX_CODES),
     getGlobalList(),
+    getGlobalPrevChanges(),
   ]);
+  const prevMap = new Map(prev.data.map((r) => [r.code, r.changePercent]));
   const items = [
     ...domestic.data.map(toRow),
-    ...global.data.map(toGlobalRow),
+    ...global.data.map((s) => toGlobalRow(s, prevMap.get(s.code))),
   ];
   return {
     msg: { type: "index", items, time: stamp(domestic.fetchedAt) },

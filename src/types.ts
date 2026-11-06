@@ -94,6 +94,12 @@ export interface CodeNameConfig {
   name: string;
 }
 
+// 全球经济数据的前一日涨跌（%）
+export interface GlobalPrevChange {
+  code: string;
+  changePercent: number;
+}
+
 // sendMsg 选项
 export interface SendMsgOptions {
   type?: "info" | "warning" | "error"; // 消息类型

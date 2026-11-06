@@ -100,13 +100,12 @@ body.ranking .subtabs {
   color: var(--dim);
 }
 
-/* 行情行：整行固定宽度，不随面板宽度变化。列宽以 ch 兜底，剩余宽度按比例分摊；
-   各行为同一套固定轨道，数值列纵向对齐，长名省略而不挤动其他列 */
+/* 行情行：固定宽度，列宽以 ch 兜底；名称与尾列各留 11ch，尾列需容纳「昨 +41.53%」 */
 .row {
   display: grid;
   grid-template-columns:
-    var(--marker-w) minmax(9ch, 1fr) minmax(12ch, 2fr) minmax(8ch, 1fr)
-    minmax(7ch, 1fr) minmax(8ch, 1fr) minmax(10ch, 1fr);
+    var(--marker-w) minmax(9ch, 1fr) minmax(11ch, 1.5fr) minmax(8ch, 1fr)
+    minmax(7ch, 1fr) minmax(8ch, 1fr) minmax(11ch, 1.5fr);
   gap: 0 var(--row-gap);
   width: var(--list-w);
   white-space: nowrap;

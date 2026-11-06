@@ -26,10 +26,11 @@ export interface BaseRow {
   expandable?: boolean;
 }
 
-// 列表行（自选 / 指数 / 涨跌榜），名称与封单文案由扩展端处理好
+// 列表行（自选 / 指数 / 涨跌榜），名称与行尾文案由扩展端处理好
 export interface RowItem extends BaseRow {
   changeValue: string;
-  lock: string;
+  // 行尾展示文案：自选为封单，指数页为昨日涨跌
+  tail: string;
 }
 
 // 资金榜行：尾部两列是净额与净额占比，与行情行不共用

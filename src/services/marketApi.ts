@@ -12,10 +12,11 @@ import {
   resetCache,
 } from "../utils/cache";
 import type { CacheResult } from "../utils/cache";
-import { isMorningAuctionTime } from "../utils/time";
+import { formatDateKey, isMorningAuctionTime } from "../utils/time";
 import * as sina from "../sources/sina";
 import * as tencent from "../sources/tencent";
 import type {
+  GlobalPrevChange,
   MinutePoint,
   MoneyFlowItem,
   RankItem,
@@ -111,6 +112,18 @@ export async function getGlobalList(): Promise<CacheResult<Stock>> {
     ttl: QUOTE_CACHE_TTL,
     cacheEmpty: false,
     load: () => sina.fetchGlobalQuotes(GLOBAL_ITEMS),
+  });
+}
+
+// 前一日涨跌：日线一天只变一次，按日期缓存
+export async function getGlobalPrevChanges(): Promise<
+  CacheResult<GlobalPrevChange>
+> {
+  return cachedFetch<GlobalPrevChange>({
+    key: `sina:global:prev:${formatDateKey(new Date())}`,
+    ttl: 24 * 60 * 60 * 1000,
+    cacheEmpty: false,
+    load: () => sina.fetchGlobalPrevChanges(GLOBAL_ITEMS),
   });
 }
 
