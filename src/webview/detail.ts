@@ -78,6 +78,7 @@ export class DetailBlock {
       data.minute,
       Number(quote.close),
       decOf(quote.isETF),
+      !this.compact,
       (text) => {
         hover.textContent = text ?? "";
       },
