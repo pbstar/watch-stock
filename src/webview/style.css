@@ -4,6 +4,7 @@
   --dim: var(--vscode-descriptionForeground);
   --up: var(--fg);
   --dn: var(--fg);
+  --avg: var(--fg);
   --vol-up: 0.55;
   --vol-dn: 0.2;
   /* 行情行固定宽度，不随面板宽度变化；分时图宽度见 .chart */
@@ -17,6 +18,7 @@
 body.colorful {
   --up: var(--vscode-terminal-ansiRed);
   --dn: var(--vscode-terminal-ansiGreen);
+  --avg: var(--vscode-terminal-ansiYellow);
   --vol-up: 0.6;
   --vol-dn: 0.6;
 }
@@ -198,6 +200,16 @@ body.ranking .subtabs {
 
 .line-dn {
   stroke: var(--dn);
+}
+
+/* 分时均价线：虚线以区分价格线，彩色模式下取黄色 */
+.avg-line {
+  fill: none;
+  stroke: var(--avg);
+  stroke-width: 1;
+  stroke-opacity: 0.7;
+  stroke-dasharray: 3 3;
+  shape-rendering: crispEdges;
 }
 
 .vol-up {

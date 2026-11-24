@@ -1,4 +1,4 @@
-// 迷你分时图 + 成交量柱（SVG）：细线无面积、无坐标框，仅昨收虚线
+// 迷你分时图 + 成交量柱（SVG）：细线无面积、无坐标框，仅昨收与均价两条虚线
 import type { MinutePoint } from "../shared/protocol";
 import { formatMoney, formatVolume, signed } from "../shared/format";
 
@@ -36,22 +36,37 @@ function xOf(ctx: ChartCtx, i: number): number {
   return (i / Math.max(ctx.data.length - 1, 1)) * ctx.width;
 }
 
-// 价格折线（遇 null 断开）
-function pricePath(ctx: ChartCtx, prices: number[]): string {
-  const dev =
-    Math.max(...prices.map((p) => Math.abs(p - ctx.preClose)), ctx.preClose * 0.005) * 1.1;
-  const yOf = (p: number) => ((ctx.preClose + dev - p) / (dev * 2)) * PRICE_H;
+// 分钟点上的分时均价（当日累计成交额 ÷ 累计成交量，手折股）；无量时为空
+function avgOf(d: MinutePoint): number | null {
+  if (d.volume == null || d.amount == null || d.volume <= 0) return null;
+  const v = d.amount / (d.volume * 100);
+  return v > 0 ? v : null;
+}
+
+// 折线路径（遇 null 断开），价格与均价共用
+function linePath(
+  ctx: ChartCtx,
+  values: (number | null)[],
+  yOf: (v: number) => number,
+): string {
   let path = "";
   let pen = "M";
-  ctx.data.forEach((d, i) => {
-    if (d.price == null) {
+  values.forEach((v, i) => {
+    if (v == null) {
       pen = "M";
       return;
     }
-    path += `${pen}${xOf(ctx, i).toFixed(1)},${yOf(d.price).toFixed(1)}`;
+    path += `${pen}${xOf(ctx, i).toFixed(1)},${yOf(v).toFixed(1)}`;
     pen = "L";
   });
   return path;
+}
+
+// 价格 → y 坐标：以昨收为中心，半幅取当日最大偏离（最小正负 0.5%）并留 10% 余量
+function makeYOf(preClose: number, prices: number[]): (p: number) => number {
+  const dev =
+    Math.max(...prices.map((p) => Math.abs(p - preClose)), preClose * 0.005) * 1.1;
+  return (p) => ((preClose + dev - p) / (dev * 2)) * PRICE_H;
 }
 
 // 成交量柱：按分钟涨跌区分，颜色/透明度由样式类控制（CSP 禁止内联 style）
@@ -76,20 +91,24 @@ function hoverText(
   i: number,
   vols: number[],
   amounts: number[],
+  withAvg: boolean,
 ): string {
   const d = ctx.data[i];
   const t = d.time.slice(-5);
   if (d.price == null) return `${t} -`;
   const pct = ((d.price - ctx.preClose) / ctx.preClose) * 100;
-  return `${t} ${d.price.toFixed(ctx.dec)} ${signed(pct.toFixed(2), "%")} 量${formatVolume(vols[i])} 额${formatMoney(amounts[i])}`;
+  const avg = withAvg ? avgOf(d) : null;
+  const avgText = avg == null ? "" : ` 均${avg.toFixed(ctx.dec)}`;
+  return `${t} ${d.price.toFixed(ctx.dec)} ${signed(pct.toFixed(2), "%")}${avgText} 量${formatVolume(vols[i])} 额${formatMoney(amounts[i])}`;
 }
 
-// 渲染到容器；onHover 传 null 表示离开
+// 渲染到容器；withAvg 控制均价虚线（指数均价与点位不同量纲，不画）；onHover 传 null 表示离开
 export function renderChart(
   el: HTMLElement,
   data: MinutePoint[],
   preClose: number,
   dec: number,
+  withAvg: boolean,
   onHover: (text: string | null) => void,
 ): void {
   // 宽度取自容器（style.css 中 .chart 的固定宽度）
@@ -106,14 +125,17 @@ export function renderChart(
   const ctx: ChartCtx = { data, preClose, dec, width };
   const vols = minuteDeltas(data, (d) => d.volume);
   const amounts = minuteDeltas(data, (d) => d.amount);
+  const yOf = makeYOf(preClose, prices);
+  const avgPath = withAvg ? linePath(ctx, data.map(avgOf), yOf) : "";
   const pcY = PRICE_H / 2;
   const last = prices[prices.length - 1];
   el.innerHTML = `<svg width="${width}" height="${HEIGHT}" viewBox="0 0 ${width} ${HEIGHT}">
     <line class="pre-close" x1="0" y1="${pcY}" x2="${width}" y2="${pcY}"/>
-    <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${pricePath(ctx, prices)}"/>
+    <path class="${last >= preClose ? "line-up" : "line-dn"}" d="${linePath(ctx, data.map((d) => d.price), yOf)}"/>
+    ${avgPath ? `<path class="avg-line" d="${avgPath}"/>` : ""}
     ${volumeBars(ctx, vols)}
   </svg><div class="cursor"></div>`;
-  bindHover(el, ctx, vols, amounts, onHover);
+  bindHover(el, ctx, vols, amounts, withAvg, onHover);
 }
 
 function bindHover(
@@ -121,6 +143,7 @@ function bindHover(
   ctx: ChartCtx,
   vols: number[],
   amounts: number[],
+  withAvg: boolean,
   onHover: (text: string | null) => void,
 ): void {
   const cursor = el.querySelector<HTMLElement>(".cursor")!;
@@ -129,7 +152,7 @@ function bindHover(
     const i = Math.max(0, Math.min(n - 1, Math.round((x / ctx.width) * (n - 1))));
     cursor.style.left = `${xOf(ctx, i)}px`;
     cursor.style.display = "block";
-    onHover(hoverText(ctx, i, vols, amounts));
+    onHover(hoverText(ctx, i, vols, amounts, withAvg));
   };
   el.onmousemove = (e) => {
     const x = e.clientX - el.getBoundingClientRect().left;
